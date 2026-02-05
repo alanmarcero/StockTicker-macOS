@@ -14,6 +14,13 @@ TickerConfig.swift       - Config loading/saving, OpaqueContainerView
 TickerEditorView.swift   - SwiftUI watchlist editor window
 RequestLogger.swift      - API request logging (actor-based), stores headers/body
 DebugWindow.swift        - Debug window with copy buttons for URL/request/response
+SortOption.swift         - Sort option enum with config parsing and sorting logic
+MarqueeView.swift        - Scrolling index marquee NSView with ping animation
+MenuItemFactory.swift    - Factory for creating styled NSMenuItems
+NewsService.swift        - RSS feed fetcher for financial news (actor-based)
+NewsData.swift           - NewsItem model and RSS XML parsing
+YTDCache.swift           - Year-to-date price cache manager (actor-based)
+LayoutConfig.swift       - Centralized layout constants
 ```
 
 ## File Dependencies & Connections
@@ -24,15 +31,24 @@ StockTickerApp.swift
 
 MenuBarView.swift (MenuBarController)
 ├── StockService.swift (StockServiceProtocol) - fetches quotes
+├── NewsService.swift (NewsServiceProtocol) - fetches news headlines
 ├── TickerConfig.swift (WatchlistConfigManager, WatchlistConfig) - loads/saves config
 ├── MarketSchedule.swift (MarketSchedule, MarketState) - market status display
 ├── StockData.swift (StockQuote, TradingSession) - quote display
+├── SortOption.swift (SortOption) - dropdown sorting
+├── MarqueeView.swift (MarqueeView, MarqueeConfig) - scrolling index line
+├── MenuItemFactory.swift (MenuItemFactory) - menu item creation
+├── YTDCache.swift (YTDCacheManager) - YTD price caching
 ├── TickerEditorView.swift (WatchlistEditorWindowController) - edit watchlist
 └── DebugWindow.swift (DebugWindowController) - debug window
 
 StockService.swift
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
+
+NewsService.swift
+├── NewsData.swift (NewsItem, RSSParser)
+└── RequestLogger.swift (LoggingHTTPClient)
 
 StockData.swift
 └── TradingHours - shared trading hours constants (used by MarketSchedule)
@@ -42,6 +58,7 @@ MarketSchedule.swift
 └── MarketState, MarketHoliday, MarketScheduleStrings - market state types
 
 TickerConfig.swift
+├── LayoutConfig.swift (LayoutConfig.Watchlist.maxSize)
 └── WatchlistConfig, WatchlistConfigManager, ClosedMarketAsset, IndexSymbol
 
 TickerEditorView.swift
@@ -58,10 +75,10 @@ RequestLogger.swift
 ├── RequestLogger (actor) - stores entries, auto-prunes after 60s
 └── LoggingHTTPClient - wraps HTTPClient with logging and retry
 
-DebugWindow.swift
-├── DebugView - SwiftUI view with auto-refresh
-├── RequestRowView - displays entry with copy buttons
-└── DebugWindowController - manages NSWindow lifecycle
+YTDCache.swift
+├── YTDCacheData - Codable cache model (year, lastUpdated, prices)
+├── YTDCacheManager (actor) - load/save/query YTD prices
+└── DateProvider protocol - injectable date for testing
 ```
 
 ## Test File Coverage
@@ -102,7 +119,29 @@ TickerAddErrorTests.swift
 
 MenuBarViewTests.swift
 ├── SortOptionTests - from config string, raw values
-└── SortOptionSortTests - sorting with quotes
+└── SortOptionSortTests - sorting with quotes (including YTD)
+
+MarqueeViewTests.swift
+├── MarqueeConfigTests - config constants validation
+└── MarqueeViewTests - layer setup, scrolling, ping animation
+
+MenuItemFactoryTests.swift
+├── Font tests - monospaced fonts
+├── Disabled item tests
+├── Action item tests
+└── Submenu tests
+
+YTDCacheTests.swift
+├── MockYTDDateProvider, MockYTDFileSystem - test doubles
+├── Load/save tests
+├── Year rollover tests
+├── Missing symbols tests
+└── DateProvider injection tests
+
+NewsServiceTests.swift
+├── MockHTTPClient - test double
+├── RSS parsing tests
+└── News fetching tests
 ```
 
 ## Key Design Patterns
@@ -110,14 +149,17 @@ MenuBarViewTests.swift
 ### Dependency Injection
 All major components use protocol-based DI for testability:
 - `StockServiceProtocol` / `HTTPClient` - network layer
+- `NewsServiceProtocol` - news fetching
 - `FileSystemProtocol` / `WorkspaceProtocol` - file operations
 - `SymbolValidator` - symbol validation
-- `DateProvider` - time-based testing
+- `DateProvider` - time-based testing (used by MarketSchedule, YTDCacheManager)
 - `URLOpener` / `WindowProvider` - UI abstraction
 
 ### Actors for Thread Safety
 - `StockService` - fetches quotes concurrently with TaskGroup
+- `NewsService` - fetches RSS feeds concurrently
 - `RequestLogger` - thread-safe request logging
+- `YTDCacheManager` - thread-safe YTD price cache
 
 ### State Management
 - `MenuBarController` is `@MainActor`, uses `@Published` properties
@@ -133,6 +175,22 @@ func clearCallbacks() {
 }
 ```
 Called in `save()`, `cancel()`, and when window closes.
+
+### HighlightConfig Pattern
+Batches highlight parameters to reduce repetition in `buildTickerAttributedTitle()`:
+```swift
+private struct HighlightConfig {
+    let isPingHighlighted: Bool
+    let pingBackgroundColor: NSColor?
+    let isPersistentHighlighted: Bool
+    let persistentHighlightColor: NSColor
+    let persistentHighlightOpacity: Double
+
+    func resolve(defaultColor: NSColor) -> (foreground: NSColor, background: NSColor?)
+    func withPingBackground(_ color: NSColor?) -> HighlightConfig
+    func withPingDisabled() -> HighlightConfig
+}
+```
 
 ## API Integration
 
@@ -160,8 +218,8 @@ LoggingHTTPClient (wraps HTTPClient)
     ├── Retries on non-2xx status codes OR network errors
     └── Skips retries during pre-market/after-hours (extended hours data less critical)
     │
-StockService, YahooSymbolValidator (consumers)
-    └── Both default to LoggingHTTPClient()
+StockService, NewsService, YahooSymbolValidator (consumers)
+    └── All default to LoggingHTTPClient()
 ```
 
 Individual request retry - if fetching AAPL, MSFT, GOOGL and MSFT fails, only MSFT retries.
@@ -194,7 +252,7 @@ Weekend handling:
 - App forces `yahooMarketState = "CLOSED"` on weekends regardless of API response
 - Extended hours labels (Pre/AH) are not shown on weekends
 
-Config reload (`reloadConfig()`) resets `hasCompletedInitialLoad = false` to trigger a full refresh.
+Config reload (`reloadConfig()`) resets `hasCompletedInitialLoad = false` to trigger a full refresh, and also calls `fetchMissingYTDPrices()` to ensure newly added symbols get YTD data.
 
 ### Selective Ping Animation
 
@@ -212,6 +270,56 @@ On weekends, only crypto symbols in the watchlist will ping when refreshed.
 2. Uses time-based session detection as fallback when Yahoo returns "CLOSED"
 3. Calculates change from regular market price to current indicator price
 4. Only populates when price difference > 0.001 (avoids floating point issues)
+
+## YTD Price Tracking
+
+Year-to-date prices are cached locally and displayed alongside each symbol.
+
+### Cache Location
+`~/.stockticker/ytd-cache.json`
+
+### Cache Structure
+```json
+{
+  "year": 2026,
+  "lastUpdated": "2026-01-15T12:00:00Z",
+  "prices": {
+    "AAPL": 185.50,
+    "SPY": 475.25
+  }
+}
+```
+
+### YTD Flow
+1. **App startup**: `loadYTDCache()` loads cache, checks year rollover, fetches missing prices
+2. **Config reload**: `fetchMissingYTDPrices()` fetches YTD for newly added symbols
+3. **Each refresh**: `attachYTDPricesToQuotes()` attaches cached YTD prices to quotes
+4. **Year change**: Cache automatically clears on first launch of new year
+
+### Key Methods
+- `loadYTDCache()` - Initial load with year rollover check
+- `fetchMissingYTDPrices()` - Batch fetch for symbols not in cache
+- `attachYTDPricesToQuotes()` - Attach YTD start prices to quote objects
+
+## News Headlines
+
+Financial news from RSS feeds displayed in the dropdown menu.
+
+### Data Sources
+- Yahoo Finance RSS: `https://finance.yahoo.com/news/rssindex`
+- CNBC Top News: `https://www.cnbc.com/id/100003114/device/rss/rss.html`
+
+### NewsService
+Actor-based service that:
+1. Fetches RSS feeds concurrently via TaskGroup
+2. Parses XML using `RSSParser` (XMLParser delegate)
+3. Deduplicates headlines by similarity
+4. Returns top headlines sorted by publish date
+
+### Display
+- Up to 6 clickable headlines in dropdown
+- Clicking opens article in default browser
+- Headlines truncated to `LayoutConfig.Headlines.maxLength` characters
 
 ## Configuration
 
@@ -253,7 +361,8 @@ Config saved with `prettyPrinted` and `sortedKeys` for readability.
 2. **Dropdown menu**:
    - Market status with schedule and countdown (updates every 1s)
    - Scrolling index marquee (`MarqueeView` - custom NSView, 32px/sec scroll)
-   - Sorted ticker list with price/change (configurable via `defaultSort`)
+   - News headlines (clickable, opens in browser)
+   - Sorted ticker list with price/change/YTD (configurable via `defaultSort`)
    - Extended hours data (Pre/AH) when available
    - Highlight flash on data refresh (fades over time)
 3. **When market closed** - shows selected crypto asset
@@ -263,6 +372,7 @@ Custom `NSView` that scrolls the index ticker line horizontally:
 - Ticker scrolls at ~32px/sec (8px every 0.25s)
 - Seamless looping via duplicate text rendering
 - Highlight ping effect on data refresh
+- Extracted to separate file with `MarqueeConfig` constants
 
 ### Symbol Validation
 `YahooSymbolValidator` validates symbols before adding to watchlist:
@@ -300,9 +410,13 @@ Comprehensive test suite using XCTest:
 - `TickerEditorStateTests` - editor state machine
 - `TickerListOperationsTests` - pure watchlist functions
 - `TickerValidatorTests` - symbol validation
-- `MenuBarViewTests` - sort options
+- `MenuBarViewTests` - sort options (including YTD sorts)
+- `MarqueeViewTests` - marquee config and view behavior
+- `MenuItemFactoryTests` - menu item factory methods
+- `YTDCacheTests` - YTD cache with mock DateProvider
+- `NewsServiceTests` - RSS parsing and news fetching
 
-Run tests: `xcodebuild test -project StockTicker.xcodeproj -scheme StockTicker`
+Run tests: `xcodebuild test -project StockTicker.xcodeproj -scheme StockTicker -destination 'platform=macOS'`
 
 ## Build & Install
 
@@ -394,17 +508,17 @@ Tests document behavior, enable refactoring, and catch regressions. F.I.R.S.T.: 
 - Callbacks cleared explicitly to prevent retain cycles
 
 ### SortOption Pattern
-`SortOption` enum encapsulates sorting logic with config string parsing:
+`SortOption` enum (extracted to `SortOption.swift`) encapsulates sorting logic with config string parsing:
 ```swift
 SortOption.from(configString: "percentDesc")  // Parse from config
 sortOption.sort(symbols, using: quotes)        // Apply sort
 ```
-Sorts: `tickerAsc`, `tickerDesc`, `changeAsc`, `changeDesc`, `percentAsc`, `percentDesc`
+Sorts: `tickerAsc`, `tickerDesc`, `changeAsc`, `changeDesc`, `percentAsc`, `percentDesc`, `ytdAsc`, `ytdDesc`
 
 ### Color Helpers
 - `colorFromString(_:)` - converts config string ("yellow", "blue", etc.) to NSColor
 - `priceChangeColor(_:neutral:)` - returns green/red/neutral based on change value
-- `StockQuote` extensions: `displayColor`, `highlightColor`, `extendedHoursColor`
+- `StockQuote` extensions: `displayColor`, `highlightColor`, `extendedHoursColor`, `ytdColor`
 
 ### Opaque Window Pattern
 SwiftUI views hosted in NSHostingView can have transparency issues on macOS. Use `OpaqueContainerView` as a wrapper:
@@ -437,7 +551,7 @@ Note: NSMenu uses macOS system vibrancy which cannot be disabled. The menu dropd
 
 ### Modify ticker display
 - Menu bar: `makeMenuBarAttributedTitle(for:)`
-- Dropdown: `buildTickerAttributedTitle(...)` with highlight logic
+- Dropdown: `buildTickerAttributedTitle(quote:highlight:)` with HighlightConfig
 
 ### Change API data source
 - Modify `StockService.fetchChartData` and response models in `StockData.swift`
@@ -446,6 +560,7 @@ Note: NSMenu uses macOS system vibrancy which cannot be disabled. The menu dropd
 
 The following cleanup was performed applying clean code principles:
 
+### Earlier Refactoring
 1. **Removed unused v7 Yahoo API models** (YAGNI) - `YahooQuoteResponse`, `QuoteResult`, `QuoteError`, `QuoteData` were never used; app only uses v8 Chart API
 
 2. **Unified trading hours constants** (DRY) - Created `TradingHours` enum in `StockData.swift`, removed duplicate `MarketHours` from `MarketSchedule.swift`. Both `StockQuote.currentTimeBasedSession()` and `MarketSchedule.calculateMarketState()` now use shared constants.
@@ -455,3 +570,25 @@ The following cleanup was performed applying clean code principles:
 4. **Extracted display strings** - Created `MarketScheduleStrings` for schedule display text, separating data from presentation
 
 5. **Centralized retry logic** (DRY) - Added retry logic to `LoggingHTTPClient` so all API requests automatically retry once on failure. Single implementation benefits all consumers (`StockService`, `YahooSymbolValidator`).
+
+### Component Extraction (Single Responsibility)
+6. **Extracted SortOption.swift** - Moved `SortOption` enum from MenuBarView.swift to dedicated file with config string parsing and sorting logic.
+
+7. **Extracted MarqueeView.swift** - Moved `MarqueeView` class and `MarqueeConfig` constants from MenuBarView.swift to dedicated file.
+
+8. **Extracted MenuItemFactory.swift** - Moved menu item factory methods and font constants from MenuBarView.swift to dedicated file.
+
+### DRY Improvements
+9. **Created `ensureClosedMarketSymbol(in:)` helper** - Replaced 3 duplicate occurrences of symbol-checking logic in `refreshAllQuotes()` with single helper function.
+
+10. **Created `HighlightConfig` struct** - Batched 5 highlight parameters into single struct with helper methods (`resolve`, `withPingBackground`, `withPingDisabled`), reducing parameter passing in `buildTickerAttributedTitle()`.
+
+11. **Extracted `appendYTDSection()` and `appendExtendedHoursSection()`** - Split 78-line `buildTickerAttributedTitle()` into focused helper methods.
+
+### Bug Fixes
+12. **YTD prices for newly added symbols** - Extracted `fetchMissingYTDPrices()` from `loadYTDCache()` and call it in `reloadConfig()` so newly added watchlist symbols get YTD data immediately without requiring app restart.
+
+### Testability Improvements
+13. **Added DateProvider injection to YTDCacheManager** - Enables testing year rollover logic with mock dates.
+
+14. **Added comprehensive tests** - `MarqueeViewTests`, `MenuItemFactoryTests`, `YTDCacheTests` with mock dependencies.
