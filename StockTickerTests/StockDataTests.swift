@@ -1,0 +1,475 @@
+import XCTest
+@testable import StockTicker
+
+// MARK: - TradingSession Tests
+
+final class TradingSessionTests: XCTestCase {
+
+    func testInit_regularState_returnsRegular() {
+        XCTAssertEqual(TradingSession(fromYahooState: "REGULAR"), .regular)
+    }
+
+    func testInit_preState_returnsPreMarket() {
+        XCTAssertEqual(TradingSession(fromYahooState: "PRE"), .preMarket)
+    }
+
+    func testInit_prepreState_returnsPreMarket() {
+        XCTAssertEqual(TradingSession(fromYahooState: "PREPRE"), .preMarket)
+    }
+
+    func testInit_postState_returnsAfterHours() {
+        XCTAssertEqual(TradingSession(fromYahooState: "POST"), .afterHours)
+    }
+
+    func testInit_postpostState_returnsAfterHours() {
+        XCTAssertEqual(TradingSession(fromYahooState: "POSTPOST"), .afterHours)
+    }
+
+    func testInit_closedState_returnsClosed() {
+        XCTAssertEqual(TradingSession(fromYahooState: "CLOSED"), .closed)
+    }
+
+    func testInit_nilState_returnsClosed() {
+        XCTAssertEqual(TradingSession(fromYahooState: nil), .closed)
+    }
+
+    func testInit_unknownState_returnsClosed() {
+        XCTAssertEqual(TradingSession(fromYahooState: "UNKNOWN"), .closed)
+    }
+
+    func testInit_caseInsensitive() {
+        XCTAssertEqual(TradingSession(fromYahooState: "regular"), .regular)
+        XCTAssertEqual(TradingSession(fromYahooState: "pre"), .preMarket)
+        XCTAssertEqual(TradingSession(fromYahooState: "post"), .afterHours)
+    }
+}
+
+// MARK: - StockQuote Tests
+
+final class StockQuoteTests: XCTestCase {
+
+    // MARK: - Basic properties
+
+    func testChange_calculatedFromPriceAndPreviousClose() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.change, 2.0, accuracy: 0.001)
+    }
+
+    func testChangePercent_calculatedCorrectly() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 100.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.changePercent, 50.0, accuracy: 0.001)
+    }
+
+    func testChangePercent_negativeChange() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 90.0,
+            previousClose: 100.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.changePercent, -10.0, accuracy: 0.001)
+    }
+
+    func testIsPositive_positiveChange_returnsTrue() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertTrue(quote.isPositive)
+    }
+
+    func testIsPositive_negativeChange_returnsFalse() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 145.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertFalse(quote.isPositive)
+    }
+
+    func testIsPositive_noChange_returnsTrue() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 148.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertTrue(quote.isPositive)
+    }
+
+    // MARK: - Placeholder
+
+    func testPlaceholder_hasCorrectValues() {
+        let placeholder = StockQuote.placeholder(symbol: "AAPL")
+        XCTAssertEqual(placeholder.symbol, "AAPL")
+        XCTAssertEqual(placeholder.price, 0)
+        XCTAssertEqual(placeholder.previousClose, 0)
+        XCTAssertTrue(placeholder.isPlaceholder)
+    }
+
+    func testIsPlaceholder_regularQuote_returnsFalse() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertFalse(quote.isPlaceholder)
+    }
+
+    // MARK: - Extended hours
+
+    func testExtendedHoursSuffix_regularSession_isEmpty() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.extendedHoursSuffix, "")
+    }
+
+    func testExtendedHoursSuffix_preMarketWithPrice_returnsPre() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .preMarket,
+            preMarketPrice: 151.0
+        )
+        XCTAssertEqual(quote.extendedHoursSuffix, " (Pre)")
+    }
+
+    func testExtendedHoursSuffix_afterHoursWithPrice_returnsAfter() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .afterHours,
+            postMarketPrice: 152.0
+        )
+        XCTAssertEqual(quote.extendedHoursSuffix, " (After)")
+    }
+
+    func testExtendedHoursSuffix_preMarketWithoutPrice_isEmpty() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .preMarket
+        )
+        XCTAssertEqual(quote.extendedHoursSuffix, "")
+    }
+
+    // MARK: - Display values for extended hours
+
+    func testDisplayChange_preMarket_usesPreMarketChange() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .preMarket,
+            preMarketPrice: 151.0,
+            preMarketChange: 3.0,
+            preMarketChangePercent: 2.0
+        )
+        XCTAssertEqual(quote.displayChange, 3.0)
+        XCTAssertEqual(quote.displayChangePercent, 2.0)
+    }
+
+    func testDisplayChange_afterHours_usesPostMarketChange() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .afterHours,
+            postMarketPrice: 152.0,
+            postMarketChange: 4.0,
+            postMarketChangePercent: 2.67
+        )
+        XCTAssertEqual(quote.displayChange, 4.0)
+        XCTAssertEqual(quote.displayChangePercent, 2.67)
+    }
+
+    func testDisplayChange_regularSession_usesRegularChange() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.displayChange, 2.0, accuracy: 0.001)
+        XCTAssertEqual(quote.displayChangePercent, 1.351, accuracy: 0.001)
+    }
+
+    // MARK: - Formatting
+
+    func testFormattedPrice_formatsCurrency() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.50,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.formattedPrice, "$150.50")
+    }
+
+    func testFormattedChange_positiveChange_includesPlus() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertTrue(quote.formattedChange.hasPrefix("+"))
+    }
+
+    func testFormattedChange_negativeChange_includesMinus() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 145.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertTrue(quote.formattedChange.hasPrefix("-"))
+    }
+
+    func testFormattedChangePercent_includesPercentSign() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertTrue(quote.formattedChangePercent.hasSuffix("%"))
+    }
+
+    // MARK: - Extended hours with CLOSED session (time-based fallback)
+
+    func testHasExtendedHoursData_closedSessionWithPostMarketData_usesTimeBased() {
+        // When session is CLOSED but we have post market data, the time-based
+        // detection should determine if we show it
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .closed,
+            postMarketPrice: 151.0,
+            postMarketChange: 1.0,
+            postMarketChangePercent: 0.67
+        )
+        // This will depend on current time, so we just verify the logic doesn't crash
+        _ = quote.hasExtendedHoursData
+        _ = quote.extendedHoursLabel
+    }
+
+    func testExtendedHoursLabel_afterHoursSession_returnsAH() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .afterHours,
+            postMarketChangePercent: 1.5
+        )
+        XCTAssertEqual(quote.extendedHoursLabel, "AH")
+    }
+
+    func testExtendedHoursLabel_preMarketSession_returnsPre() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .preMarket,
+            preMarketChangePercent: 0.5
+        )
+        XCTAssertEqual(quote.extendedHoursLabel, "Pre")
+    }
+
+    // MARK: - Time-based session detection
+
+    func testCurrentTimeBasedSession_weekendReturnsClose() {
+        // Create a date that's definitely a Saturday
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 25  // Saturday
+        components.hour = 12
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let saturday = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: saturday)
+            XCTAssertEqual(session, .closed)
+        }
+    }
+
+    func testCurrentTimeBasedSession_preMarketTime() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 27  // Monday
+        components.hour = 6
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let preMarketTime = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: preMarketTime)
+            XCTAssertEqual(session, .preMarket)
+        }
+    }
+
+    func testCurrentTimeBasedSession_regularMarketTime() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 27  // Monday
+        components.hour = 12
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let regularTime = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: regularTime)
+            XCTAssertEqual(session, .regular)
+        }
+    }
+
+    func testCurrentTimeBasedSession_afterHoursTime() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 27  // Monday
+        components.hour = 17
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let afterHoursTime = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: afterHoursTime)
+            XCTAssertEqual(session, .afterHours)
+        }
+    }
+
+    func testCurrentTimeBasedSession_lateNightClosed() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 27  // Monday
+        components.hour = 22
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let lateNight = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: lateNight)
+            XCTAssertEqual(session, .closed)
+        }
+    }
+
+    // MARK: - Extended hours period detection
+
+    func testIsInExtendedHoursPeriod_dependsOnCurrentTime() {
+        // This property uses currentTimeBasedSession internally
+        // so results depend on when the test runs
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        // Just verify it returns a bool and doesn't crash
+        _ = quote.isInExtendedHoursPeriod
+    }
+
+    func testExtendedHoursPeriodLabel_dependsOnCurrentTime() {
+        // This property uses currentTimeBasedSession internally
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        // Just verify it returns expected type and doesn't crash
+        let label = quote.extendedHoursPeriodLabel
+        if label != nil {
+            XCTAssertTrue(label == "Pre" || label == "AH")
+        }
+    }
+
+    func testShouldShowExtendedHours_noDataDuringExtendedPeriod_returnsFalse() {
+        // Even if we're in extended hours period, shouldShowExtendedHours
+        // should return false when no extended hours data is available
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .closed  // No extended hours data
+        )
+        // shouldShowExtendedHours requires both:
+        // 1. Current time is in extended hours period
+        // 2. Extended hours data is available
+        // Without data, this should return false regardless of time
+        XCTAssertFalse(quote.shouldShowExtendedHours)
+    }
+}
+
+// MARK: - Formatting Helper Tests
+
+final class FormattingTests: XCTestCase {
+
+    func testFormatCurrency_formatsWithCommas() {
+        XCTAssertEqual(formatCurrency(150.50), "$150.50")
+        XCTAssertEqual(formatCurrency(1234.56), "$1,234.56")
+        XCTAssertEqual(formatCurrency(0.99), "$0.99")
+        XCTAssertEqual(formatCurrency(10000.00), "$10,000.00")
+    }
+
+    func testFormatSignedCurrency_positiveValue() {
+        XCTAssertEqual(formatSignedCurrency(2.50, isPositive: true), "+$2.50")
+    }
+
+    func testFormatSignedCurrency_negativeValue() {
+        XCTAssertEqual(formatSignedCurrency(-2.50, isPositive: false), "-$2.50")
+    }
+
+    func testFormatSignedCurrency_largeValue_hasCommas() {
+        XCTAssertEqual(formatSignedCurrency(1234.56, isPositive: true), "+$1,234.56")
+    }
+
+    func testFormatSignedPercent_positiveValue() {
+        XCTAssertEqual(formatSignedPercent(5.25, isPositive: true), "+5.25%")
+    }
+
+    func testFormatSignedPercent_negativeValue() {
+        XCTAssertEqual(formatSignedPercent(-5.25, isPositive: false), "-5.25%")
+    }
+
+    func testFormatSignedPercent_zero() {
+        XCTAssertEqual(formatSignedPercent(0, isPositive: true), "+0.00%")
+    }
+}
