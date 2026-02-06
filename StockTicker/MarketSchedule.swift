@@ -157,7 +157,8 @@ class MarketSchedule {
 
         // Special closures
         if year == 2025 {
-            holidays.append(MarketHoliday(date: makeDate(month: 1, day: 9, year: 2025)!, name: "National Day of Mourning"))
+            let mourningDay = makeDate(month: 1, day: 9, year: 2025)!
+            holidays.append(MarketHoliday(date: mourningDay, name: "National Day of Mourning"))
         }
 
         return holidays.sorted { $0.date < $1.date }

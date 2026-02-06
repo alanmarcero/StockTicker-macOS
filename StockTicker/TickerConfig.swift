@@ -175,17 +175,23 @@ struct WatchlistConfig: Codable, Equatable {
         if let asset = try container.decodeIfPresent(MenuBarAsset.self, forKey: .menuBarAssetWhenClosed) {
             self.menuBarAssetWhenClosed = asset
         } else {
-            self.menuBarAssetWhenClosed = try container.decodeIfPresent(MenuBarAsset.self, forKey: .closedMarketAsset) ?? .bitcoin
+            self.menuBarAssetWhenClosed = try container.decodeIfPresent(
+                MenuBarAsset.self, forKey: .closedMarketAsset
+            ) ?? .bitcoin
         }
 
         // Support both "indexSymbols" (new) and "indexTickers" (legacy)
         if let symbols = try container.decodeIfPresent([IndexSymbol].self, forKey: .indexSymbols) {
             self.indexSymbols = symbols
         } else {
-            self.indexSymbols = try container.decodeIfPresent([IndexSymbol].self, forKey: .indexTickers) ?? WatchlistConfig.defaultIndexSymbols
+            self.indexSymbols = try container.decodeIfPresent(
+                [IndexSymbol].self, forKey: .indexTickers
+            ) ?? WatchlistConfig.defaultIndexSymbols
         }
 
-        self.alwaysOpenMarkets = try container.decodeIfPresent([IndexSymbol].self, forKey: .alwaysOpenMarkets) ?? WatchlistConfig.defaultAlwaysOpenMarkets
+        self.alwaysOpenMarkets = try container.decodeIfPresent(
+            [IndexSymbol].self, forKey: .alwaysOpenMarkets
+        ) ?? WatchlistConfig.defaultAlwaysOpenMarkets
 
         // Support both "highlightedSymbols" (new) and "highlightedTickers" (legacy)
         if let highlighted = try container.decodeIfPresent([String].self, forKey: .highlightedSymbols) {

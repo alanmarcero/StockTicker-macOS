@@ -20,11 +20,7 @@ struct YahooSymbolValidator: SymbolValidator {
 
         do {
             let (data, response) = try await httpClient.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                return false
-            }
+            guard response.isSuccessfulHTTP else { return false }
 
             let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
             guard let result = decoded.chart.result?.first,
@@ -122,7 +118,7 @@ protocol WatchlistEditorStateProtocol: ObservableObject {
     var newSymbol: String { get set }
     var isValidating: Bool { get }
     var validationError: String? { get }
-    var sortAscending: Bool { get }
+    var isSortAscending: Bool { get }
     var hasChanges: Bool { get }
 
     func save()
@@ -141,7 +137,7 @@ class WatchlistEditorState: ObservableObject, WatchlistEditorStateProtocol {
     @Published var newSymbol: String = ""
     @Published var isValidating: Bool = false
     @Published var validationError: String? = nil
-    @Published var sortAscending: Bool = true
+    @Published var isSortAscending: Bool = true
 
     let originalSymbols: [String]
     private let validator: SymbolValidator
@@ -222,12 +218,12 @@ class WatchlistEditorState: ObservableObject, WatchlistEditorStateProtocol {
     }
 
     func sortSymbolsAscending() {
-        sortAscending = true
+        isSortAscending = true
         symbols = WatchlistOperations.sortAscending(symbols)
     }
 
     func sortSymbolsDescending() {
-        sortAscending = false
+        isSortAscending = false
         symbols = WatchlistOperations.sortDescending(symbols)
     }
 }
@@ -474,7 +470,7 @@ struct WatchlistEditorView: View {
                 .font(.caption)
             }
             .buttonStyle(.bordered)
-            .tint(state.sortAscending ? .accentColor : .gray)
+            .tint(state.isSortAscending ? .accentColor : .gray)
 
             Button(action: { state.sortSymbolsDescending() }) {
                 HStack(spacing: 2) {
@@ -484,7 +480,7 @@ struct WatchlistEditorView: View {
                 .font(.caption)
             }
             .buttonStyle(.bordered)
-            .tint(state.sortAscending ? .gray : .accentColor)
+            .tint(state.isSortAscending ? .gray : .accentColor)
 
             Spacer()
         }

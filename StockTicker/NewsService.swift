@@ -51,11 +51,7 @@ actor NewsService: NewsServiceProtocol {
 
         do {
             let (data, response) = try await httpClient.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                return []
-            }
+            guard response.isSuccessfulHTTP else { return [] }
 
             let parser = RSSParser(source: source.displayName)
             return parser.parse(data: data)

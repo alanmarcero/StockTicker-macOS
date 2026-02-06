@@ -254,3 +254,35 @@ final class StockServiceTests: XCTestCase {
         XCTAssertNil(state)
     }
 }
+
+// MARK: - URLResponse.isSuccessfulHTTP Tests
+
+final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
+
+    private let testURL = URL(string: "https://example.com")!
+
+    func testIsSuccessfulHTTP_200_returnsTrue() {
+        let response = HTTPURLResponse(url: testURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        XCTAssertTrue(response.isSuccessfulHTTP)
+    }
+
+    func testIsSuccessfulHTTP_404_returnsFalse() {
+        let response = HTTPURLResponse(url: testURL, statusCode: 404, httpVersion: nil, headerFields: nil)!
+        XCTAssertFalse(response.isSuccessfulHTTP)
+    }
+
+    func testIsSuccessfulHTTP_500_returnsFalse() {
+        let response = HTTPURLResponse(url: testURL, statusCode: 500, httpVersion: nil, headerFields: nil)!
+        XCTAssertFalse(response.isSuccessfulHTTP)
+    }
+
+    func testIsSuccessfulHTTP_201_returnsFalse() {
+        let response = HTTPURLResponse(url: testURL, statusCode: 201, httpVersion: nil, headerFields: nil)!
+        XCTAssertFalse(response.isSuccessfulHTTP)
+    }
+
+    func testIsSuccessfulHTTP_nonHTTPResponse_returnsFalse() {
+        let response = URLResponse(url: testURL, mimeType: nil, expectedContentLength: 0, textEncodingName: nil)
+        XCTAssertFalse(response.isSuccessfulHTTP)
+    }
+}

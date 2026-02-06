@@ -47,8 +47,12 @@ enum SortOption: String, CaseIterable {
         case .changeDesc: return symbols.sorted { (quotes[$0]?.change ?? 0) > (quotes[$1]?.change ?? 0) }
         case .percentAsc: return symbols.sorted { (quotes[$0]?.changePercent ?? 0) < (quotes[$1]?.changePercent ?? 0) }
         case .percentDesc: return symbols.sorted { (quotes[$0]?.changePercent ?? 0) > (quotes[$1]?.changePercent ?? 0) }
-        case .ytdAsc: return symbols.sorted { (quotes[$0]?.ytdChangePercent ?? 0) < (quotes[$1]?.ytdChangePercent ?? 0) }
-        case .ytdDesc: return symbols.sorted { (quotes[$0]?.ytdChangePercent ?? 0) > (quotes[$1]?.ytdChangePercent ?? 0) }
+        case .ytdAsc: return symbols.sorted {
+            (quotes[$0]?.ytdChangePercent ?? 0) < (quotes[$1]?.ytdChangePercent ?? 0)
+        }
+        case .ytdDesc: return symbols.sorted {
+            (quotes[$0]?.ytdChangePercent ?? 0) > (quotes[$1]?.ytdChangePercent ?? 0)
+        }
         }
     }
 }

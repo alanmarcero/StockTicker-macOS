@@ -18,6 +18,12 @@ protocol HTTPClient: Sendable {
 
 extension URLSession: HTTPClient {}
 
+extension URLResponse {
+    var isSuccessfulHTTP: Bool {
+        (self as? HTTPURLResponse)?.statusCode == 200
+    }
+}
+
 // MARK: - Stock Service Implementation
 
 actor StockService: StockServiceProtocol {
@@ -103,11 +109,7 @@ actor StockService: StockServiceProtocol {
 
         do {
             let (data, response) = try await httpClient.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                return nil
-            }
+            guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
             guard let result = decoded.chart.result?.first,
@@ -150,11 +152,7 @@ actor StockService: StockServiceProtocol {
 
         do {
             let (data, response) = try await httpClient.data(from: url)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                return nil
-            }
+            guard response.isSuccessfulHTTP else { return nil }
 
             return try JSONDecoder().decode(YahooChartResponse.self, from: data)
         } catch {

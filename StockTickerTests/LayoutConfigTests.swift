@@ -12,6 +12,20 @@ final class LayoutConfigTests: XCTestCase {
         XCTAssertGreaterThan(LayoutConfig.Ticker.priceWidth, 0)
         XCTAssertGreaterThan(LayoutConfig.Ticker.changeWidth, 0)
         XCTAssertGreaterThan(LayoutConfig.Ticker.percentWidth, 0)
+        XCTAssertGreaterThan(LayoutConfig.Ticker.ytdWidth, 0)
+        XCTAssertGreaterThan(LayoutConfig.Ticker.extendedHoursWidth, 0)
+    }
+
+    func testTicker_ytdWidth_fitsCommonValues() {
+        // "YTD: +99.99%" = 13 chars — should fit within ytdWidth
+        let commonYTD = "YTD: +99.99%"
+        XCTAssertLessThanOrEqual(commonYTD.count, LayoutConfig.Ticker.ytdWidth)
+    }
+
+    func testTicker_extendedHoursWidth_fitsCommonValues() {
+        // "Pre: +12.34%" = 12 chars — should fit within extendedHoursWidth
+        let commonExtHours = "Pre: +12.34%"
+        XCTAssertLessThanOrEqual(commonExtHours.count, LayoutConfig.Ticker.extendedHoursWidth)
     }
 
     func testFont_allSizes_arePositive() {

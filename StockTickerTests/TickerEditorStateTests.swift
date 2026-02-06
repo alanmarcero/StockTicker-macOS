@@ -60,7 +60,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         XCTAssertEqual(state.newSymbol, "")
         XCTAssertFalse(state.isValidating)
         XCTAssertNil(state.validationError)
-        XCTAssertTrue(state.sortAscending)
+        XCTAssertTrue(state.isSortAscending)
     }
 
     // MARK: - hasChanges tests
@@ -109,7 +109,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         state.symbols = ["SPY", "AAPL", "QQQ"]  // Unsort for test
         state.sortSymbolsAscending()
         XCTAssertEqual(state.symbols, ["AAPL", "QQQ", "SPY"])
-        XCTAssertTrue(state.sortAscending)
+        XCTAssertTrue(state.isSortAscending)
     }
 
     // MARK: - sortSymbolsDescending tests
@@ -118,7 +118,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         let state = WatchlistEditorState(symbols: ["AAPL", "QQQ", "SPY"])
         state.sortSymbolsDescending()
         XCTAssertEqual(state.symbols, ["SPY", "QQQ", "AAPL"])
-        XCTAssertFalse(state.sortAscending)
+        XCTAssertFalse(state.isSortAscending)
     }
 
     // MARK: - validateAndAddSymbol tests (synchronous validation errors)

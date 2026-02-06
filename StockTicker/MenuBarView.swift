@@ -50,7 +50,9 @@ private extension StockQuote {
 // MARK: - Attributed String Helpers
 
 private extension NSAttributedString {
-    static func styled(_ string: String, font: NSFont, color: NSColor? = nil, backgroundColor: NSColor? = nil) -> NSAttributedString {
+    static func styled(
+        _ string: String, font: NSFont, color: NSColor? = nil, backgroundColor: NSColor? = nil
+    ) -> NSAttributedString {
         var attributes: [Key: Any] = [.font: font]
         if let color = color { attributes[.foregroundColor] = color }
         if let backgroundColor = backgroundColor { attributes[.backgroundColor] = backgroundColor }
@@ -76,6 +78,7 @@ private enum Layout {
     static let tickerChangeWidth = LayoutConfig.Ticker.changeWidth
     static let tickerPercentWidth = LayoutConfig.Ticker.percentWidth
     static let tickerYTDWidth = LayoutConfig.Ticker.ytdWidth
+    static let tickerExtendedHoursWidth = LayoutConfig.Ticker.extendedHoursWidth
 }
 
 // MARK: - Timing Constants
@@ -145,6 +148,7 @@ class MenuBarController: NSObject, ObservableObject {
         static let headline4 = 1007
         static let headline5 = 1008
         static let headline6 = 1009
+        static let allHeadlines = [headline1, headline2, headline3, headline4, headline5, headline6]
     }
 
     private enum TickerInsertIndex {
@@ -187,7 +191,7 @@ class MenuBarController: NSObject, ObservableObject {
     private var tickerMenuItems: [String: NSMenuItem] = [:]
     private var isMenuOpen = false
     private var hasCompletedInitialLoad = false
-    private let ytdCacheManager = YTDCacheManager()
+    private let ytdCacheManager: YTDCacheManager
     private var ytdPrices: [String: Double] = [:]
 
     // MARK: - Initialization
@@ -197,13 +201,15 @@ class MenuBarController: NSObject, ObservableObject {
         newsService: NewsServiceProtocol = NewsService(),
         configManager: WatchlistConfigManager = .shared,
         marketSchedule: MarketSchedule = .shared,
-        urlOpener: URLOpener = NSWorkspace.shared
+        urlOpener: URLOpener = NSWorkspace.shared,
+        ytdCacheManager: YTDCacheManager = YTDCacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
         self.configManager = configManager
         self.marketSchedule = marketSchedule
         self.urlOpener = urlOpener
+        self.ytdCacheManager = ytdCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -288,7 +294,8 @@ class MenuBarController: NSObject, ObservableObject {
         self.countdownMenuItem = countdownItem
 
         // Create marquee view for index line
-        let marquee = MarqueeView(frame: NSRect(x: 0, y: 0, width: MarqueeConfig.viewWidth, height: MarqueeConfig.viewHeight))
+        let marqueeFrame = NSRect(x: 0, y: 0, width: MarqueeConfig.viewWidth, height: MarqueeConfig.viewHeight)
+        let marquee = MarqueeView(frame: marqueeFrame)
         self.marqueeView = marquee
         let indexItem = NSMenuItem()
         indexItem.view = marquee
@@ -297,10 +304,11 @@ class MenuBarController: NSObject, ObservableObject {
 
         menu.addItem(.separator())
 
-        // News headlines (6 static clickable items - top 3 from each source)
-        let headlineTags = [MenuTag.headline1, MenuTag.headline2, MenuTag.headline3, MenuTag.headline4, MenuTag.headline5, MenuTag.headline6]
-        for (index, tag) in headlineTags.enumerated() {
-            let headline = MenuItemFactory.action(title: index == 0 ? "Loading news..." : "", action: #selector(openNewsArticle(_:)), target: self)
+        for (index, tag) in MenuTag.allHeadlines.enumerated() {
+            let title = index == 0 ? "Loading news..." : ""
+            let headline = MenuItemFactory.action(
+                title: title, action: #selector(openNewsArticle(_:)), target: self
+            )
             headline.tag = tag
             headline.isHidden = index > 0
             menu.addItem(headline)
@@ -617,8 +625,7 @@ class MenuBarController: NSObject, ObservableObject {
     private func updateNewsDisplay() {
         guard let menu = statusItem?.menu else { return }
 
-        let headlineTags = [MenuTag.headline1, MenuTag.headline2, MenuTag.headline3, MenuTag.headline4, MenuTag.headline5, MenuTag.headline6]
-        let headlineItems = headlineTags.compactMap { menu.item(withTag: $0) }
+        let headlineItems = MenuTag.allHeadlines.compactMap { menu.item(withTag: $0) }
 
         guard config.showNewsHeadlines, !newsItems.isEmpty else {
             headlineItems.first?.title = "No news available"
@@ -808,7 +815,9 @@ class MenuBarController: NSObject, ObservableObject {
     private func applyTickerStyle(to menuItem: NSMenuItem, quote: StockQuote, symbol: String) {
         let intensity = highlightIntensity[symbol] ?? 0.0
         let isPingHighlighted = intensity > Timing.highlightIntensityThreshold
-        let pingBgColor: NSColor? = isPingHighlighted ? quote.highlightColor.withAlphaComponent(intensity * Timing.highlightAlphaMultiplier) : nil
+        let pingBgColor: NSColor? = isPingHighlighted
+            ? quote.highlightColor.withAlphaComponent(intensity * Timing.highlightAlphaMultiplier)
+            : nil
 
         let isPersistentHighlighted = config.highlightedSymbols.contains(symbol)
         let persistentColor = colorFromString(config.highlightColor)
@@ -831,7 +840,9 @@ class MenuBarController: NSObject, ObservableObject {
         let symbolStr = quote.symbol.padding(toLength: Layout.tickerSymbolWidth, withPad: " ", startingAt: 0)
         let priceStr = quote.formattedPrice.padding(toLength: Layout.tickerPriceWidth, withPad: " ", startingAt: 0)
         let changeStr = quote.formattedChange.padding(toLength: Layout.tickerChangeWidth, withPad: " ", startingAt: 0)
-        let percentStr = quote.formattedChangePercent.padding(toLength: Layout.tickerPercentWidth, withPad: " ", startingAt: 0)
+        let percentStr = quote.formattedChangePercent.padding(
+            toLength: Layout.tickerPercentWidth, withPad: " ", startingAt: 0
+        )
 
         let mainHighlight = quote.isInExtendedHoursPeriod
             ? highlight.withPingDisabled()
@@ -852,13 +863,24 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func appendYTDSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
         guard let ytdPercent = quote.formattedYTDChangePercent else { return }
+        let ytdContent = "YTD: \(ytdPercent)"
+        let paddedContent = ytdContent.count >= Layout.tickerYTDWidth
+            ? ytdContent
+            : ytdContent.padding(toLength: Layout.tickerYTDWidth, withPad: " ", startingAt: 0)
         let (ytdColor, ytdBgColor) = highlight.resolve(defaultColor: quote.ytdColor)
-        result.append(.styled("  YTD: \(ytdPercent)",
+        result.append(.styled("  \(paddedContent)",
                               font: MenuItemFactory.monoFont, color: ytdColor, backgroundColor: ytdBgColor))
     }
 
-    private func appendExtendedHoursSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
+    private func appendExtendedHoursSection(
+        to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig
+    ) {
         guard quote.isInExtendedHoursPeriod, let periodLabel = quote.extendedHoursPeriodLabel else { return }
+
+        if quote.formattedYTDChangePercent == nil {
+            let emptyPadding = String(repeating: " ", count: Layout.tickerYTDWidth + 2)
+            result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
+        }
 
         if quote.shouldShowExtendedHours, let extPercent = quote.formattedExtendedHoursChangePercent {
             let extPingBgColor = quote.extendedHoursHighlightColor.withAlphaComponent(

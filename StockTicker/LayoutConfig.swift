@@ -13,6 +13,7 @@ enum LayoutConfig {
         static let changeWidth = 8
         static let percentWidth = 7
         static let ytdWidth = 13  // "YTD: +12.34%"
+        static let extendedHoursWidth = 12  // "Pre: +12.34%"
     }
 
     // MARK: - Font Sizes

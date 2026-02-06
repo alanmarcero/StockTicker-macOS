@@ -98,31 +98,25 @@ class MarqueeView: NSView {
 
         guard let context = NSGraphicsContext.current?.cgContext else { return }
 
-        // Draw highlight background if active
         if highlightIntensity > 0 {
             let bgColor = NSColor.gray.withAlphaComponent(highlightIntensity * MarqueeConfig.pingAlphaMultiplier)
             bgColor.setFill()
             bounds.fill()
         }
 
-        // Calculate positions
         let totalWidth = textWidth + separatorWidth
         let yOffset = (bounds.height - attributedText.size().height) / 2
 
-        // Clip to bounds
         context.clip(to: bounds)
 
-        // Draw text at current offset
         let firstX = -scrollOffset
         attributedText.draw(at: NSPoint(x: firstX, y: yOffset))
 
-        // Draw second copy for seamless loop (only if needed)
         if totalWidth > 0 {
             let secondX = firstX + totalWidth
             if secondX < bounds.width {
                 attributedText.draw(at: NSPoint(x: secondX, y: yOffset))
             }
-            // Also handle case where we need to draw before the first position
             let beforeX = firstX - totalWidth
             if beforeX + textWidth > 0 {
                 attributedText.draw(at: NSPoint(x: beforeX, y: yOffset))
