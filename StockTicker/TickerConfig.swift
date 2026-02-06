@@ -119,7 +119,13 @@ struct WatchlistConfig: Codable, Equatable {
     ]
 
     static let defaultConfig = WatchlistConfig(
-        watchlist: ["SPY", "QQQ", "XLK", "IWM", "IBIT", "ETHA", "GLD", "SLV", "VXUS"],
+        watchlist: [
+            "SPY", "QQQ", "XLU", "XLP", "XLC", "XLRE", "XLI", "XLV", "XLE", "XLF",
+            "XLK", "XLY", "XLB", "IWM", "DIA", "IBIT", "ETHA", "SLV", "GLD", "SMH",
+            "NVDA", "AAPL", "GOOGL", "MSFT", "AMZN", "TSM", "META", "AVGO", "TSLA",
+            "BRK-B", "WMT", "LLY", "JPM", "XOM", "V", "JNJ", "ASML",
+            "SSK", "XRPR", "DOJE", "TMUS"
+        ],
         menuBarRotationInterval: 5,
         refreshInterval: 15,
         sortDirection: "percentDesc",

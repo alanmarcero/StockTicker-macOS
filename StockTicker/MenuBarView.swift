@@ -81,6 +81,15 @@ private enum Layout {
     static let tickerExtendedHoursWidth = LayoutConfig.Ticker.extendedHoursWidth
 }
 
+// MARK: - Display Strings
+
+private enum Strings {
+    static let loading = "Loading..."
+    static let emptyWatchlist = "Empty watchlist"
+    static let noNewsAvailable = "No news available"
+    static let noData = "--"
+}
+
 // MARK: - Timing Constants
 
 private enum Timing {
@@ -279,7 +288,7 @@ class MenuBarController: NSObject, ObservableObject {
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         guard let button = statusItem?.button else { return }
-        button.title = "Loading..."
+        button.title = Strings.loading
         button.font = MenuItemFactory.monoFontMedium
         setupMenu()
     }
@@ -318,8 +327,7 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(.separator())  // Ticker items inserted before this
 
         menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
-        menu.addItem(MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self))
-        menu.addItem(MenuItemFactory.action(title: "Reload Config", action: #selector(reloadConfig), target: self))
+        menu.addItem(createConfigSubmenu())
         menu.addItem(createClosedMarketSubmenu())
         menu.addItem(createSortSubmenu())
         menu.addItem(createDebugSubmenu())
@@ -347,6 +355,15 @@ class MenuBarController: NSObject, ObservableObject {
             return item
         }
         return MenuItemFactory.submenu(title: "Sort By", items: items)
+    }
+
+    private func createConfigSubmenu() -> NSMenuItem {
+        let items = [
+            MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self),
+            MenuItemFactory.action(title: "Reload Config", action: #selector(reloadConfig), target: self),
+            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self)
+        ]
+        return MenuItemFactory.submenu(title: "Config", items: items)
     }
 
     private func createDebugSubmenu() -> NSMenuItem {
@@ -450,105 +467,101 @@ class MenuBarController: NSObject, ObservableObject {
 
     func refreshAllQuotes() async {
         let scheduleInfo = marketSchedule.getTodaySchedule()
-        let marketState = scheduleInfo.state
-
-        // Weekend check - only fetch crypto on weekends regardless of other state
         let isWeekend = scheduleInfo.schedule.contains("Weekend")
-        let isTrulyClosed = marketState == .closed || isWeekend
-        let isRegularSession = marketState == .open && !isWeekend
 
-        // On initial load, fetch ALL data so users see their portfolio even on weekends
-        // After initial load, use smart fetching based on market state
-        let isInitialLoad = !hasCompletedInitialLoad
+        let fetchedSymbols: Set<String>
 
-        // Track which symbols were actually fetched for ping animation
-        var fetchedSymbols: Set<String> = []
-
-        if isInitialLoad {
-            // Initial load - fetch everything regardless of market state
-            let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-            let indexSymbols = config.indexSymbols.map { $0.symbol }
-            let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-
-            async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-            async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
-            async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
-            async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-            self.quotes = await fetchedQuotes
-            self.indexQuotes = await fetchedIndexQuotes
-            self.indexQuotes.merge(await fetchedAlwaysOpen) { _, new in new }
-
-            // On weekends, force CLOSED regardless of what API returns
-            // (API may still report POST from Friday's after-hours)
-            if isWeekend {
-                self.yahooMarketState = "CLOSED"
-            } else {
-                self.yahooMarketState = await fetchedMarketState
-            }
-
-            fetchedSymbols = Set(allSymbols)
-            hasCompletedInitialLoad = true
-        } else if isTrulyClosed {
-            // Market is truly closed - only fetch crypto/always-open markets
-            let cryptoSymbol = config.menuBarAssetWhenClosed.symbol
-            let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-            let symbolsToFetch = Set([cryptoSymbol] + alwaysOpenSymbols)
-
-            let fetchedQuotes = await stockService.fetchQuotes(symbols: Array(symbolsToFetch))
-            self.quotes.merge(fetchedQuotes) { _, new in new }
-            self.indexQuotes.merge(fetchedQuotes) { _, new in new }
-            self.yahooMarketState = "CLOSED"
-
-            fetchedSymbols = symbolsToFetch
-        } else if isRegularSession {
-            // Regular market hours - fetch watchlist + index symbols
-            let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-            async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-            let indexSymbols = config.indexSymbols.map { $0.symbol }
-            async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
-            async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-            self.quotes = await fetchedQuotes
-            self.indexQuotes = await fetchedIndexQuotes
-            self.yahooMarketState = await fetchedMarketState
-
-            fetchedSymbols = Set(allSymbols)
+        if !hasCompletedInitialLoad {
+            fetchedSymbols = await fetchInitialLoad(isWeekend: isWeekend)
+        } else if scheduleInfo.state == .closed || isWeekend {
+            fetchedSymbols = await fetchClosedMarket()
+        } else if scheduleInfo.state == .open {
+            fetchedSymbols = await fetchRegularSession()
         } else {
-            // Pre-market or after-hours - fetch watchlist + always-open markets + closed market asset
-            let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-            let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-
-            async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-            async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
-            async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-            self.quotes = await fetchedQuotes
-            self.indexQuotes = await fetchedAlwaysOpen
-            self.yahooMarketState = await fetchedMarketState
-
-            fetchedSymbols = Set(allSymbols)
+            fetchedSymbols = await fetchExtendedHours()
         }
 
         self.lastRefreshTime = Date()
-
-        // Attach YTD prices to quotes
         attachYTDPricesToQuotes()
-
-        // Only ping symbols that were actually fetched
-        if isMenuOpen {
-            let watchlistSymbolsToHighlight = config.watchlist.filter { fetchedSymbols.contains($0) }
-            watchlistSymbolsToHighlight.forEach { highlightIntensity[$0] = 1.0 }
-            if !fetchedSymbols.isEmpty {
-                marqueeView?.triggerPing()
-            }
-        }
+        highlightFetchedSymbols(fetchedSymbols)
 
         updateMenuBarDisplay()
         updateMenuItems()
         updateMarketStatus()
         updateCountdown()
         updateIndexLine()
+    }
+
+    private func fetchInitialLoad(isWeekend: Bool) async -> Set<String> {
+        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
+        let indexSymbols = config.indexSymbols.map { $0.symbol }
+        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
+
+        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
+        async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
+        async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
+        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
+
+        self.quotes = await fetchedQuotes
+        self.indexQuotes = await fetchedIndexQuotes
+        self.indexQuotes.merge(await fetchedAlwaysOpen) { _, new in new }
+
+        // On weekends, force CLOSED regardless of what API returns
+        // (API may still report POST from Friday's after-hours)
+        self.yahooMarketState = isWeekend ? "CLOSED" : await fetchedMarketState
+
+        hasCompletedInitialLoad = true
+        return Set(allSymbols)
+    }
+
+    private func fetchClosedMarket() async -> Set<String> {
+        let cryptoSymbol = config.menuBarAssetWhenClosed.symbol
+        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
+        let symbolsToFetch = Set([cryptoSymbol] + alwaysOpenSymbols)
+
+        let fetchedQuotes = await stockService.fetchQuotes(symbols: Array(symbolsToFetch))
+        self.quotes.merge(fetchedQuotes) { _, new in new }
+        self.indexQuotes.merge(fetchedQuotes) { _, new in new }
+        self.yahooMarketState = "CLOSED"
+
+        return symbolsToFetch
+    }
+
+    private func fetchRegularSession() async -> Set<String> {
+        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
+        let indexSymbols = config.indexSymbols.map { $0.symbol }
+
+        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
+        async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
+        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
+
+        self.quotes = await fetchedQuotes
+        self.indexQuotes = await fetchedIndexQuotes
+        self.yahooMarketState = await fetchedMarketState
+
+        return Set(allSymbols)
+    }
+
+    private func fetchExtendedHours() async -> Set<String> {
+        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
+        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
+
+        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
+        async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
+        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
+
+        self.quotes = await fetchedQuotes
+        self.indexQuotes = await fetchedAlwaysOpen
+        self.yahooMarketState = await fetchedMarketState
+
+        return Set(allSymbols)
+    }
+
+    private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
+        guard isMenuOpen, !fetchedSymbols.isEmpty else { return }
+        config.watchlist.filter { fetchedSymbols.contains($0) }
+            .forEach { highlightIntensity[$0] = 1.0 }
+        marqueeView?.triggerPing()
     }
 
     private func cycleToNextTicker() {
@@ -601,7 +614,7 @@ class MenuBarController: NSObject, ObservableObject {
             if let validQuote = quote, !validQuote.isPlaceholder {
                 text = "\(indexSymbol.displayName)  \(validQuote.formattedPrice)  \(validQuote.formattedChangePercent)"
             } else {
-                text = "\(indexSymbol.displayName)  --"
+                text = "\(indexSymbol.displayName)  \(Strings.noData)"
             }
 
             let attrs: [NSAttributedString.Key: Any] = [
@@ -628,7 +641,7 @@ class MenuBarController: NSObject, ObservableObject {
         let headlineItems = MenuTag.allHeadlines.compactMap { menu.item(withTag: $0) }
 
         guard config.showNewsHeadlines, !newsItems.isEmpty else {
-            headlineItems.first?.title = "No news available"
+            headlineItems.first?.title = Strings.noNewsAvailable
             headlineItems.first?.representedObject = nil
             headlineItems.first?.isHidden = false
             headlineItems.dropFirst().forEach { $0.isHidden = true }
@@ -719,7 +732,7 @@ class MenuBarController: NSObject, ObservableObject {
         guard let button = statusItem?.button else { return }
 
         guard !config.watchlist.isEmpty else {
-            button.title = "Empty watchlist"
+            button.title = Strings.emptyWatchlist
             return
         }
 
@@ -934,6 +947,18 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingYTDPrices()
             await refreshAllQuotes()
         }
+    }
+
+    @objc private func resetConfigToDefault() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Reset Config to Default"
+        alert.informativeText = "This will reset all settings to their default values. This cannot be undone."
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        _ = configManager.saveDefault()
+        reloadConfig()
     }
 
     @objc private func sortOptionSelected(_ sender: NSMenuItem) {

@@ -97,7 +97,13 @@ final class WatchlistConfigTests: XCTestCase {
     func testDefaultConfig_hasExpectedValues() {
         let config = WatchlistConfig.defaultConfig
 
-        XCTAssertEqual(config.watchlist, ["SPY", "QQQ", "XLK", "IWM", "IBIT", "ETHA", "GLD", "SLV", "VXUS"])
+        XCTAssertEqual(config.watchlist, [
+            "SPY", "QQQ", "XLU", "XLP", "XLC", "XLRE", "XLI", "XLV", "XLE", "XLF",
+            "XLK", "XLY", "XLB", "IWM", "DIA", "IBIT", "ETHA", "SLV", "GLD", "SMH",
+            "NVDA", "AAPL", "GOOGL", "MSFT", "AMZN", "TSM", "META", "AVGO", "TSLA",
+            "BRK-B", "WMT", "LLY", "JPM", "XOM", "V", "JNJ", "ASML",
+            "SSK", "XRPR", "DOJE", "TMUS"
+        ])
         XCTAssertEqual(config.menuBarRotationInterval, 5)
         XCTAssertEqual(config.refreshInterval, 15)
         XCTAssertEqual(config.sortDirection, "percentDesc")
@@ -105,6 +111,29 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(config.indexSymbols.count, 6)
         XCTAssertTrue(config.showNewsHeadlines)
         XCTAssertEqual(config.newsRefreshInterval, 300)
+    }
+
+    func testDefaultConfig_watchlistCount() {
+        XCTAssertEqual(WatchlistConfig.defaultConfig.watchlist.count, 41)
+    }
+
+    func testDefaultConfig_containsNewTickers() {
+        let watchlist = WatchlistConfig.defaultConfig.watchlist
+        XCTAssertTrue(watchlist.contains("SSK"))
+        XCTAssertTrue(watchlist.contains("XRPR"))
+        XCTAssertTrue(watchlist.contains("DOJE"))
+        XCTAssertTrue(watchlist.contains("TMUS"))
+    }
+
+    func testDefaultConfig_watchlistWithinMaxSize() {
+        XCTAssertLessThanOrEqual(
+            WatchlistConfig.defaultConfig.watchlist.count,
+            LayoutConfig.Watchlist.maxSize
+        )
+    }
+
+    func testMaxWatchlistSize_isFifty() {
+        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 50)
     }
 
     func testDefaultIndexSymbols_hasExpectedIndexes() {
@@ -587,7 +616,7 @@ final class WatchlistConfigManagerTests: XCTestCase {
 
     func testLoad_tooManyTickers_truncatesToMax() {
         let mockFS = MockFileSystem()
-        let manyTickers = (1...50).map { "T\($0)" }
+        let manyTickers = (1...60).map { "T\($0)" }
         let customConfig = WatchlistConfig(watchlist: manyTickers, menuBarRotationInterval: 5, sortDirection: "percentDesc")
         let jsonData = try! JSONEncoder().encode(customConfig)
         mockFS.files["/Users/test/.stockticker/config.json"] = jsonData
@@ -635,6 +664,29 @@ final class WatchlistConfigManagerTests: XCTestCase {
 
         XCTAssertEqual(config, WatchlistConfig.defaultConfig)
         XCTAssertNotNil(mockFS.files[manager.configFileURL.path])
+    }
+
+    func testSaveDefault_thenLoad_returnsDefaultConfig() {
+        let mockFS = MockFileSystem()
+        let manager = WatchlistConfigManager(fileSystem: mockFS)
+
+        _ = manager.saveDefault()
+        let loaded = manager.load()
+
+        XCTAssertEqual(loaded, WatchlistConfig.defaultConfig)
+    }
+
+    func testSaveDefault_overwritesExistingConfig() {
+        let mockFS = MockFileSystem()
+        let manager = WatchlistConfigManager(fileSystem: mockFS)
+        let customConfig = WatchlistConfig(watchlist: ["AAPL"], menuBarRotationInterval: 10, sortDirection: "tickerAsc")
+        manager.save(customConfig)
+
+        let resetConfig = manager.saveDefault()
+
+        XCTAssertEqual(resetConfig, WatchlistConfig.defaultConfig)
+        let loaded = manager.load()
+        XCTAssertEqual(loaded, WatchlistConfig.defaultConfig)
     }
 
     // MARK: - openConfigFile tests
