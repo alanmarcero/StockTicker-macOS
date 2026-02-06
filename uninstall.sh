@@ -12,6 +12,14 @@ NC='\033[0m' # No Color
 APP_NAME="StockTicker"
 APP_DEST="/Applications/${APP_NAME}.app"
 CONFIG_DIR="$HOME/.stockticker"
+FORCE=false
+
+# Parse flags
+for arg in "$@"; do
+    case "$arg" in
+        -f|--force) FORCE=true ;;
+    esac
+done
 
 print_step() {
     echo -e "${BLUE}==>${NC} $1"
@@ -65,8 +73,12 @@ remove_app() {
     fi
 }
 
-# Remove configuration
+# Remove configuration (skipped in force mode)
 remove_config() {
+    if [[ "$FORCE" == true ]]; then
+        return
+    fi
+
     if [[ -d "$CONFIG_DIR" ]]; then
         echo ""
         read -p "Would you like to remove configuration files at ${CONFIG_DIR}? [y/N] " -n 1 -r
@@ -81,8 +93,12 @@ remove_config() {
     fi
 }
 
-# Remove Xcode derived data (optional)
+# Remove Xcode derived data (skipped in force mode)
 remove_build_data() {
+    if [[ "$FORCE" == true ]]; then
+        return
+    fi
+
     DERIVED_DATA=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "StockTicker-*" -type d 2>/dev/null | head -1)
 
     if [[ -n "$DERIVED_DATA" && -d "$DERIVED_DATA" ]]; then
@@ -107,13 +123,14 @@ main() {
     echo "╚════════════════════════════════════════╝"
     echo ""
 
-    # Confirm uninstall
-    read -p "Are you sure you want to uninstall ${APP_NAME}? [y/N] " -n 1 -r
-    echo
+    if [[ "$FORCE" != true ]]; then
+        read -p "Are you sure you want to uninstall ${APP_NAME}? [y/N] " -n 1 -r
+        echo
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Uninstall cancelled."
-        exit 0
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Uninstall cancelled."
+            exit 0
+        fi
     fi
 
     echo ""

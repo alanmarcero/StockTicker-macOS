@@ -9,6 +9,11 @@ enum TradingHours {
     static let marketClose = 16 * 60        // 4:00 PM
     static let earlyClose = 13 * 60         // 1:00 PM
     static let afterHoursClose = 20 * 60    // 8:00 PM
+
+    /// Threshold for treating floating point price changes as zero
+    static let nearZeroThreshold = 0.005
+    /// Threshold for detecting meaningful extended hours price differences
+    static let extendedHoursPriceThreshold = 0.001
 }
 
 // MARK: - Yahoo Finance Chart API Response Models (v8)

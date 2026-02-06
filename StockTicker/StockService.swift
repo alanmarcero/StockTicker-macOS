@@ -205,7 +205,7 @@ actor StockService: StockServiceProtocol {
         // Only calculate if the current price differs from regular market price
         // and we're in an extended hours session
         let priceDifference = abs(currentPrice - regularMarketPrice)
-        let significantDifference = priceDifference > 0.001 // Avoid floating point issues
+        let significantDifference = priceDifference > TradingHours.extendedHoursPriceThreshold
 
         if significantDifference {
             switch timeBasedSession {

@@ -78,6 +78,23 @@ enum MenuBarAsset: String, Codable, CaseIterable {
 // Legacy alias for backward compatibility
 typealias ClosedMarketAsset = MenuBarAsset
 
+// MARK: - Legacy Decoding Helper
+
+private extension KeyedDecodingContainer {
+    /// Decodes a value trying the primary key first, then falling back to a legacy key.
+    /// Throws if neither key is present (required field).
+    func decodeLegacy<T: Decodable>(_ type: T.Type, primary: Key, legacy: Key) throws -> T {
+        if let value = try decodeIfPresent(type, forKey: primary) { return value }
+        return try decode(type, forKey: legacy)
+    }
+
+    /// Decodes a value trying the primary key first, then the legacy key, then a default.
+    func decodeLegacy<T: Decodable>(_ type: T.Type, primary: Key, legacy: Key, default defaultValue: T) throws -> T {
+        if let value = try decodeIfPresent(type, forKey: primary) { return value }
+        return try decodeIfPresent(type, forKey: legacy) ?? defaultValue
+    }
+}
+
 // MARK: - Watchlist Config
 
 struct IndexSymbol: Codable, Equatable {
@@ -151,61 +168,20 @@ struct WatchlistConfig: Codable, Equatable {
         case showNewsHeadlines, newsRefreshInterval
     }
 
-    // Custom decoder to handle missing fields and backward compatibility
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        // Support both "watchlist" (new) and "tickers" (legacy)
-        if let watchlist = try container.decodeIfPresent([String].self, forKey: .watchlist) {
-            self.watchlist = watchlist
-        } else {
-            self.watchlist = try container.decode([String].self, forKey: .tickers)
-        }
+        // Fields with legacy key fallback (backward compatibility)
+        watchlist = try container.decodeLegacy([String].self, primary: .watchlist, legacy: .tickers)
+        menuBarRotationInterval = try container.decodeLegacy(Int.self, primary: .menuBarRotationInterval, legacy: .cycleInterval)
+        sortDirection = try container.decodeLegacy(String.self, primary: .sortDirection, legacy: .defaultSort, default: "percentDesc")
+        menuBarAssetWhenClosed = try container.decodeLegacy(MenuBarAsset.self, primary: .menuBarAssetWhenClosed, legacy: .closedMarketAsset, default: .bitcoin)
+        indexSymbols = try container.decodeLegacy([IndexSymbol].self, primary: .indexSymbols, legacy: .indexTickers, default: WatchlistConfig.defaultIndexSymbols)
+        highlightedSymbols = try container.decodeLegacy([String].self, primary: .highlightedSymbols, legacy: .highlightedTickers, default: ["SPY"])
 
-        // Support both new and legacy key names
-        if let interval = try container.decodeIfPresent(Int.self, forKey: .menuBarRotationInterval) {
-            self.menuBarRotationInterval = interval
-        } else {
-            self.menuBarRotationInterval = try container.decode(Int.self, forKey: .cycleInterval)
-        }
+        // Fields without legacy keys
         refreshInterval = try container.decodeIfPresent(Int.self, forKey: .refreshInterval) ?? 15
-
-        // Support both "sortDirection" (new) and "defaultSort" (legacy)
-        if let sort = try container.decodeIfPresent(String.self, forKey: .sortDirection) {
-            self.sortDirection = sort
-        } else {
-            self.sortDirection = try container.decodeIfPresent(String.self, forKey: .defaultSort) ?? "percentDesc"
-        }
-
-        // Support both "menuBarAssetWhenClosed" (new) and "closedMarketAsset" (legacy)
-        if let asset = try container.decodeIfPresent(MenuBarAsset.self, forKey: .menuBarAssetWhenClosed) {
-            self.menuBarAssetWhenClosed = asset
-        } else {
-            self.menuBarAssetWhenClosed = try container.decodeIfPresent(
-                MenuBarAsset.self, forKey: .closedMarketAsset
-            ) ?? .bitcoin
-        }
-
-        // Support both "indexSymbols" (new) and "indexTickers" (legacy)
-        if let symbols = try container.decodeIfPresent([IndexSymbol].self, forKey: .indexSymbols) {
-            self.indexSymbols = symbols
-        } else {
-            self.indexSymbols = try container.decodeIfPresent(
-                [IndexSymbol].self, forKey: .indexTickers
-            ) ?? WatchlistConfig.defaultIndexSymbols
-        }
-
-        self.alwaysOpenMarkets = try container.decodeIfPresent(
-            [IndexSymbol].self, forKey: .alwaysOpenMarkets
-        ) ?? WatchlistConfig.defaultAlwaysOpenMarkets
-
-        // Support both "highlightedSymbols" (new) and "highlightedTickers" (legacy)
-        if let highlighted = try container.decodeIfPresent([String].self, forKey: .highlightedSymbols) {
-            self.highlightedSymbols = highlighted
-        } else {
-            self.highlightedSymbols = try container.decodeIfPresent([String].self, forKey: .highlightedTickers) ?? ["SPY"]
-        }
-
+        alwaysOpenMarkets = try container.decodeIfPresent([IndexSymbol].self, forKey: .alwaysOpenMarkets) ?? WatchlistConfig.defaultAlwaysOpenMarkets
         highlightColor = try container.decodeIfPresent(String.self, forKey: .highlightColor) ?? "yellow"
         highlightOpacity = try container.decodeIfPresent(Double.self, forKey: .highlightOpacity) ?? 0.25
         showNewsHeadlines = try container.decodeIfPresent(Bool.self, forKey: .showNewsHeadlines) ?? true
@@ -305,8 +281,12 @@ class WatchlistConfigManager {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
-        guard let data = try? encoder.encode(config) else { return }
-        try? fileSystem.writeData(data, to: configFileURL)
+        do {
+            let data = try encoder.encode(config)
+            try fileSystem.writeData(data, to: configFileURL)
+        } catch {
+            print("Failed to save config: \(error.localizedDescription)")
+        }
     }
 
     func openConfigFile() {
@@ -317,8 +297,11 @@ class WatchlistConfigManager {
     }
 
     private func ensureDirectoryExists() {
-        if !fileSystem.fileExists(atPath: configDirectoryURL.path) {
-            try? fileSystem.createDirectoryAt(configDirectoryURL, withIntermediateDirectories: true)
+        guard !fileSystem.fileExists(atPath: configDirectoryURL.path) else { return }
+        do {
+            try fileSystem.createDirectoryAt(configDirectoryURL, withIntermediateDirectories: true)
+        } catch {
+            print("Failed to create config directory: \(error.localizedDescription)")
         }
     }
 }

@@ -455,9 +455,8 @@ xcodebuild test -project StockTicker.xcodeproj -scheme StockTicker -destination 
 # 2. Build release
 xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Release build
 
-# 3. Uninstall
-pkill -x StockTicker 2>/dev/null || true
-rm -rf /Applications/StockTicker.app
+# 3. Uninstall (--force skips prompts, preserves config)
+./uninstall.sh --force
 
 # 4. Install
 ./install.sh

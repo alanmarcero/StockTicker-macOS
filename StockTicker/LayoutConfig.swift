@@ -34,7 +34,7 @@ enum LayoutConfig {
     // MARK: - News Headlines
 
     enum Headlines {
-        static let maxLength = 60
+        static let maxLength = 70
         static let itemsPerSource = 3
     }
 

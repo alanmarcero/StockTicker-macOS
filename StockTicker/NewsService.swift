@@ -79,7 +79,6 @@ actor NewsService: NewsServiceProtocol {
             let topItems = Array(sorted.prefix(Constants.itemsPerSource))
 
             for (index, item) in topItems.enumerated() {
-                // Mark the first (most recent) item from each source
                 let processedItem = item.withTopFromSource(index == 0)
                 result.append(processedItem)
             }

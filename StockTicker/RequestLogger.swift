@@ -162,6 +162,10 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
     private let wrapped: HTTPClient
     private let logger: RequestLogger
 
+    private enum ResponseLimits {
+        static let maxBodySize = 50 * 1024  // 50KB cap to avoid memory issues
+    }
+
     private enum RetryConfig {
         static let maxAttempts = 2
         static let retryDelayNanoseconds: UInt64 = 500_000_000  // 0.5 seconds
@@ -187,59 +191,24 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
             do {
                 let (data, response) = try await wrapped.data(from: url)
                 let duration = Date().timeIntervalSince(startTime)
-                let httpResponse = response as? HTTPURLResponse
-                let statusCode = httpResponse?.statusCode
 
-                // Capture response headers
-                var responseHeaders: [String: String] = [:]
-                if let allHeaders = httpResponse?.allHeaderFields {
-                    for (key, value) in allHeaders {
-                        responseHeaders[String(describing: key)] = String(describing: value)
-                    }
-                }
-
-                // Capture response body (limit to 50KB to avoid memory issues)
-                let maxBodySize = 50 * 1024
-                let bodyString: String?
-                if data.count <= maxBodySize {
-                    bodyString = String(data: data, encoding: .utf8)
-                } else {
-                    bodyString = "(body too large: \(data.count) bytes)"
-                }
-
-                let entry = RequestLogEntry(
-                    url: url,
-                    statusCode: statusCode,
-                    responseSize: data.count,
-                    duration: duration,
-                    responseHeaders: responseHeaders,
-                    responseBody: bodyString
-                )
+                let entry = buildSuccessEntry(url: url, data: data, response: response, duration: duration)
                 await logger.log(entry)
 
-                // Retry on non-2xx status codes (skip during extended hours)
-                if let code = statusCode, !(200..<300).contains(code) {
-                    if attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
-                        try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
-                        continue
-                    }
+                if let code = entry.statusCode, !(200..<300).contains(code),
+                   attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
+                    try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
+                    continue
                 }
 
                 return (data, response)
 
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
-
-                let entry = RequestLogEntry(
-                    url: url,
-                    duration: duration,
-                    error: error.localizedDescription
-                )
-                await logger.log(entry)
+                await logger.log(RequestLogEntry(url: url, duration: duration, error: error.localizedDescription))
 
                 lastError = error
 
-                // Retry on network errors (skip during extended hours)
                 if attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
                     try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
                     continue
@@ -248,5 +217,32 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
         }
 
         throw lastError ?? URLError(.unknown)
+    }
+
+    private func buildSuccessEntry(url: URL, data: Data, response: URLResponse, duration: TimeInterval) -> RequestLogEntry {
+        let httpResponse = response as? HTTPURLResponse
+
+        var responseHeaders: [String: String] = [:]
+        if let allHeaders = httpResponse?.allHeaderFields {
+            for (key, value) in allHeaders {
+                responseHeaders[String(describing: key)] = String(describing: value)
+            }
+        }
+
+        let bodyString: String?
+        if data.count <= ResponseLimits.maxBodySize {
+            bodyString = String(data: data, encoding: .utf8)
+        } else {
+            bodyString = "(body too large: \(data.count) bytes)"
+        }
+
+        return RequestLogEntry(
+            url: url,
+            statusCode: httpResponse?.statusCode,
+            responseSize: data.count,
+            duration: duration,
+            responseHeaders: responseHeaders,
+            responseBody: bodyString
+        )
     }
 }

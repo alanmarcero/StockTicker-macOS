@@ -5,6 +5,8 @@ import AppKit
 enum MenuItemFactory {
     static let monoFont = NSFont.monospacedSystemFont(ofSize: LayoutConfig.Font.size, weight: .regular)
     static let monoFontMedium = NSFont.monospacedSystemFont(ofSize: LayoutConfig.Font.size, weight: .medium)
+    static let headlineFont = NSFont.systemFont(ofSize: LayoutConfig.Font.size)
+    static let headlineFontBold = NSFont.systemFont(ofSize: LayoutConfig.Font.size, weight: .medium)
 
     static func disabled(title: String, tag: Int) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")

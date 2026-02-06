@@ -43,23 +43,36 @@ actor YTDCacheManager {
             return
         }
 
-        cache = try? JSONDecoder().decode(YTDCacheData.self, from: data)
+        do {
+            cache = try JSONDecoder().decode(YTDCacheData.self, from: data)
+        } catch {
+            print("Failed to decode YTD cache: \(error.localizedDescription)")
+            cache = nil
+        }
     }
 
     func save() {
         guard let cache = cache else { return }
 
-        // Ensure directory exists
         let directory = cacheURL.deletingLastPathComponent()
         if !fileSystem.fileExists(atPath: directory.path) {
-            try? fileSystem.createDirectoryAt(directory, withIntermediateDirectories: true)
+            do {
+                try fileSystem.createDirectoryAt(directory, withIntermediateDirectories: true)
+            } catch {
+                print("Failed to create YTD cache directory: \(error.localizedDescription)")
+                return
+            }
         }
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
-        guard let data = try? encoder.encode(cache) else { return }
-        try? fileSystem.writeData(data, to: cacheURL)
+        do {
+            let data = try encoder.encode(cache)
+            try fileSystem.writeData(data, to: cacheURL)
+        } catch {
+            print("Failed to save YTD cache: \(error.localizedDescription)")
+        }
     }
 
     func getStartPrice(for symbol: String) -> Double? {

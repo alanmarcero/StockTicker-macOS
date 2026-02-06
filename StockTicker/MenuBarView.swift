@@ -14,7 +14,7 @@ extension NSWorkspace: URLOpener {
 // MARK: - Color Helpers
 
 private func priceChangeColor(_ change: Double, neutral: NSColor) -> NSColor {
-    if change == 0 { return neutral }
+    if abs(change) < TradingHours.nearZeroThreshold { return neutral }
     return change > 0 ? .systemGreen : .systemRed
 }
 
@@ -42,7 +42,7 @@ private extension StockQuote {
     var extendedHoursHighlightColor: NSColor { priceChangeColor(extendedHoursChangePercent ?? 0, neutral: .systemGray) }
     var ytdColor: NSColor {
         guard let pct = ytdChangePercent else { return .secondaryLabelColor }
-        if abs(pct) < 0.01 { return .white }
+        if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
         return pct >= 0 ? .systemGreen : .systemRed
     }
 }
@@ -88,6 +88,8 @@ private enum Strings {
     static let emptyWatchlist = "Empty watchlist"
     static let noNewsAvailable = "No news available"
     static let noData = "--"
+    static let countdownFormat = "Last: %@ \u{00B7} Next in %ds"
+    static let nysePrefix = "NYSE: "
 }
 
 // MARK: - Timing Constants
@@ -302,7 +304,6 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(countdownItem)
         self.countdownMenuItem = countdownItem
 
-        // Create marquee view for index line
         let marqueeFrame = NSRect(x: 0, y: 0, width: MarqueeConfig.viewWidth, height: MarqueeConfig.viewHeight)
         let marquee = MarqueeView(frame: marqueeFrame)
         self.marqueeView = marquee
@@ -609,19 +610,25 @@ class MenuBarController: NSObject, ObservableObject {
                 color = .secondaryLabelColor
             }
 
-            // Build text for this index
-            let text: String
+            // Build text for this index: bold name, regular weight values
+            let nameAttrs: [NSAttributedString.Key: Any] = [
+                .font: MenuItemFactory.monoFontMedium,
+                .foregroundColor: color
+            ]
+            result.append(NSAttributedString(string: indexSymbol.displayName, attributes: nameAttrs))
+
+            let valueText: String
             if let validQuote = quote, !validQuote.isPlaceholder {
-                text = "\(indexSymbol.displayName)  \(validQuote.formattedPrice)  \(validQuote.formattedChangePercent)"
+                valueText = "  \(validQuote.formattedPrice)  \(validQuote.formattedChangePercent)"
             } else {
-                text = "\(indexSymbol.displayName)  \(Strings.noData)"
+                valueText = "  \(Strings.noData)"
             }
 
-            let attrs: [NSAttributedString.Key: Any] = [
+            let valueAttrs: [NSAttributedString.Key: Any] = [
                 .font: MenuItemFactory.monoFont,
                 .foregroundColor: color
             ]
-            result.append(NSAttributedString(string: text, attributes: attrs))
+            result.append(NSAttributedString(string: valueText, attributes: valueAttrs))
         }
 
         return result
@@ -668,14 +675,16 @@ class MenuBarController: NSObject, ObservableObject {
             ? String(item.headline.prefix(maxLength - 3)) + "..."
             : item.headline
 
-        // Highlight top item from each source using the same highlight color as tickers
+        // Top-from-source headlines use bold proportional font
+        let font = item.isTopFromSource ? MenuItemFactory.headlineFontBold : MenuItemFactory.headlineFont
+
         if item.isTopFromSource {
             let highlightColor = colorFromString(config.highlightColor)
             let backgroundColor = highlightColor.withAlphaComponent(config.highlightOpacity)
-            return .styled(headline, font: MenuItemFactory.monoFont, color: .labelColor, backgroundColor: backgroundColor)
+            return .styled(headline, font: font, color: .labelColor, backgroundColor: backgroundColor)
         }
 
-        return .styled(headline, font: MenuItemFactory.monoFont, color: .labelColor)
+        return .styled(headline, font: font, color: .labelColor)
     }
 
     @objc private func openNewsArticle(_ sender: NSMenuItem) {
@@ -689,7 +698,11 @@ class MenuBarController: NSObject, ObservableObject {
     private func updateCountdown() {
         let elapsed = Date().timeIntervalSince(lastRefreshTime)
         let remaining = max(0, Int(TimeInterval(config.refreshInterval) - elapsed))
-        countdownMenuItem?.title = "Refreshing in \(remaining)s"
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        let lastTime = formatter.string(from: lastRefreshTime)
+        countdownMenuItem?.title = String(format: Strings.countdownFormat, lastTime, remaining)
 
         guard isMenuOpen else { return }
         statusItem?.menu?.update()
@@ -708,9 +721,10 @@ class MenuBarController: NSObject, ObservableObject {
         let scheduleString = holidayName.map { "\(scheduleText) (\($0))" } ?? scheduleText
 
         let result = NSMutableAttributedString()
-        result.append("NYSE: ", font: .systemFont(ofSize: Layout.headerFontSize, weight: .medium))
-        result.append(state.rawValue, font: .systemFont(ofSize: Layout.headerFontSize, weight: .medium), color: state.color)
-        result.append(" • \(scheduleString)", font: .systemFont(ofSize: Layout.scheduleFontSize), color: .secondaryLabelColor)
+        result.append(Strings.nysePrefix, font: .systemFont(ofSize: Layout.headerFontSize, weight: .medium))
+        result.append("\u{25CF} ", font: .systemFont(ofSize: Layout.headerFontSize - 2), color: state.color)
+        result.append(state.rawValue, font: .systemFont(ofSize: Layout.headerFontSize, weight: .bold), color: state.color)
+        result.append(" \u{2022} \(scheduleString)", font: .systemFont(ofSize: Layout.scheduleFontSize), color: .secondaryLabelColor)
         return result
     }
 
