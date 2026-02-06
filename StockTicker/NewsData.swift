@@ -48,13 +48,14 @@ final class RSSParser: NSObject, XMLParserDelegate {
 
     private let source: String
     private let dateFormatter: DateFormatter
+    private let iso8601Formatter: ISO8601DateFormatter
 
     init(source: String) {
         self.source = source
         self.dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        // RFC 822 format used by RSS feeds
         dateFormatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        self.iso8601Formatter = ISO8601DateFormatter()
         super.init()
     }
 
@@ -113,6 +114,7 @@ final class RSSParser: NSObject, XMLParserDelegate {
 
         let link = URL(string: linkString)
         let publishedAt = dateFormatter.date(from: pubDateString)
+            ?? iso8601Formatter.date(from: pubDateString)
 
         let item = NewsItem(
             headline: headline,

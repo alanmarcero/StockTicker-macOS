@@ -288,7 +288,20 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
     func data(from url: URL) async throws -> (Data, URLResponse) {
         requestedURLs.append(url)
 
+        // Exact URL match
         if let result = responses[url] {
+            switch result {
+            case .success(let response):
+                return response
+            case .failure(let error):
+                throw error
+            }
+        }
+
+        // Pattern-based fallback (matches URL containing pattern string)
+        let urlString = url.absoluteString
+        for (pattern, result) in patternResponses {
+            guard urlString.contains(pattern) else { continue }
             switch result {
             case .success(let response):
                 return response

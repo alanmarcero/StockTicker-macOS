@@ -33,11 +33,15 @@ final class NewsServiceTests: XCTestCase {
 
     func testFetchNews_networkError_returnsEmpty() async {
         let mockClient = MockHTTPClient()
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
 
-        mockClient.responses[yahooURL] = .failure(URLError(.notConnectedToInternet))
-        mockClient.responses[cnbcURL] = .failure(URLError(.notConnectedToInternet))
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .failure(URLError(.notConnectedToInternet))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .failure(URLError(.notConnectedToInternet))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -47,12 +51,17 @@ final class NewsServiceTests: XCTestCase {
 
     func testFetchNews_invalidXML_returnsEmpty() async {
         let mockClient = MockHTTPClient()
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
 
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success(("not valid xml".data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("not valid xml".data(using: .utf8)!, response200))
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success(("not valid xml".data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("not valid xml".data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -91,12 +100,16 @@ final class NewsServiceTests: XCTestCase {
         </rss>
         """
 
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
-
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((rss.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("".data(using: .utf8)!, response200))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("".data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -126,12 +139,16 @@ final class NewsServiceTests: XCTestCase {
         </rss>
         """
 
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
-
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((rss.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("".data(using: .utf8)!, response200))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("".data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -164,7 +181,10 @@ final class NewsServiceTests: XCTestCase {
 
         let url = URL(string: "https://finance.yahoo.com/news/rssindex")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[url] = .success((rss.data(using: .utf8)!, response))
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response))
+        ))
     }
 
     private func setupCNBCRSSResponse(on mockClient: MockHTTPClient) {
@@ -184,7 +204,10 @@ final class NewsServiceTests: XCTestCase {
 
         let url = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[url] = .success((rss.data(using: .utf8)!, response))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success((rss.data(using: .utf8)!, response))
+        ))
     }
 
     private func setupYahooRSSResponseWithManyItems(on mockClient: MockHTTPClient, count: Int) {
@@ -209,11 +232,15 @@ final class NewsServiceTests: XCTestCase {
         """
 
         let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
-
         let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((rss.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("".data(using: .utf8)!, response200))
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("".data(using: .utf8)!, response200))
+        ))
     }
 }
 
@@ -405,12 +432,17 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
 
     func testFetchNews_non200StatusCode_returnsEmpty() async {
         let mockClient = MockHTTPClient()
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
+        let url = URL(string: "https://example.com")!
+        let response404 = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
 
-        let response404 = HTTPURLResponse(url: yahooURL, statusCode: 404, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((Data(), response404))
-        mockClient.responses[cnbcURL] = .success((Data(), response404))
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((Data(), response404))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success((Data(), response404))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -420,10 +452,7 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
 
     func testFetchNews_partialFailure_returnsSuccessfulItems() async {
         let mockClient = MockHTTPClient()
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
 
-        // Yahoo succeeds
         let yahooRSS = """
         <?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
@@ -436,11 +465,16 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
         </channel>
         </rss>
         """
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((yahooRSS.data(using: .utf8)!, response200))
-
-        // CNBC fails
-        mockClient.responses[cnbcURL] = .failure(URLError(.timedOut))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((yahooRSS.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .failure(URLError(.timedOut))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -451,8 +485,6 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
 
     func testFetchNews_emptyRSS_returnsEmpty() async {
         let mockClient = MockHTTPClient()
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
 
         let emptyRSS = """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -461,9 +493,16 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
         </channel>
         </rss>
         """
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((emptyRSS.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success((emptyRSS.data(using: .utf8)!, response200))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((emptyRSS.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success((emptyRSS.data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -497,12 +536,16 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
         </rss>
         """
 
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
-
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((rss.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("".data(using: .utf8)!, response200))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("".data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -513,7 +556,6 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
     func testFetchNews_itemsWithNoDate_stillIncluded() async {
         let mockClient = MockHTTPClient()
 
-        // Use completely distinct headlines to avoid deduplication
         let rss = """
         <?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
@@ -531,12 +573,16 @@ final class NewsServiceEdgeCaseTests: XCTestCase {
         </rss>
         """
 
-        let yahooURL = URL(string: "https://finance.yahoo.com/news/rssindex")!
-        let cnbcURL = URL(string: "https://www.cnbc.com/id/20910258/device/rss/rss.html")!
-
-        let response200 = HTTPURLResponse(url: yahooURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[yahooURL] = .success((rss.data(using: .utf8)!, response200))
-        mockClient.responses[cnbcURL] = .success(("".data(using: .utf8)!, response200))
+        let url = URL(string: "https://example.com")!
+        let response200 = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.patternResponses.append((
+            pattern: "finance.yahoo.com/news/rssindex",
+            result: .success((rss.data(using: .utf8)!, response200))
+        ))
+        mockClient.patternResponses.append((
+            pattern: "cnbc.com/id/20910258",
+            result: .success(("".data(using: .utf8)!, response200))
+        ))
 
         let service = NewsService(httpClient: mockClient)
         let items = await service.fetchNews()
@@ -667,7 +713,47 @@ final class RSSParserEdgeCaseTests: XCTestCase {
         XCTAssertEqual(items.count, 2)
     }
 
-    func testParse_differentDateFormats_handlesGracefully() {
+    func testParse_rfc822Date_parsesCorrectly() {
+        let rss = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <item>
+                <title>RFC 822 date</title>
+                <pubDate>Mon, 03 Feb 2026 12:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>
+        """
+
+        let parser = RSSParser(source: "Test")
+        let items = parser.parse(data: rss.data(using: .utf8)!)
+
+        XCTAssertEqual(items.count, 1)
+        XCTAssertNotNil(items[0].publishedAt)
+    }
+
+    func testParse_iso8601Date_parsesCorrectly() {
+        let rss = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <item>
+                <title>ISO 8601 date</title>
+                <pubDate>2026-02-03T12:00:00Z</pubDate>
+            </item>
+        </channel>
+        </rss>
+        """
+
+        let parser = RSSParser(source: "Test")
+        let items = parser.parse(data: rss.data(using: .utf8)!)
+
+        XCTAssertEqual(items.count, 1)
+        XCTAssertNotNil(items[0].publishedAt)
+    }
+
+    func testParse_bothDateFormats_parseCorrectly() {
         let rss = """
         <?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
@@ -677,7 +763,7 @@ final class RSSParserEdgeCaseTests: XCTestCase {
                 <pubDate>Mon, 03 Feb 2026 12:00:00 +0000</pubDate>
             </item>
             <item>
-                <title>ISO 8601 date not supported</title>
+                <title>ISO 8601 date</title>
                 <pubDate>2026-02-03T12:00:00Z</pubDate>
             </item>
         </channel>
@@ -689,7 +775,7 @@ final class RSSParserEdgeCaseTests: XCTestCase {
 
         XCTAssertEqual(items.count, 2)
         XCTAssertNotNil(items[0].publishedAt)
-        XCTAssertNil(items[1].publishedAt) // ISO 8601 not supported by RSS parser
+        XCTAssertNotNil(items[1].publishedAt)
     }
 
     func testParse_emptyData_returnsEmpty() {

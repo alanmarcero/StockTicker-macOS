@@ -47,7 +47,7 @@ actor NewsService: NewsServiceProtocol {
     }
 
     private func fetchFromSource(_ source: NewsSource) async -> [NewsItem] {
-        guard let url = URL(string: source.feedURL) else { return [] }
+        guard let url = cacheBustedURL(source.feedURL) else { return [] }
 
         do {
             let (data, response) = try await httpClient.data(from: url)
@@ -58,6 +58,17 @@ actor NewsService: NewsServiceProtocol {
         } catch {
             return []
         }
+    }
+
+    private func cacheBustedURL(_ urlString: String) -> URL? {
+        guard var components = URLComponents(string: urlString) else { return nil }
+        var queryItems = components.queryItems ?? []
+        queryItems.append(URLQueryItem(
+            name: "_t",
+            value: String(Int(Date().timeIntervalSince1970))
+        ))
+        components.queryItems = queryItems
+        return components.url
     }
 
     private func processItemsBySource(_ itemsBySource: [String: [NewsItem]]) -> [NewsItem] {
