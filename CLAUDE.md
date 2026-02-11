@@ -33,11 +33,11 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (18 files, ~4,560 lines)
+## Source Files (18 files, ~4,715 lines)
 
 ```
 StockTickerApp.swift      (12L)   Entry point, creates MenuBarController
-MenuBarView.swift         (1120L) Main controller: menu bar UI, timers, state, display styling
+MenuBarView.swift         (1123L) Main controller: menu bar UI, timers, state, display styling
 StockService.swift        (259L)  Yahoo Finance API client (actor)
 StockData.swift           (381L)  Data models: StockQuote, TradingSession, TradingHours, API types
 MarketSchedule.swift      (291L)  NYSE holiday/hours calculation, MarketState enum
@@ -52,11 +52,11 @@ NewsService.swift         (130L)  RSS feed fetcher for financial news (actor)
 NewsData.swift            (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift            (130L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift      (206L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift  (303L)  Quarterly performance window: view model, SwiftUI view, controller
+QuarterlyPanelView.swift  (362L)  Quarterly performance window: view model, SwiftUI view, controller
 LayoutConfig.swift        (77L)   Centralized layout constants
 ```
 
-## Test Files (16 files, ~5,310 lines)
+## Test Files (17 files, ~5,240 lines)
 
 ```
 StockDataTests.swift          (475L)  Quote calculations, session detection, formatting
@@ -72,9 +72,10 @@ MarqueeViewTests.swift        (106L)  Config constants, layer setup, scrolling, 
 MenuItemFactoryTests.swift    (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift           (360L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift     (494L)  Quarter calculations, cache operations, pruning
-QuarterlyPanelTests.swift     (289L)  Row computation, sorting, direction toggling, missing data
+QuarterlyPanelTests.swift     (326L)  Row computation, sorting, direction toggling, missing data, highlighting
 NewsServiceTests.swift        (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift       (98L)   Layout constant validation
+TestUtilities.swift           (59L)   Shared test helpers (MockDateProvider, date creation)
 ```
 
 ## File Dependencies
@@ -275,7 +276,9 @@ Standalone window showing percent change from each of the last 12 completed quar
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
-**Sortable columns:** Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value.
+**Sortable columns:** Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
+
+**Row highlighting:** Config-highlighted symbols (`config.highlightedSymbols`) get a persistent colored background row using `highlightColor` and `highlightOpacity`. These cannot be toggled off by clicking. Non-config rows can be click-toggled on/off for readability. `colorFromConfigString()` maps config color names to SwiftUI `Color` (parallel to `colorFromString()` for `NSColor` in MenuBarView).
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 
@@ -298,7 +301,8 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 
 ### Color Helpers
 - `priceChangeColor(_:neutral:)` — green/red/neutral using `TradingHours.nearZeroThreshold`
-- `colorFromString(_:)` — config string to NSColor
+- `colorFromString(_:)` — config string to NSColor (MenuBarView)
+- `colorFromConfigString(_:)` — config string to SwiftUI Color (QuarterlyPanelView)
 - `StockQuote` extensions: `displayColor`, `highlightColor`, `extendedHoursColor`, `ytdColor`
 - YTD zero-change uses `.labelColor` (adapts to light/dark mode)
 
