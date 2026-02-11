@@ -1,0 +1,326 @@
+import XCTest
+@testable import StockTicker
+
+// MARK: - Quarterly Panel View Model Tests
+
+@MainActor
+final class QuarterlyPanelViewModelTests: XCTestCase {
+
+    private let testQuarters = [
+        QuarterInfo(identifier: "Q4-2025", displayLabel: "Q4'25", year: 2025, quarter: 4),
+        QuarterInfo(identifier: "Q3-2025", displayLabel: "Q3'25", year: 2025, quarter: 3),
+        QuarterInfo(identifier: "Q2-2025", displayLabel: "Q2'25", year: 2025, quarter: 2),
+    ]
+
+    private func makeQuote(symbol: String, price: Double) -> StockQuote {
+        StockQuote(symbol: symbol, price: price, previousClose: price * 0.99)
+    }
+
+    // MARK: - Row Computation
+
+    func testUpdate_computesPercentChanges() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0)
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0],  // (200-180)/180 * 100 = 11.11%
+            "Q3-2025": ["AAPL": 160.0],  // (200-160)/160 * 100 = 25.0%
+            "Q2-2025": ["AAPL": 200.0],  // (200-200)/200 * 100 = 0.0%
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        XCTAssertEqual(vm.rows.count, 1)
+
+        let row = vm.rows[0]
+        XCTAssertEqual(row.symbol, "AAPL")
+
+        let q4Change = row.quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNotNil(q4Change)
+        XCTAssertEqual(q4Change!, 11.11, accuracy: 0.01)
+
+        let q3Change = row.quarterChanges["Q3-2025"] ?? nil
+        XCTAssertNotNil(q3Change)
+        XCTAssertEqual(q3Change!, 25.0, accuracy: 0.01)
+
+        let q2Change = row.quarterChanges["Q2-2025"] ?? nil
+        XCTAssertNotNil(q2Change)
+        XCTAssertEqual(q2Change!, 0.0, accuracy: 0.01)
+    }
+
+    func testUpdate_missingQuarterPrice_showsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "NEW": makeQuote(symbol: "NEW", price: 50.0)
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": [:],  // No price for NEW
+        ]
+
+        vm.update(watchlist: ["NEW"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        let row = vm.rows[0]
+        let q4Change = row.quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNil(q4Change)
+    }
+
+    func testUpdate_missingQuote_showsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [:]  // No quotes at all
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["MISSING": 100.0],
+        ]
+
+        vm.update(watchlist: ["MISSING"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        let row = vm.rows[0]
+        let q4Change = row.quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNil(q4Change)
+    }
+
+    func testUpdate_placeholderQuote_showsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "BAD": StockQuote.placeholder(symbol: "BAD")
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["BAD": 100.0],
+        ]
+
+        vm.update(watchlist: ["BAD"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        let row = vm.rows[0]
+        let q4Change = row.quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNil(q4Change)
+    }
+
+    func testUpdate_multipleSymbols_createsRows() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0, "SPY": 450.0],
+        ]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        XCTAssertEqual(vm.rows.count, 2)
+    }
+
+    // MARK: - Sorting
+
+    func testSort_bySymbol_defaultAscending() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+            "MSFT": makeQuote(symbol: "MSFT", price: 400.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [:]
+
+        // Default sort is .symbol ascending — applied during update()
+        vm.update(watchlist: ["SPY", "AAPL", "MSFT"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.rows[1].symbol, "MSFT")
+        XCTAssertEqual(vm.rows[2].symbol, "SPY")
+        XCTAssertTrue(vm.sortAscending)
+    }
+
+    func testSort_bySymbol_togglesDirection() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+
+        // Default is .symbol ascending; first click toggles to descending
+        vm.sort(by: .symbol)
+        XCTAssertFalse(vm.sortAscending)
+        XCTAssertEqual(vm.rows[0].symbol, "SPY")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+
+        // Second click toggles back to ascending
+        vm.sort(by: .symbol)
+        XCTAssertTrue(vm.sortAscending)
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.rows[1].symbol, "SPY")
+    }
+
+    func testSort_byQuarterColumn() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0, "SPY": 550.0],  // AAPL +11.11%, SPY -9.09%
+        ]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        vm.sort(by: .quarter("Q4-2025"))
+
+        // Ascending: SPY (-9.09%) < AAPL (+11.11%)
+        XCTAssertEqual(vm.rows[0].symbol, "SPY")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+    }
+
+    func testSort_switchingColumn_resetsToAscending() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+
+        // Default is .symbol ascending; first click toggles to descending
+        vm.sort(by: .symbol)
+        XCTAssertFalse(vm.sortAscending)
+
+        // Switching to a different column resets to ascending
+        vm.sort(by: .quarter("Q4-2025"))
+        XCTAssertTrue(vm.sortAscending)
+    }
+
+    func testSort_nilValues_sortFirst() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "NEW": makeQuote(symbol: "NEW", price: 50.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0],  // NEW has no Q4 price
+        ]
+
+        vm.update(watchlist: ["AAPL", "NEW"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        vm.sort(by: .quarter("Q4-2025"))
+
+        // nil sorts before any value in ascending
+        XCTAssertEqual(vm.rows[0].symbol, "NEW")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+    }
+
+    // MARK: - Refresh
+
+    func testRefresh_updatesWithNewQuotes() {
+        let vm = QuarterlyPanelViewModel()
+
+        let initialQuotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0],
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: initialQuotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        let initialChange = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(initialChange!, 11.11, accuracy: 0.01)
+
+        // Price increased to 220
+        let updatedQuotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+
+        vm.refresh(quotes: updatedQuotes, quarterPrices: quarterPrices)
+
+        let updatedChange = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        // (220-180)/180 * 100 = 22.22%
+        XCTAssertEqual(updatedChange!, 22.22, accuracy: 0.01)
+    }
+
+    func testRefresh_whenNoQuarters_doesNothing() {
+        let vm = QuarterlyPanelViewModel()
+        // No update() called, quarters is empty
+
+        vm.refresh(quotes: [:], quarterPrices: [:])
+
+        XCTAssertTrue(vm.rows.isEmpty)
+    }
+
+    // MARK: - Empty Watchlist
+
+    func testUpdate_emptyWatchlist_producesNoRows() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+
+        XCTAssertTrue(vm.rows.isEmpty)
+    }
+
+    // MARK: - Highlighting
+
+    func testToggleHighlight_addsSymbol() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.toggleHighlight(for: "AAPL")
+
+        XCTAssertTrue(vm.highlightedSymbols.contains("AAPL"))
+    }
+
+    func testToggleHighlight_removesSymbol() {
+        let vm = QuarterlyPanelViewModel()
+        vm.highlightedSymbols = ["AAPL"]
+
+        vm.toggleHighlight(for: "AAPL")
+
+        XCTAssertFalse(vm.highlightedSymbols.contains("AAPL"))
+    }
+
+    func testHighlightedSymbols_initializedFromConfig() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.setupHighlights(symbols: ["SPY", "AAPL"], color: "yellow", opacity: 0.25)
+
+        XCTAssertTrue(vm.highlightedSymbols.contains("SPY"))
+        XCTAssertTrue(vm.highlightedSymbols.contains("AAPL"))
+    }
+
+    func testToggleHighlight_configSymbol_staysHighlighted() {
+        let vm = QuarterlyPanelViewModel()
+        vm.setupHighlights(symbols: ["SPY"], color: "yellow", opacity: 0.25)
+
+        vm.toggleHighlight(for: "SPY")
+
+        XCTAssertTrue(vm.highlightedSymbols.contains("SPY"))
+    }
+}
+
+// MARK: - QuarterlySortColumn Equality Tests
+
+final class QuarterlySortColumnTests: XCTestCase {
+
+    func testEquality_symbol() {
+        XCTAssertEqual(QuarterlySortColumn.symbol, QuarterlySortColumn.symbol)
+    }
+
+    func testEquality_sameQuarter() {
+        XCTAssertEqual(QuarterlySortColumn.quarter("Q4-2025"), QuarterlySortColumn.quarter("Q4-2025"))
+    }
+
+    func testInequality_differentQuarters() {
+        XCTAssertNotEqual(QuarterlySortColumn.quarter("Q4-2025"), QuarterlySortColumn.quarter("Q3-2025"))
+    }
+
+    func testInequality_symbolVsQuarter() {
+        XCTAssertNotEqual(QuarterlySortColumn.symbol, QuarterlySortColumn.quarter("Q4-2025"))
+    }
+}

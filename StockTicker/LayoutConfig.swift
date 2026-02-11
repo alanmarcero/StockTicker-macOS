@@ -58,9 +58,20 @@ enum LayoutConfig {
         static let statusColumnWidth: CGFloat = 60
     }
 
+    // MARK: - Quarterly Performance Window
+
+    enum QuarterlyWindow {
+        static let width: CGFloat = 1150
+        static let height: CGFloat = 500
+        static let minWidth: CGFloat = 900
+        static let minHeight: CGFloat = 350
+        static let symbolColumnWidth: CGFloat = 80
+        static let quarterColumnWidth: CGFloat = 85
+    }
+
     // MARK: - Watchlist
 
     enum Watchlist {
-        static let maxSize = 50
+        static let maxSize = 64
     }
 }

@@ -27,44 +27,44 @@ final class WatchlistOperationsTests: XCTestCase {
 
     // MARK: - canAddSymbol tests
 
-    func testCanAddTicker_validTicker_returnsCanAdd() {
+    func testCanAddSymbol_validTicker_returnsCanAdd() {
         let result = WatchlistOperations.canAddSymbol("AAPL", to: ["SPY", "QQQ"])
         XCTAssertEqual(result, .canAdd(normalized: "AAPL"))
     }
 
-    func testCanAddTicker_normalizesInput() {
+    func testCanAddSymbol_normalizesInput() {
         let result = WatchlistOperations.canAddSymbol("  aapl  ", to: [])
         XCTAssertEqual(result, .canAdd(normalized: "AAPL"))
     }
 
-    func testCanAddTicker_emptyString_returnsEmpty() {
+    func testCanAddSymbol_emptyString_returnsEmpty() {
         let result = WatchlistOperations.canAddSymbol("", to: [])
         XCTAssertEqual(result, .invalid(reason: .empty))
     }
 
-    func testCanAddTicker_whitespaceOnly_returnsEmpty() {
+    func testCanAddSymbol_whitespaceOnly_returnsEmpty() {
         let result = WatchlistOperations.canAddSymbol("   ", to: [])
         XCTAssertEqual(result, .invalid(reason: .empty))
     }
 
-    func testCanAddTicker_duplicate_returnsDuplicate() {
+    func testCanAddSymbol_duplicate_returnsDuplicate() {
         let result = WatchlistOperations.canAddSymbol("SPY", to: ["SPY", "QQQ"])
         XCTAssertEqual(result, .invalid(reason: .duplicate))
     }
 
-    func testCanAddTicker_duplicateCaseInsensitive_returnsDuplicate() {
+    func testCanAddSymbol_duplicateCaseInsensitive_returnsDuplicate() {
         let result = WatchlistOperations.canAddSymbol("spy", to: ["SPY", "QQQ"])
         XCTAssertEqual(result, .invalid(reason: .duplicate))
     }
 
-    func testCanAddTicker_listFull_returnsListFull() {
+    func testCanAddSymbol_listFull_returnsListFull() {
         let maxSize = LayoutConfig.Watchlist.maxSize
         let fullList = (1...maxSize).map { "T\($0)" }
         let result = WatchlistOperations.canAddSymbol("NEW", to: fullList)
         XCTAssertEqual(result, .invalid(reason: .listFull))
     }
 
-    func testCanAddTicker_listAtMaxMinusOne_returnsCanAdd() {
+    func testCanAddSymbol_listAtMaxMinusOne_returnsCanAdd() {
         let maxSize = LayoutConfig.Watchlist.maxSize
         let almostFullList = (1...(maxSize - 1)).map { "T\($0)" }
         let result = WatchlistOperations.canAddSymbol("NEW", to: almostFullList)
@@ -73,17 +73,17 @@ final class WatchlistOperationsTests: XCTestCase {
 
     // MARK: - addSymbol tests
 
-    func testAddTicker_appendsToList() {
+    func testAddSymbol_appendsToList() {
         let result = WatchlistOperations.addSymbol("AAPL", to: ["SPY", "QQQ"])
         XCTAssertEqual(result, ["SPY", "QQQ", "AAPL"])
     }
 
-    func testAddTicker_toEmptyList() {
+    func testAddSymbol_toEmptyList() {
         let result = WatchlistOperations.addSymbol("AAPL", to: [])
         XCTAssertEqual(result, ["AAPL"])
     }
 
-    func testAddTicker_doesNotMutateOriginal() {
+    func testAddSymbol_doesNotMutateOriginal() {
         let original = ["SPY", "QQQ"]
         _ = WatchlistOperations.addSymbol("AAPL", to: original)
         XCTAssertEqual(original, ["SPY", "QQQ"])
@@ -91,27 +91,27 @@ final class WatchlistOperationsTests: XCTestCase {
 
     // MARK: - removeSymbol tests
 
-    func testRemoveTicker_removesFromList() {
+    func testRemoveSymbol_removesFromList() {
         let result = WatchlistOperations.removeSymbol("QQQ", from: ["SPY", "QQQ", "AAPL"])
         XCTAssertEqual(result, ["SPY", "AAPL"])
     }
 
-    func testRemoveTicker_tickerNotInList_returnsUnchanged() {
+    func testRemoveSymbol_tickerNotInList_returnsUnchanged() {
         let result = WatchlistOperations.removeSymbol("MSFT", from: ["SPY", "QQQ"])
         XCTAssertEqual(result, ["SPY", "QQQ"])
     }
 
-    func testRemoveTicker_fromEmptyList_returnsEmpty() {
+    func testRemoveSymbol_fromEmptyList_returnsEmpty() {
         let result = WatchlistOperations.removeSymbol("SPY", from: [])
         XCTAssertEqual(result, [])
     }
 
-    func testRemoveTicker_removesAllOccurrences() {
+    func testRemoveSymbol_removesAllOccurrences() {
         let result = WatchlistOperations.removeSymbol("SPY", from: ["SPY", "QQQ", "SPY"])
         XCTAssertEqual(result, ["QQQ"])
     }
 
-    func testRemoveTicker_doesNotMutateOriginal() {
+    func testRemoveSymbol_doesNotMutateOriginal() {
         let original = ["SPY", "QQQ"]
         _ = WatchlistOperations.removeSymbol("SPY", from: original)
         XCTAssertEqual(original, ["SPY", "QQQ"])

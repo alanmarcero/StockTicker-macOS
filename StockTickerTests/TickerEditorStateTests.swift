@@ -39,17 +39,17 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - Initialization tests
 
-    func testInit_sortsTickers() {
+    func testInit_sortsSymbols() {
         let state = WatchlistEditorState(symbols: ["QQQ", "AAPL", "SPY"])
         XCTAssertEqual(state.symbols, ["AAPL", "QQQ", "SPY"])
     }
 
-    func testInit_preservesOriginalTickers() {
+    func testInit_preservesOriginalSymbols() {
         let state = WatchlistEditorState(symbols: ["QQQ", "AAPL", "SPY"])
         XCTAssertEqual(state.originalSymbols, ["QQQ", "AAPL", "SPY"])
     }
 
-    func testInit_emptyTickers() {
+    func testInit_emptySymbols() {
         let state = WatchlistEditorState(symbols: [])
         XCTAssertEqual(state.symbols, [])
         XCTAssertEqual(state.originalSymbols, [])
@@ -70,13 +70,13 @@ final class WatchlistEditorStateTests: XCTestCase {
         XCTAssertFalse(state.hasChanges)
     }
 
-    func testHasChanges_tickerAdded_returnsTrue() {
+    func testHasChanges_symbolAdded_returnsTrue() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ"])
         state.symbols.append("AAPL")
         XCTAssertTrue(state.hasChanges)
     }
 
-    func testHasChanges_tickerRemoved_returnsTrue() {
+    func testHasChanges_symbolRemoved_returnsTrue() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ"])
         state.symbols.removeAll { $0 == "SPY" }
         XCTAssertTrue(state.hasChanges)
@@ -90,13 +90,13 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - removeSymbol tests
 
-    func testRemoveTicker_removesTicker() {
+    func testRemoveSymbol_removesTicker() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ", "AAPL"])
         state.removeSymbol("QQQ")
         XCTAssertEqual(state.symbols, ["AAPL", "SPY"])
     }
 
-    func testRemoveTicker_tickerNotInList_noChange() {
+    func testRemoveSymbol_tickerNotInList_noChange() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ"])
         state.removeSymbol("AAPL")
         XCTAssertEqual(state.symbols, ["QQQ", "SPY"])
@@ -104,7 +104,7 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - sortSymbolsAscending tests
 
-    func testSortTickersAscending_sortsCorrectly() {
+    func testSortSymbolsAscending_sortsCorrectly() {
         let state = WatchlistEditorState(symbols: ["SPY", "AAPL", "QQQ"])
         state.symbols = ["SPY", "AAPL", "QQQ"]  // Unsort for test
         state.sortSymbolsAscending()
@@ -114,7 +114,7 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - sortSymbolsDescending tests
 
-    func testSortTickersDescending_sortsCorrectly() {
+    func testSortSymbolsDescending_sortsCorrectly() {
         let state = WatchlistEditorState(symbols: ["AAPL", "QQQ", "SPY"])
         state.sortSymbolsDescending()
         XCTAssertEqual(state.symbols, ["SPY", "QQQ", "AAPL"])
@@ -123,35 +123,35 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - validateAndAddSymbol tests (synchronous validation errors)
 
-    func testValidateAndAddTicker_emptyInput_setsError() {
+    func testValidateAndAddSymbol_emptyInput_setsError() {
         let state = WatchlistEditorState(symbols: [], validator: MockSymbolValidator())
         state.newSymbol = ""
         state.validateAndAddSymbol()
         XCTAssertEqual(state.validationError, "Please enter a symbol")
     }
 
-    func testValidateAndAddTicker_whitespaceOnly_setsError() {
+    func testValidateAndAddSymbol_whitespaceOnly_setsError() {
         let state = WatchlistEditorState(symbols: [], validator: MockSymbolValidator())
         state.newSymbol = "   "
         state.validateAndAddSymbol()
         XCTAssertEqual(state.validationError, "Please enter a symbol")
     }
 
-    func testValidateAndAddTicker_duplicate_setsError() {
+    func testValidateAndAddSymbol_duplicate_setsError() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ"], validator: MockSymbolValidator())
         state.newSymbol = "SPY"
         state.validateAndAddSymbol()
         XCTAssertEqual(state.validationError, "Symbol already in watchlist")
     }
 
-    func testValidateAndAddTicker_duplicateCaseInsensitive_setsError() {
+    func testValidateAndAddSymbol_duplicateCaseInsensitive_setsError() {
         let state = WatchlistEditorState(symbols: ["SPY", "QQQ"], validator: MockSymbolValidator())
         state.newSymbol = "spy"
         state.validateAndAddSymbol()
         XCTAssertEqual(state.validationError, "Symbol already in watchlist")
     }
 
-    func testValidateAndAddTicker_listFull_setsError() {
+    func testValidateAndAddSymbol_listFull_setsError() {
         let maxSize = LayoutConfig.Watchlist.maxSize
         let fullList = (1...maxSize).map { "T\($0)" }
         let state = WatchlistEditorState(symbols: fullList, validator: MockSymbolValidator())
@@ -162,7 +162,7 @@ final class WatchlistEditorStateTests: XCTestCase {
 
     // MARK: - validateAndAddSymbol tests (async validation)
 
-    func testValidateAndAddTicker_validTicker_addsTicker() async throws {
+    func testValidateAndAddSymbol_validTicker_addsTicker() async throws {
         let state = WatchlistEditorState(symbols: ["SPY"], validator: AlwaysValidValidator())
         state.newSymbol = "AAPL"
         state.validateAndAddSymbol()
@@ -175,7 +175,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         XCTAssertNil(state.validationError)
     }
 
-    func testValidateAndAddTicker_invalidTicker_setsError() async throws {
+    func testValidateAndAddSymbol_invalidTicker_setsError() async throws {
         let state = WatchlistEditorState(symbols: ["SPY"], validator: AlwaysInvalidValidator())
         state.newSymbol = "INVALID"
         state.validateAndAddSymbol()
@@ -187,7 +187,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         XCTAssertEqual(state.validationError, "Invalid symbol: INVALID not found")
     }
 
-    func testValidateAndAddTicker_setsIsValidatingDuringValidation() async throws {
+    func testValidateAndAddSymbol_setsIsValidatingDuringValidation() async throws {
         let state = WatchlistEditorState(symbols: [], validator: MockSymbolValidator(delay: 0.2))
         state.newSymbol = "AAPL"
 
@@ -203,7 +203,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         XCTAssertFalse(state.isValidating)
     }
 
-    func testValidateAndAddTicker_normalizesInput() async throws {
+    func testValidateAndAddSymbol_normalizesInput() async throws {
         let state = WatchlistEditorState(symbols: [], validator: AlwaysValidValidator())
         state.newSymbol = "  aapl  "
         state.validateAndAddSymbol()
@@ -235,7 +235,7 @@ final class WatchlistEditorStateTests: XCTestCase {
         wait(for: [expectation], timeout: 1.0)
     }
 
-    func testSave_returnsSortedTickers() {
+    func testSave_returnsSortedSymbols() {
         let state = WatchlistEditorState(symbols: ["SPY", "AAPL", "QQQ"])
         state.symbols = ["SPY", "AAPL", "QQQ"]  // Unsorted
         var savedTickers: [String]?

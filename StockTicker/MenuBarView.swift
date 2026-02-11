@@ -204,6 +204,10 @@ class MenuBarController: NSObject, ObservableObject {
     private var hasCompletedInitialLoad = false
     private let ytdCacheManager: YTDCacheManager
     private var ytdPrices: [String: Double] = [:]
+    private let quarterlyCacheManager: QuarterlyCacheManager
+    private var quarterlyPrices: [String: [String: Double]] = [:]
+    private var quarterInfos: [QuarterInfo] = []
+    private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
 
@@ -213,7 +217,8 @@ class MenuBarController: NSObject, ObservableObject {
         configManager: WatchlistConfigManager = .shared,
         marketSchedule: MarketSchedule = .shared,
         urlOpener: URLOpener = NSWorkspace.shared,
-        ytdCacheManager: YTDCacheManager = YTDCacheManager()
+        ytdCacheManager: YTDCacheManager = YTDCacheManager(),
+        quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -221,6 +226,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.marketSchedule = marketSchedule
         self.urlOpener = urlOpener
         self.ytdCacheManager = ytdCacheManager
+        self.quarterlyCacheManager = quarterlyCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -232,6 +238,7 @@ class MenuBarController: NSObject, ObservableObject {
         startTimers()
         Task {
             await loadYTDCache()
+            await loadQuarterlyCache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -267,6 +274,41 @@ class MenuBarController: NSObject, ObservableObject {
 
         // Load all YTD prices into memory
         ytdPrices = await ytdCacheManager.getAllPrices()
+    }
+
+    // MARK: - Quarterly Cache Management
+
+    private func loadQuarterlyCache() async {
+        await quarterlyCacheManager.load()
+        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        await fetchMissingQuarterlyPrices()
+    }
+
+    private func fetchMissingQuarterlyPrices() async {
+        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+
+        for qi in quarterInfos {
+            let missingSymbols = await quarterlyCacheManager.getMissingSymbols(
+                for: qi.identifier, from: config.watchlist
+            )
+            guard !missingSymbols.isEmpty else { continue }
+
+            let (period1, period2) = QuarterCalculation.quarterEndDateRange(year: qi.year, quarter: qi.quarter)
+            let fetched = await stockService.batchFetchQuarterEndPrices(
+                symbols: missingSymbols, period1: period1, period2: period2
+            )
+
+            guard !fetched.isEmpty else { continue }
+            await quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
+            await quarterlyCacheManager.save()
+        }
+
+        // Prune quarters older than the active 8
+        let activeIds = quarterInfos.map { $0.identifier }
+        await quarterlyCacheManager.pruneOldQuarters(keeping: activeIds)
+        await quarterlyCacheManager.save()
+
+        quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
     }
 
     private func attachYTDPricesToQuotes() {
@@ -328,6 +370,11 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(.separator())  // Ticker items inserted before this
 
         menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
+
+        let quarterlyItem = MenuItemFactory.action(title: "Quarterly Performance...", action: #selector(showQuarterlyPanel), target: self, keyEquivalent: "q")
+        quarterlyItem.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(quarterlyItem)
+
         menu.addItem(createConfigSubmenu())
         menu.addItem(createClosedMarketSubmenu())
         menu.addItem(createSortSubmenu())
@@ -485,6 +532,8 @@ class MenuBarController: NSObject, ObservableObject {
         self.lastRefreshTime = Date()
         attachYTDPricesToQuotes()
         highlightFetchedSymbols(fetchedSymbols)
+
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -959,6 +1008,7 @@ class MenuBarController: NSObject, ObservableObject {
         startTimers()
         Task {
             await fetchMissingYTDPrices()
+            await fetchMissingQuarterlyPrices()
             await refreshAllQuotes()
         }
     }
@@ -1006,6 +1056,21 @@ class MenuBarController: NSObject, ObservableObject {
             guard let asset = item.representedObject as? ClosedMarketAsset else { continue }
             item.state = (asset == config.menuBarAssetWhenClosed) ? .on : .off
         }
+    }
+
+    @objc private func showQuarterlyPanel() {
+        if quarterlyWindowController == nil {
+            quarterlyWindowController = QuarterlyPanelWindowController()
+        }
+        quarterlyWindowController?.showWindow(
+            watchlist: config.watchlist,
+            quotes: quotes,
+            quarterPrices: quarterlyPrices,
+            quarterInfos: quarterInfos,
+            highlightedSymbols: Set(config.highlightedSymbols),
+            highlightColor: config.highlightColor,
+            highlightOpacity: config.highlightOpacity
+        )
     }
 
     @objc private func showDebugWindow() {

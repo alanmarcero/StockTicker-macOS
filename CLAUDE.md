@@ -33,28 +33,30 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (16 files, ~4,050 lines)
+## Source Files (18 files, ~4,560 lines)
 
 ```
-StockTickerApp.swift   (12L)   Entry point, creates MenuBarController
-MenuBarView.swift      (1058L) Main controller: menu bar UI, timers, state, display styling
-StockService.swift     (235L)  Yahoo Finance API client (actor)
-StockData.swift        (381L)  Data models: StockQuote, TradingSession, TradingHours, API types
-MarketSchedule.swift   (291L)  NYSE holiday/hours calculation, MarketState enum
-TickerConfig.swift     (336L)  Config loading/saving, OpaqueContainerView, protocol definitions
-TickerEditorView.swift (541L)  SwiftUI watchlist editor, symbol validation, pure operations
-RequestLogger.swift    (248L)  API request logging (actor), LoggingHTTPClient with retry
-DebugWindow.swift      (251L)  Debug window with copy buttons for URL/request/response
-SortOption.swift       (58L)   Sort option enum with config parsing and sorting logic
-MarqueeView.swift      (126L)  Scrolling index marquee NSView with ping animation
-MenuItemFactory.swift  (31L)   Factory for creating styled NSMenuItems and font constants
-NewsService.swift      (130L)  RSS feed fetcher for financial news (actor)
-NewsData.swift         (153L)  NewsItem model, RSSParser, NewsSource enum
-YTDCache.swift         (130L)  Year-to-date price cache manager (actor)
-LayoutConfig.swift     (66L)   Centralized layout constants
+StockTickerApp.swift      (12L)   Entry point, creates MenuBarController
+MenuBarView.swift         (1120L) Main controller: menu bar UI, timers, state, display styling
+StockService.swift        (259L)  Yahoo Finance API client (actor)
+StockData.swift           (381L)  Data models: StockQuote, TradingSession, TradingHours, API types
+MarketSchedule.swift      (291L)  NYSE holiday/hours calculation, MarketState enum
+TickerConfig.swift        (336L)  Config loading/saving, OpaqueContainerView, protocol definitions
+TickerEditorView.swift    (541L)  SwiftUI watchlist editor, symbol validation, pure operations
+RequestLogger.swift       (248L)  API request logging (actor), LoggingHTTPClient with retry
+DebugWindow.swift         (251L)  Debug window with copy buttons for URL/request/response
+SortOption.swift          (58L)   Sort option enum with config parsing and sorting logic
+MarqueeView.swift         (126L)  Scrolling index marquee NSView with ping animation
+MenuItemFactory.swift     (31L)   Factory for creating styled NSMenuItems and font constants
+NewsService.swift         (130L)  RSS feed fetcher for financial news (actor)
+NewsData.swift            (153L)  NewsItem model, RSSParser, NewsSource enum
+YTDCache.swift            (130L)  Year-to-date price cache manager (actor)
+QuarterlyCache.swift      (206L)  Quarter calculation helpers, quarterly price cache (actor)
+QuarterlyPanelView.swift  (303L)  Quarterly performance window: view model, SwiftUI view, controller
+LayoutConfig.swift        (77L)   Centralized layout constants
 ```
 
-## Test Files (14 files, ~4,530 lines)
+## Test Files (16 files, ~5,310 lines)
 
 ```
 StockDataTests.swift          (475L)  Quote calculations, session detection, formatting
@@ -69,6 +71,8 @@ MenuBarViewTests.swift        (202L)  SortOption tests, sorting with quotes (inc
 MarqueeViewTests.swift        (106L)  Config constants, layer setup, scrolling, ping animation
 MenuItemFactoryTests.swift    (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift           (360L)  Cache load/save, year rollover, DateProvider injection
+QuarterlyCacheTests.swift     (494L)  Quarter calculations, cache operations, pruning
+QuarterlyPanelTests.swift     (289L)  Row computation, sorting, direction toggling, missing data
 NewsServiceTests.swift        (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift       (98L)   Layout constant validation
 ```
@@ -89,6 +93,8 @@ MenuBarView.swift (MenuBarController)
 ├── MarqueeView.swift (MarqueeView, MarqueeConfig)
 ├── MenuItemFactory.swift (MenuItemFactory)
 ├── YTDCache.swift (YTDCacheManager)
+├── QuarterlyCache.swift (QuarterlyCacheManager, QuarterCalculation, QuarterInfo)
+├── QuarterlyPanelView.swift (QuarterlyPanelWindowController)
 ├── TickerEditorView.swift (WatchlistEditorWindowController)
 └── DebugWindow.swift (DebugWindowController)
 
@@ -108,6 +114,15 @@ TickerEditorView.swift
 ├── TickerConfig.swift (WatchlistConfig.maxWatchlistSize)
 └── RequestLogger.swift (LoggingHTTPClient)
 
+QuarterlyPanelView.swift
+├── QuarterlyCache.swift (QuarterInfo, QuarterlySortColumn)
+├── StockData.swift (StockQuote)
+├── TickerConfig.swift (OpaqueContainerView)
+└── LayoutConfig.swift (LayoutConfig.QuarterlyWindow)
+
+QuarterlyCache.swift
+└── TickerConfig.swift (FileSystemProtocol, DateProvider)
+
 DebugWindow.swift
 └── RequestLogger.swift (RequestLogger, RequestLogEntry)
 ```
@@ -120,7 +135,7 @@ All major components use protocols for testability:
 - `NewsServiceProtocol` — news fetching
 - `FileSystemProtocol` / `WorkspaceProtocol` — file operations
 - `SymbolValidator` — symbol validation
-- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager)
+- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager)
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Actors for Thread Safety
@@ -128,11 +143,13 @@ All major components use protocols for testability:
 - `NewsService` — concurrent RSS fetching via TaskGroup
 - `RequestLogger` — thread-safe request log storage
 - `YTDCacheManager` — thread-safe YTD price cache
+- `QuarterlyCacheManager` — thread-safe quarterly price cache
 
 ### State Management
 - `MenuBarController` — `@MainActor`, `@Published` properties, drives all UI
 - `WatchlistEditorState` — `@MainActor` ObservableObject for editor window
 - `DebugViewModel` — `@MainActor` ObservableObject, auto-refreshes every 1s
+- `QuarterlyPanelViewModel` — `@MainActor` ObservableObject for quarterly performance window
 
 ### Constants in Private Enums
 All magic numbers are extracted into namespaced enums:
@@ -143,12 +160,14 @@ All magic numbers are extracted into namespaced enums:
 - `ResponseLimits`, `RetryConfig` (RequestLogger)
 - `TradingHours` (StockData — shared across codebase)
 - `LayoutConfig` (centralized layout dimensions)
+- `QuarterlyWindow`, `QuarterlyFormatting` (QuarterlyPanelView)
 
 ### Pure Functions
 - `WatchlistOperations` — symbol add/remove/sort operations
 - `SortOption.sort()` — sorting with quote context
 - Color helpers: `priceChangeColor()`, `colorFromString()`
 - Formatting: `formatCurrency()`, `formatSignedPercent()`
+- `QuarterCalculation` — quarter date math, identifier/label generation
 
 ### Callback Cleanup
 `WatchlistEditorState` explicitly clears callbacks to prevent retain cycles. Called in `save()`, `cancel()`, and when window closes.
@@ -206,7 +225,7 @@ Weekend handling:
 - App forces `yahooMarketState = "CLOSED"` on weekends
 - Extended hours labels (Pre/AH) not shown on weekends
 
-Config reload resets `hasCompletedInitialLoad = false` and calls `fetchMissingYTDPrices()`.
+Config reload resets `hasCompletedInitialLoad = false` and calls `fetchMissingYTDPrices()` and `fetchMissingQuarterlyPrices()`.
 
 ### Extended Hours Calculation
 
@@ -236,6 +255,30 @@ Year-to-date prices cached at `~/.stockticker/ytd-cache.json`:
 
 Key methods: `loadYTDCache()`, `fetchMissingYTDPrices()`, `attachYTDPricesToQuotes()`
 
+## Quarterly Performance (Cmd+Opt+Q)
+
+Standalone window showing percent change from each of the last 12 completed quarters (3 years) to current price. Cached at `~/.stockticker/quarterly-cache.json`:
+
+```json
+{
+  "lastUpdated": "2026-02-10T12:00:00Z",
+  "quarters": {
+    "Q4-2025": { "AAPL": 254.23, "SPY": 602.10 },
+    "Q3-2025": { "AAPL": 228.50, "SPY": 571.30 }
+  }
+}
+```
+
+**Rolling window:** `QuarterCalculation.lastNCompletedQuarters(from:count:12)` always produces the 12 most recent completed quarters. New quarters are fetched automatically; old quarters pruned from cache.
+
+**Fetching strategy:** Per-quarter sequential, per-symbol parallel via TaskGroup. Cache saved after each quarter (preserves progress if interrupted). First run ~768 API calls (64 symbols x 12 quarters); subsequent runs only fetch new symbols or newly completed quarters.
+
+**Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
+
+**Sortable columns:** Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value.
+
+Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
+
 ## News Headlines
 
 Actor-based `NewsService` fetches from Yahoo Finance RSS and CNBC RSS concurrently via TaskGroup. `RSSParser` (XMLParserDelegate) parses XML with dual date format support (RFC 2822 + ISO 8601). Headlines deduplicated via Jaccard word similarity (threshold: 0.6). Cache-busted with timestamp query parameter. Up to 6 clickable headlines displayed with proportional font; top-from-source headlines use bold variant.
@@ -251,7 +294,7 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 - **Index marquee** — `MarqueeView` custom NSView scrolling at ~32px/sec with seamless looping. Bold index names, regular weight values. Ping animation on data refresh.
 - **News headlines** — Proportional font (headlineFont/headlineFontBold). Top-from-source uses highlight background.
 - **Ticker list** — Sorted by `defaultSort`, shows price/change/percent/YTD/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
-- **Submenus** — Edit Watchlist, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
+- **Submenus** — Edit Watchlist, Quarterly Performance, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
 
 ### Color Helpers
 - `priceChangeColor(_:neutral:)` — green/red/neutral using `TradingHours.nearZeroThreshold`
@@ -271,7 +314,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 
 | Field | Type | Default |
 |-------|------|---------|
-| `watchlist` | `[String]` (max 50) | 40+ symbols |
+| `watchlist` | `[String]` (max 64) | 40+ symbols |
 | `menuBarRotationInterval` | `Int` (seconds) | `5` |
 | `refreshInterval` | `Int` (seconds) | `15` |
 | `sortDirection` | `String` | `"percentDesc"` |
@@ -349,4 +392,4 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 7. **No Side Effects** — Pure functions for sorting, formatting, operations
 8. **Fail Fast** — Guard clauses, early returns, error logging on file I/O
 9. **KISS/YAGNI** — No premature abstraction
-10. **Write Tests** — Protocol-based DI enables comprehensive testing; 14 test files with mock doubles
+10. **Write Tests** — Protocol-based DI enables comprehensive testing; 16 test files with mock doubles

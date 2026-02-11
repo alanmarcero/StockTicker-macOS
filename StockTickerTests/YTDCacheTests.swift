@@ -1,67 +1,20 @@
 import XCTest
 @testable import StockTicker
 
-// MARK: - Mock Date Provider for YTD Cache Tests
-
-final class MockYTDDateProvider: DateProvider {
-    var currentDate: Date
-
-    init(year: Int, month: Int = 1, day: Int = 15) {
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        components.hour = 12
-        self.currentDate = Calendar.current.date(from: components) ?? Date()
-    }
-
-    func now() -> Date {
-        currentDate
-    }
-}
-
-// MARK: - Mock File System for YTD Cache Tests
-
-final class MockYTDFileSystem: FileSystemProtocol {
-    var homeDirectoryForCurrentUser: URL {
-        URL(fileURLWithPath: "/tmp/test-ytd")
-    }
-
-    var existingFiles: Set<String> = []
-    var fileContents: [String: Data] = [:]
-    var createdDirectories: [URL] = []
-    var writtenFiles: [URL: Data] = [:]
-
-    func fileExists(atPath path: String) -> Bool {
-        existingFiles.contains(path)
-    }
-
-    func createDirectoryAt(_ url: URL, withIntermediateDirectories: Bool) throws {
-        createdDirectories.append(url)
-        existingFiles.insert(url.path)
-    }
-
-    func contentsOfFile(atPath path: String) -> Data? {
-        fileContents[path]
-    }
-
-    func writeData(_ data: Data, to url: URL) throws {
-        writtenFiles[url] = data
-        existingFiles.insert(url.path)
-    }
-}
-
 // MARK: - YTD Cache Tests
 
 final class YTDCacheTests: XCTestCase {
 
+    private let testCacheDirectory = URL(fileURLWithPath: "/tmp/test-ytd")
+    private let testCacheFile = "/tmp/test-ytd/ytd-cache.json"
+
     // MARK: - Load Tests
 
     func testLoad_whenCacheDoesNotExist_cacheIsNil() async {
-        let mockFileSystem = MockYTDFileSystem()
+        let mockFS = MockFileSystem()
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -71,18 +24,15 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testLoad_whenCacheExists_loadsPrices() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let cacheData = YTDCacheData(year: 2026, lastUpdated: "2026-01-15", prices: ["AAPL": 254.23, "SPY": 681.92])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -97,19 +47,19 @@ final class YTDCacheTests: XCTestCase {
     // MARK: - Save Tests
 
     func testSave_writesCacheToFile() async {
-        let mockFileSystem = MockYTDFileSystem()
+        let mockFS = MockFileSystem()
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.setStartPrice(for: "AAPL", price: 254.23)
         await cacheManager.save()
 
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
-        XCTAssertNotNil(mockFileSystem.writtenFiles[cacheURL])
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        XCTAssertNotNil(mockFS.writtenFiles[cacheURL])
 
-        if let writtenData = mockFileSystem.writtenFiles[cacheURL] {
+        if let writtenData = mockFS.writtenFiles[cacheURL] {
             let decoded = try! JSONDecoder().decode(YTDCacheData.self, from: writtenData)
             XCTAssertEqual(decoded.prices["AAPL"], 254.23)
         }
@@ -118,10 +68,10 @@ final class YTDCacheTests: XCTestCase {
     // MARK: - Year Rollover Tests
 
     func testNeedsYearRollover_whenCacheIsNil_returnsTrue() async {
-        let mockFileSystem = MockYTDFileSystem()
+        let mockFS = MockFileSystem()
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -131,19 +81,16 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testNeedsYearRollover_whenYearMatches_returnsFalse() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let currentYear = Calendar.current.component(.year, from: Date())
         let cacheData = YTDCacheData(year: currentYear, lastUpdated: "2026-01-15", prices: [:])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -153,18 +100,15 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testNeedsYearRollover_whenYearDiffers_returnsTrue() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let cacheData = YTDCacheData(year: 2020, lastUpdated: "2020-01-15", prices: [:])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -174,18 +118,15 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testClearForNewYear_resetsCache() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let cacheData = YTDCacheData(year: 2020, lastUpdated: "2020-01-15", prices: ["AAPL": 100.0])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -201,19 +142,16 @@ final class YTDCacheTests: XCTestCase {
     // MARK: - Missing Symbols Tests
 
     func testGetMissingSymbols_returnsSymbolsNotInCache() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let currentYear = Calendar.current.component(.year, from: Date())
         let cacheData = YTDCacheData(year: currentYear, lastUpdated: "2026-01-15", prices: ["AAPL": 254.23])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -223,10 +161,10 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testGetMissingSymbols_whenCacheEmpty_returnsAllSymbols() async {
-        let mockFileSystem = MockYTDFileSystem()
+        let mockFS = MockFileSystem()
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -238,19 +176,16 @@ final class YTDCacheTests: XCTestCase {
     // MARK: - Get All Prices Tests
 
     func testGetAllPrices_returnsAllCachedPrices() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
 
         let currentYear = Calendar.current.component(.year, from: Date())
         let cacheData = YTDCacheData(year: currentYear, lastUpdated: "2026-01-15", prices: ["AAPL": 254.23, "SPY": 681.92])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -264,21 +199,18 @@ final class YTDCacheTests: XCTestCase {
     // MARK: - DateProvider Injection Tests
 
     func testNeedsYearRollover_withMockDateProvider_usesInjectedDate() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let mockDateProvider = MockYTDDateProvider(year: 2025)
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
+        let mockDateProvider = MockDateProvider(year: 2025)
 
         // Cache has year 2025
         let cacheData = YTDCacheData(year: 2025, lastUpdated: "2025-01-15", prices: [:])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
+            fileSystem: mockFS,
             dateProvider: mockDateProvider,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -289,21 +221,18 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testNeedsYearRollover_withMockDateProvider_detectsYearChange() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let mockDateProvider = MockYTDDateProvider(year: 2026)
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
+        let mockFS = MockFileSystem()
+        let mockDateProvider = MockDateProvider(year: 2026)
 
         // Cache has year 2025
         let cacheData = YTDCacheData(year: 2025, lastUpdated: "2025-12-31", prices: ["AAPL": 100.0])
         let jsonData = try! JSONEncoder().encode(cacheData)
-
-        mockFileSystem.existingFiles.insert(cacheURL.path)
-        mockFileSystem.fileContents[cacheURL.path] = jsonData
+        mockFS.files[testCacheFile] = jsonData
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
+            fileSystem: mockFS,
             dateProvider: mockDateProvider,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.load()
@@ -314,20 +243,20 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testClearForNewYear_withMockDateProvider_usesInjectedYear() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let mockDateProvider = MockYTDDateProvider(year: 2030)
+        let mockFS = MockFileSystem()
+        let mockDateProvider = MockDateProvider(year: 2030)
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
+            fileSystem: mockFS,
             dateProvider: mockDateProvider,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.clearForNewYear()
         await cacheManager.save()
 
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
-        if let writtenData = mockFileSystem.writtenFiles[cacheURL] {
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        if let writtenData = mockFS.writtenFiles[cacheURL] {
             let decoded = try! JSONDecoder().decode(YTDCacheData.self, from: writtenData)
             XCTAssertEqual(decoded.year, 2030)
         } else {
@@ -336,20 +265,20 @@ final class YTDCacheTests: XCTestCase {
     }
 
     func testSetStartPrice_withMockDateProvider_updatesLastUpdated() async {
-        let mockFileSystem = MockYTDFileSystem()
-        let mockDateProvider = MockYTDDateProvider(year: 2026, month: 6, day: 15)
+        let mockFS = MockFileSystem()
+        let mockDateProvider = MockDateProvider(year: 2026, month: 6, day: 15)
 
         let cacheManager = YTDCacheManager(
-            fileSystem: mockFileSystem,
+            fileSystem: mockFS,
             dateProvider: mockDateProvider,
-            cacheDirectory: URL(fileURLWithPath: "/tmp/test-ytd")
+            cacheDirectory: testCacheDirectory
         )
 
         await cacheManager.setStartPrice(for: "AAPL", price: 150.0)
         await cacheManager.save()
 
-        let cacheURL = URL(fileURLWithPath: "/tmp/test-ytd/ytd-cache.json")
-        if let writtenData = mockFileSystem.writtenFiles[cacheURL] {
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        if let writtenData = mockFS.writtenFiles[cacheURL] {
             let decoded = try! JSONDecoder().decode(YTDCacheData.self, from: writtenData)
             XCTAssertTrue(decoded.lastUpdated.contains("2026"))
             XCTAssertEqual(decoded.year, 2026)

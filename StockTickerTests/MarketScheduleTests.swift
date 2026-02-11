@@ -1,27 +1,6 @@
 import XCTest
 @testable import StockTicker
 
-// MARK: - Mock Date Provider
-
-struct MockDateProvider: DateProvider {
-    let fixedDate: Date
-
-    init(year: Int, month: Int, day: Int, hour: Int = 12, minute: Int = 0) {
-        var components = DateComponents()
-        components.year = year
-        components.month = month
-        components.day = day
-        components.hour = hour
-        components.minute = minute
-        components.timeZone = MarketSchedule.easternTimeZone
-        self.fixedDate = Calendar.current.date(from: components)!
-    }
-
-    func now() -> Date {
-        return fixedDate
-    }
-}
-
 // MARK: - MarketState Tests
 
 final class MarketStateTests: XCTestCase {
@@ -66,11 +45,13 @@ final class MarketStateTests: XCTestCase {
 
 final class MarketScheduleTests: XCTestCase {
 
+    private let eastern = MarketSchedule.easternTimeZone
+
     // MARK: - Weekend tests
 
     func testGetTodaySchedule_saturday_returnsClosed() {
         // January 4, 2025 is a Saturday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 4)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 4, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, holiday) = schedule.getTodaySchedule()
@@ -82,7 +63,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_sunday_returnsClosed() {
         // January 5, 2025 is a Sunday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 5)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 5, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, holiday) = schedule.getTodaySchedule()
@@ -96,7 +77,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_regularDay_beforePreMarket_returnsClosed() {
         // 3:00 AM ET on a Monday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 3, minute: 0)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 3, minute: 0, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, _) = schedule.getTodaySchedule()
@@ -106,7 +87,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_regularDay_preMarket_returnsPreMarket() {
         // 5:00 AM ET on a Monday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 5, minute: 0)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 5, minute: 0, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, _) = schedule.getTodaySchedule()
@@ -116,7 +97,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_regularDay_marketOpen_returnsOpen() {
         // 10:00 AM ET on a Monday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 10, minute: 0)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 10, minute: 0, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, _) = schedule.getTodaySchedule()
@@ -127,7 +108,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_regularDay_afterHours_returnsAfterHours() {
         // 5:00 PM ET on a Monday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 17, minute: 0)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 17, minute: 0, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, _) = schedule.getTodaySchedule()
@@ -137,7 +118,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_regularDay_afterClose_returnsClosed() {
         // 9:00 PM ET on a Monday
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 21, minute: 0)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 6, hour: 21, minute: 0, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, _) = schedule.getTodaySchedule()
@@ -149,7 +130,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_newYearsDay_returnsClosed() {
         // January 1, 2025 (Wednesday)
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 1, hour: 12)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 1, hour: 12, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, holiday) = schedule.getTodaySchedule()
@@ -161,7 +142,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_christmas_returnsClosed() {
         // December 25, 2025 (Thursday)
-        let dateProvider = MockDateProvider(year: 2025, month: 12, day: 25, hour: 12)
+        let dateProvider = MockDateProvider(year: 2025, month: 12, day: 25, hour: 12, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, holiday) = schedule.getTodaySchedule()
@@ -173,7 +154,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_mlkDay2025_returnsClosed() {
         // January 20, 2025 is MLK Day (3rd Monday of January)
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 20, hour: 12)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 20, hour: 12, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, holiday) = schedule.getTodaySchedule()
@@ -186,7 +167,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_blackFriday_returnsEarlyClose() {
         // November 28, 2025 is Black Friday (day after Thanksgiving)
-        let dateProvider = MockDateProvider(year: 2025, month: 11, day: 28, hour: 12)
+        let dateProvider = MockDateProvider(year: 2025, month: 11, day: 28, hour: 12, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, scheduleText, holiday) = schedule.getTodaySchedule()
@@ -198,7 +179,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetTodaySchedule_earlyCloseDay_afterClose_returnsClosed() {
         // Black Friday at 2:00 PM (after early close)
-        let dateProvider = MockDateProvider(year: 2025, month: 11, day: 28, hour: 14)
+        let dateProvider = MockDateProvider(year: 2025, month: 11, day: 28, hour: 14, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let (state, _, _) = schedule.getTodaySchedule()
@@ -247,7 +228,7 @@ final class MarketScheduleTests: XCTestCase {
 
     func testGetNextHoliday_returnsNextFullClosure() {
         // January 2, 2025
-        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 2, hour: 12)
+        let dateProvider = MockDateProvider(year: 2025, month: 1, day: 2, hour: 12, timeZone: eastern)
         let schedule = MarketSchedule(dateProvider: dateProvider)
 
         let nextHoliday = schedule.getNextHoliday()

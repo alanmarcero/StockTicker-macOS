@@ -38,6 +38,11 @@ F1000003232C5A0000000001 /* MarqueeView.swift in Sources */ = {isa = PBXBuildFil
 F1000005232C5A0000000001 /* MenuItemFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000006232C5A0000000001 /* MenuItemFactory.swift */; };
 G1000001232C5A0000000001 /* MarqueeViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G1000002232C5A0000000001 /* MarqueeViewTests.swift */; };
 G1000003232C5A0000000001 /* MenuItemFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */; };
+H1000001232C5A0000000001 /* QuarterlyCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = H1000002232C5A0000000001 /* QuarterlyCache.swift */; };
+H1000003232C5A0000000001 /* QuarterlyCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = H1000004232C5A0000000001 /* QuarterlyCacheTests.swift */; };
+I1000001232C5A0000000001 /* QuarterlyPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1000002232C5A0000000001 /* QuarterlyPanelView.swift */; };
+I1000003232C5A0000000001 /* QuarterlyPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1000004232C5A0000000001 /* QuarterlyPanelTests.swift */; };
+J1000001232C5A0000000001 /* TestUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = J1000002232C5A0000000001 /* TestUtilities.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +90,11 @@ F1000004232C5A0000000001 /* MarqueeView.swift */ = {isa = PBXFileReference; last
 F1000006232C5A0000000001 /* MenuItemFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemFactory.swift; sourceTree = "<group>"; };
 G1000002232C5A0000000001 /* MarqueeViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeViewTests.swift; sourceTree = "<group>"; };
 G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuItemFactoryTests.swift; sourceTree = "<group>"; };
+H1000002232C5A0000000001 /* QuarterlyCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyCache.swift; sourceTree = "<group>"; };
+H1000004232C5A0000000001 /* QuarterlyCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyCacheTests.swift; sourceTree = "<group>"; };
+I1000002232C5A0000000001 /* QuarterlyPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelView.swift; sourceTree = "<group>"; };
+I1000004232C5A0000000001 /* QuarterlyPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelTests.swift; sourceTree = "<group>"; };
+J1000002232C5A0000000001 /* TestUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestUtilities.swift; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -130,6 +140,8 @@ G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */ = {isa = PBXFileRefere
 				D1000002232C5A0000000001 /* LayoutConfig.swift */,
 				A1000020232C5A0000000001 /* MarketSchedule.swift */,
 				E1000002232C5A0000000001 /* YTDCache.swift */,
+				H1000002232C5A0000000001 /* QuarterlyCache.swift */,
+				I1000002232C5A0000000001 /* QuarterlyPanelView.swift */,
 				F1000002232C5A0000000001 /* SortOption.swift */,
 				F1000004232C5A0000000001 /* MarqueeView.swift */,
 				F1000006232C5A0000000001 /* MenuItemFactory.swift */,
@@ -163,8 +175,11 @@ G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */ = {isa = PBXFileRefere
 				C1000006232C5A0000000001 /* NewsServiceTests.swift */,
 				D1000004232C5A0000000001 /* LayoutConfigTests.swift */,
 				E1000004232C5A0000000001 /* YTDCacheTests.swift */,
+				H1000004232C5A0000000001 /* QuarterlyCacheTests.swift */,
+				I1000004232C5A0000000001 /* QuarterlyPanelTests.swift */,
 				G1000002232C5A0000000001 /* MarqueeViewTests.swift */,
 				G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */,
+				J1000002232C5A0000000001 /* TestUtilities.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -281,6 +296,8 @@ G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */ = {isa = PBXFileRefere
 				C1000001232C5A0000000001 /* NewsData.swift in Sources */,
 				C1000003232C5A0000000001 /* NewsService.swift in Sources */,
 				E1000001232C5A0000000001 /* YTDCache.swift in Sources */,
+				H1000001232C5A0000000001 /* QuarterlyCache.swift in Sources */,
+				I1000001232C5A0000000001 /* QuarterlyPanelView.swift in Sources */,
 				F1000001232C5A0000000001 /* SortOption.swift in Sources */,
 				F1000003232C5A0000000001 /* MarqueeView.swift in Sources */,
 				F1000005232C5A0000000001 /* MenuItemFactory.swift in Sources */,
@@ -303,8 +320,11 @@ G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */ = {isa = PBXFileRefere
 				C1000005232C5A0000000001 /* NewsServiceTests.swift in Sources */,
 				D1000003232C5A0000000001 /* LayoutConfigTests.swift in Sources */,
 				E1000003232C5A0000000001 /* YTDCacheTests.swift in Sources */,
+				H1000003232C5A0000000001 /* QuarterlyCacheTests.swift in Sources */,
+				I1000003232C5A0000000001 /* QuarterlyPanelTests.swift in Sources */,
 				G1000001232C5A0000000001 /* MarqueeViewTests.swift in Sources */,
 				G1000003232C5A0000000001 /* MenuItemFactoryTests.swift in Sources */,
+				J1000001232C5A0000000001 /* TestUtilities.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

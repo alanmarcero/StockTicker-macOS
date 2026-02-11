@@ -1,38 +1,6 @@
 import XCTest
 @testable import StockTicker
 
-// MARK: - Mock File System
-
-final class MockFileSystem: FileSystemProtocol {
-    var files: [String: Data] = [:]
-    var directories: Set<String> = []
-    var mockHomeDirectory: URL
-
-    init(homeDirectory: String = "/Users/test") {
-        self.mockHomeDirectory = URL(fileURLWithPath: homeDirectory)
-    }
-
-    var homeDirectoryForCurrentUser: URL {
-        return mockHomeDirectory
-    }
-
-    func fileExists(atPath path: String) -> Bool {
-        return files[path] != nil || directories.contains(path)
-    }
-
-    func createDirectoryAt(_ url: URL, withIntermediateDirectories: Bool) throws {
-        directories.insert(url.path)
-    }
-
-    func contentsOfFile(atPath path: String) -> Data? {
-        return files[path]
-    }
-
-    func writeData(_ data: Data, to url: URL) throws {
-        files[url.path] = data
-    }
-}
-
 // MARK: - Mock Workspace
 
 final class MockWorkspace: WorkspaceProtocol {
@@ -132,8 +100,8 @@ final class WatchlistConfigTests: XCTestCase {
         )
     }
 
-    func testMaxWatchlistSize_isFifty() {
-        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 50)
+    func testMaxWatchlistSize_isSixtyFour() {
+        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 64)
     }
 
     func testDefaultIndexSymbols_hasExpectedIndexes() {
@@ -589,7 +557,7 @@ final class WatchlistConfigManagerTests: XCTestCase {
     }
 
     func testLoad_validFileExists_returnsConfig() {
-        let mockFS = MockFileSystem()
+        let mockFS = MockFileSystem(homeDirectory: "/Users/test")
         let customConfig = WatchlistConfig(watchlist: ["AAPL", "MSFT"], menuBarRotationInterval: 10, sortDirection: "tickerAsc")
         let jsonData = try! JSONEncoder().encode(customConfig)
         mockFS.files["/Users/test/.stockticker/config.json"] = jsonData
@@ -604,7 +572,7 @@ final class WatchlistConfigManagerTests: XCTestCase {
     }
 
     func testLoad_invalidJSON_createsDefault() {
-        let mockFS = MockFileSystem()
+        let mockFS = MockFileSystem(homeDirectory: "/Users/test")
         mockFS.files["/Users/test/.stockticker/config.json"] = "invalid json".data(using: .utf8)
         mockFS.directories.insert("/Users/test/.stockticker")
 
@@ -615,8 +583,8 @@ final class WatchlistConfigManagerTests: XCTestCase {
     }
 
     func testLoad_tooManyTickers_truncatesToMax() {
-        let mockFS = MockFileSystem()
-        let manyTickers = (1...60).map { "T\($0)" }
+        let mockFS = MockFileSystem(homeDirectory: "/Users/test")
+        let manyTickers = (1...80).map { "T\($0)" }
         let customConfig = WatchlistConfig(watchlist: manyTickers, menuBarRotationInterval: 5, sortDirection: "percentDesc")
         let jsonData = try! JSONEncoder().encode(customConfig)
         mockFS.files["/Users/test/.stockticker/config.json"] = jsonData

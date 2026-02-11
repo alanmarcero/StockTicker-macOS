@@ -8,6 +8,8 @@ protocol StockServiceProtocol: Sendable {
     func fetchMarketState(symbol: String) async -> String?
     func fetchYTDStartPrice(symbol: String) async -> Double?
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double]
+    func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double?
+    func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
 }
 
 // MARK: - HTTP Client Protocol
@@ -94,7 +96,6 @@ actor StockService: StockServiceProtocol {
         let calendar = Calendar.current
         let currentYear = calendar.component(.year, from: Date())
 
-        // Dec 31 of previous year
         guard let dec31 = calendar.date(from: DateComponents(year: currentYear - 1, month: 12, day: 31)),
               let jan2 = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 2)) else {
             return nil
@@ -103,6 +104,28 @@ actor StockService: StockServiceProtocol {
         let period1 = Int(dec31.timeIntervalSince1970)
         let period2 = Int(jan2.timeIntervalSince1970)
 
+        return await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
+    }
+
+    func batchFetchYTDPrices(symbols: [String]) async -> [String: Double] {
+        await batchFetchHistoricalClosePrices(symbols: symbols) { symbol in
+            await self.fetchYTDStartPrice(symbol: symbol)
+        }
+    }
+
+    func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double? {
+        await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
+    }
+
+    func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
+        await batchFetchHistoricalClosePrices(symbols: symbols) { symbol in
+            await self.fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
+        }
+    }
+
+    // MARK: - Private
+
+    private func fetchHistoricalClosePrice(symbol: String, period1: Int, period2: Int) async -> Double? {
         guard let url = URL(string: "\(baseURL)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
             return nil
         }
@@ -124,11 +147,14 @@ actor StockService: StockServiceProtocol {
         }
     }
 
-    func batchFetchYTDPrices(symbols: [String]) async -> [String: Double] {
+    private func batchFetchHistoricalClosePrices(
+        symbols: [String],
+        fetcher: @escaping @Sendable (String) async -> Double?
+    ) async -> [String: Double] {
         await withTaskGroup(of: (String, Double?).self) { group in
             for symbol in symbols {
                 group.addTask {
-                    (symbol, await self.fetchYTDStartPrice(symbol: symbol))
+                    (symbol, await fetcher(symbol))
                 }
             }
 
@@ -141,8 +167,6 @@ actor StockService: StockServiceProtocol {
             return results
         }
     }
-
-    // MARK: - Private
 
     private func fetchChartData(symbol: String) async -> YahooChartResponse? {
         // Use 1-minute intervals with includePrePost to get extended hours data
