@@ -174,10 +174,8 @@ struct QuarterlyPanelView: View {
 
     private var scrollableContent: some View {
         ScrollView([.horizontal, .vertical]) {
-            VStack(spacing: 0) {
-                columnHeaders
-                Divider()
-                LazyVStack(spacing: 0) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Section(header: pinnedColumnHeaders) {
                     ForEach(viewModel.rows) { row in
                         rowView(row)
                         Divider().opacity(0.3)
@@ -186,6 +184,14 @@ struct QuarterlyPanelView: View {
             }
             .padding(.horizontal, 8)
         }
+    }
+
+    private var pinnedColumnHeaders: some View {
+        VStack(spacing: 0) {
+            columnHeaders
+            Divider()
+        }
+        .background(.background)
     }
 
     private var columnHeaders: some View {
