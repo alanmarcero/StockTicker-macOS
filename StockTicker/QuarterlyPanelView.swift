@@ -152,11 +152,16 @@ struct QuarterlyPanelView: View {
     }
 
     private var header: some View {
-        HStack {
-            Text("Quarterly Performance")
-                .font(.headline)
-            Spacer()
-            Text("\(viewModel.rows.count) symbols")
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Quarterly Performance")
+                    .font(.headline)
+                Spacer()
+                Text("\(viewModel.rows.count) symbols")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
+            Text("Percent change from each quarter's open to current price")
                 .foregroundColor(.secondary)
                 .font(.caption)
         }
