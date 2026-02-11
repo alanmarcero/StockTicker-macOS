@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - Opaque Container View
 
@@ -48,6 +49,31 @@ protocol WorkspaceProtocol {
 extension NSWorkspace: WorkspaceProtocol {
     func openURL(_ url: URL) {
         open(url)
+    }
+}
+
+// MARK: - Color Mapping
+
+enum ColorMapping {
+    static func nsColor(from name: String) -> NSColor {
+        switch name.lowercased() {
+        case "yellow": return .systemYellow
+        case "orange": return .systemOrange
+        case "red": return .systemRed
+        case "pink": return .systemPink
+        case "purple": return .systemPurple
+        case "blue": return .systemBlue
+        case "cyan": return .systemCyan
+        case "teal": return .systemTeal
+        case "green": return .systemGreen
+        case "gray", "grey": return .systemGray
+        case "brown": return .systemBrown
+        default: return .systemYellow
+        }
+    }
+
+    static func color(from name: String) -> Color {
+        Color(nsColor: nsColor(from: name))
     }
 }
 
@@ -204,7 +230,20 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(newsRefreshInterval, forKey: .newsRefreshInterval)
     }
 
-    init(watchlist: [String], menuBarRotationInterval: Int, refreshInterval: Int = 15, sortDirection: String, menuBarAssetWhenClosed: MenuBarAsset = .bitcoin, indexSymbols: [IndexSymbol] = defaultIndexSymbols, alwaysOpenMarkets: [IndexSymbol] = defaultAlwaysOpenMarkets, highlightedSymbols: [String] = ["SPY"], highlightColor: String = "yellow", highlightOpacity: Double = 0.25, showNewsHeadlines: Bool = true, newsRefreshInterval: Int = 300) {
+    init(
+        watchlist: [String],
+        menuBarRotationInterval: Int,
+        refreshInterval: Int = 15,
+        sortDirection: String,
+        menuBarAssetWhenClosed: MenuBarAsset = .bitcoin,
+        indexSymbols: [IndexSymbol] = defaultIndexSymbols,
+        alwaysOpenMarkets: [IndexSymbol] = defaultAlwaysOpenMarkets,
+        highlightedSymbols: [String] = ["SPY"],
+        highlightColor: String = "yellow",
+        highlightOpacity: Double = 0.25,
+        showNewsHeadlines: Bool = true,
+        newsRefreshInterval: Int = 300
+    ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
         self.refreshInterval = refreshInterval

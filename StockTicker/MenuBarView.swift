@@ -18,23 +18,6 @@ private func priceChangeColor(_ change: Double, neutral: NSColor) -> NSColor {
     return change > 0 ? .systemGreen : .systemRed
 }
 
-private func colorFromString(_ name: String) -> NSColor {
-    switch name.lowercased() {
-    case "yellow": return .systemYellow
-    case "orange": return .systemOrange
-    case "red": return .systemRed
-    case "pink": return .systemPink
-    case "purple": return .systemPurple
-    case "blue": return .systemBlue
-    case "cyan": return .systemCyan
-    case "teal": return .systemTeal
-    case "green": return .systemGreen
-    case "gray", "grey": return .systemGray
-    case "brown": return .systemBrown
-    default: return .systemYellow
-    }
-}
-
 private extension StockQuote {
     var displayColor: NSColor { priceChangeColor(change, neutral: .secondaryLabelColor) }
     var highlightColor: NSColor { priceChangeColor(change, neutral: .systemGray) }
@@ -168,7 +151,7 @@ class MenuBarController: NSObject, ObservableObject {
 
     // MARK: - Dependencies
 
-    private let stockService: StockServiceProtocol
+    let stockService: StockServiceProtocol
     private let newsService: NewsServiceProtocol
     private let configManager: WatchlistConfigManager
     private let marketSchedule: MarketSchedule
@@ -191,7 +174,7 @@ class MenuBarController: NSObject, ObservableObject {
     private var scheduleRefreshTimer: Timer?
     private var highlightTimer: Timer?
     private var newsRefreshTimer: Timer?
-    private var indexQuotes: [String: StockQuote] = [:]
+    var indexQuotes: [String: StockQuote] = [:]
     private var newsItems: [NewsItem] = []
     private var marqueeView: MarqueeView?
     private var editorWindowController: WatchlistEditorWindowController?
@@ -202,11 +185,11 @@ class MenuBarController: NSObject, ObservableObject {
     private var tickerMenuItems: [String: NSMenuItem] = [:]
     private var isMenuOpen = false
     private var hasCompletedInitialLoad = false
-    private let ytdCacheManager: YTDCacheManager
-    private var ytdPrices: [String: Double] = [:]
-    private let quarterlyCacheManager: QuarterlyCacheManager
-    private var quarterlyPrices: [String: [String: Double]] = [:]
-    private var quarterInfos: [QuarterInfo] = []
+    let ytdCacheManager: YTDCacheManager
+    var ytdPrices: [String: Double] = [:]
+    let quarterlyCacheManager: QuarterlyCacheManager
+    var quarterlyPrices: [String: [String: Double]] = [:]
+    var quarterInfos: [QuarterInfo] = []
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -241,89 +224,6 @@ class MenuBarController: NSObject, ObservableObject {
             await loadQuarterlyCache()
             await refreshAllQuotes()
             await refreshNews()
-        }
-    }
-
-    // MARK: - YTD Cache Management
-
-    private func loadYTDCache() async {
-        await ytdCacheManager.load()
-
-        // Check if we need to clear cache for new year
-        if await ytdCacheManager.needsYearRollover() {
-            await ytdCacheManager.clearForNewYear()
-        }
-
-        await fetchMissingYTDPrices()
-    }
-
-    private func fetchMissingYTDPrices() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await ytdCacheManager.getMissingSymbols(from: allSymbols)
-
-        guard !missingSymbols.isEmpty else {
-            ytdPrices = await ytdCacheManager.getAllPrices()
-            return
-        }
-
-        let fetched = await stockService.batchFetchYTDPrices(symbols: missingSymbols)
-        for (symbol, price) in fetched {
-            await ytdCacheManager.setStartPrice(for: symbol, price: price)
-        }
-        await ytdCacheManager.save()
-
-        // Load all YTD prices into memory
-        ytdPrices = await ytdCacheManager.getAllPrices()
-    }
-
-    // MARK: - Quarterly Cache Management
-
-    private func loadQuarterlyCache() async {
-        await quarterlyCacheManager.load()
-        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        await fetchMissingQuarterlyPrices()
-    }
-
-    private func fetchMissingQuarterlyPrices() async {
-        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-
-        for qi in quarterInfos {
-            let missingSymbols = await quarterlyCacheManager.getMissingSymbols(
-                for: qi.identifier, from: config.watchlist
-            )
-            guard !missingSymbols.isEmpty else { continue }
-
-            let (period1, period2) = QuarterCalculation.quarterEndDateRange(year: qi.year, quarter: qi.quarter)
-            let fetched = await stockService.batchFetchQuarterEndPrices(
-                symbols: missingSymbols, period1: period1, period2: period2
-            )
-
-            guard !fetched.isEmpty else { continue }
-            await quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
-            await quarterlyCacheManager.save()
-        }
-
-        // Prune quarters older than the active 8
-        let activeIds = quarterInfos.map { $0.identifier }
-        await quarterlyCacheManager.pruneOldQuarters(keeping: activeIds)
-        await quarterlyCacheManager.save()
-
-        quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
-    }
-
-    private func attachYTDPricesToQuotes() {
-        // Attach YTD start prices to watchlist quotes
-        for (symbol, quote) in quotes {
-            if let ytdPrice = ytdPrices[symbol] {
-                quotes[symbol] = quote.withYTDStartPrice(ytdPrice)
-            }
-        }
-
-        // Attach YTD start prices to index quotes
-        for (symbol, quote) in indexQuotes {
-            if let ytdPrice = ytdPrices[symbol] {
-                indexQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
-            }
         }
     }
 
@@ -728,7 +628,7 @@ class MenuBarController: NSObject, ObservableObject {
         let font = item.isTopFromSource ? MenuItemFactory.headlineFontBold : MenuItemFactory.headlineFont
 
         if item.isTopFromSource {
-            let highlightColor = colorFromString(config.highlightColor)
+            let highlightColor = ColorMapping.nsColor(from: config.highlightColor)
             let backgroundColor = highlightColor.withAlphaComponent(config.highlightOpacity)
             return .styled(headline, font: font, color: .labelColor, backgroundColor: backgroundColor)
         }
@@ -896,7 +796,7 @@ class MenuBarController: NSObject, ObservableObject {
             : nil
 
         let isPersistentHighlighted = config.highlightedSymbols.contains(symbol)
-        let persistentColor = colorFromString(config.highlightColor)
+        let persistentColor = ColorMapping.nsColor(from: config.highlightColor)
         let persistentOpacity = config.highlightOpacity
 
         let highlight = HighlightConfig(

@@ -302,6 +302,139 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.highlightedSymbols.contains("SPY"))
     }
+
+    // MARK: - View Mode
+
+    func testViewMode_defaultIsSinceQuarter() {
+        let vm = QuarterlyPanelViewModel()
+
+        XCTAssertEqual(vm.viewMode, .sinceQuarter)
+    }
+
+    func testSwitchMode_toDuringQuarter_recomputesRows() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 200.0],  // during: (200-180)/180 = 11.11%
+            "Q3-2025": ["AAPL": 180.0],  // during: (180-150)/150 = 20.0%
+            "Q2-2025": ["AAPL": 150.0],  // oldest, no prior → nil
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        // Since-quarter mode: (200-200)/200 = 0%
+        let sinceQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(sinceQ4!, 0.0, accuracy: 0.01)
+
+        vm.switchMode(.duringQuarter)
+
+        XCTAssertEqual(vm.viewMode, .duringQuarter)
+
+        let duringQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNotNil(duringQ4)
+        XCTAssertEqual(duringQ4!, 11.11, accuracy: 0.01)
+
+        let duringQ3 = vm.rows[0].quarterChanges["Q3-2025"] ?? nil
+        XCTAssertNotNil(duringQ3)
+        XCTAssertEqual(duringQ3!, 20.0, accuracy: 0.01)
+    }
+
+    func testDuringQuarter_computesCorrectPercent() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        // Q4 end=200, Q3 end=180 → (200-180)/180 = +11.11%
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["SPY": 200.0],
+            "Q3-2025": ["SPY": 180.0],
+            "Q2-2025": ["SPY": 160.0],
+        ]
+
+        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.switchMode(.duringQuarter)
+
+        let q4Change = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertNotNil(q4Change)
+        XCTAssertEqual(q4Change!, 11.11, accuracy: 0.01)
+
+        let q3Change = vm.rows[0].quarterChanges["Q3-2025"] ?? nil
+        XCTAssertNotNil(q3Change)
+        XCTAssertEqual(q3Change!, 12.5, accuracy: 0.01)
+    }
+
+    func testDuringQuarter_oldestQuarter_computesWithPriorData() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        // Q1-2025 is the prior quarter for Q2-2025 — fetched as the 13th quarter
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 200.0],
+            "Q3-2025": ["AAPL": 180.0],
+            "Q2-2025": ["AAPL": 150.0],
+            "Q1-2025": ["AAPL": 120.0],  // prior quarter data
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.switchMode(.duringQuarter)
+
+        // Q2-2025 during: (150-120)/120 = 25.0%
+        let q2Change = vm.rows[0].quarterChanges["Q2-2025"] ?? nil
+        XCTAssertNotNil(q2Change)
+        XCTAssertEqual(q2Change!, 25.0, accuracy: 0.01)
+    }
+
+    func testDuringQuarter_oldestQuarter_missingPriorData_showsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        // No Q1-2025 data — oldest quarter has no prior reference
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 200.0],
+            "Q3-2025": ["AAPL": 180.0],
+            "Q2-2025": ["AAPL": 150.0],
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.switchMode(.duringQuarter)
+
+        // Oldest quarter (Q2-2025) has no prior quarter data → nil
+        let q2Change = vm.rows[0].quarterChanges["Q2-2025"] ?? nil
+        XCTAssertNil(q2Change)
+    }
+
+    func testSwitchMode_backToSinceQuarter_restoresOriginal() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0],
+            "Q3-2025": ["AAPL": 160.0],
+            "Q2-2025": ["AAPL": 150.0],
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+
+        let originalQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(originalQ4!, 11.11, accuracy: 0.01)
+
+        vm.switchMode(.duringQuarter)
+        vm.switchMode(.sinceQuarter)
+
+        XCTAssertEqual(vm.viewMode, .sinceQuarter)
+        let restoredQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(restoredQ4!, 11.11, accuracy: 0.01)
+    }
 }
 
 // MARK: - QuarterlySortColumn Equality Tests

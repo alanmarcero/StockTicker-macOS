@@ -16,6 +16,13 @@ private enum QuarterlyFormatting {
     static let noData = "--"
 }
 
+// MARK: - View Mode
+
+enum QuarterlyViewMode: String, CaseIterable {
+    case sinceQuarter = "Since Quarter"
+    case duringQuarter = "During Quarter"
+}
+
 // MARK: - Row Model
 
 struct QuarterlyRow: Identifiable {
@@ -40,14 +47,19 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var sortAscending: Bool = true
     @Published var quarters: [QuarterInfo] = []
     @Published var highlightedSymbols: Set<String> = []
+    @Published var viewMode: QuarterlyViewMode = .sinceQuarter
     private(set) var configSymbols: Set<String> = []
     var highlightColor: Color = .yellow
     var highlightOpacity: Double = 0.25
 
+    private var storedWatchlist: [String] = []
+    private var storedQuotes: [String: StockQuote] = [:]
+    private var storedQuarterPrices: [String: [String: Double]] = [:]
+
     func setupHighlights(symbols: Set<String>, color: String, opacity: Double) {
         configSymbols = symbols
         highlightedSymbols = symbols
-        highlightColor = colorFromConfigString(color)
+        highlightColor = ColorMapping.color(from: color)
         highlightOpacity = opacity
     }
 
@@ -62,13 +74,46 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo]) {
         self.quarters = quarterInfos
+        self.storedWatchlist = watchlist
+        self.storedQuotes = quotes
+        self.storedQuarterPrices = quarterPrices
 
-        rows = watchlist.map { symbol in
+        rows = buildRows(for: viewMode)
+        applySorting()
+    }
+
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]]) {
+        guard !quarters.isEmpty else { return }
+
+        self.storedQuotes = quotes
+        self.storedQuarterPrices = quarterPrices
+
+        rows = buildRows(for: viewMode)
+        applySorting()
+    }
+
+    func switchMode(_ mode: QuarterlyViewMode) {
+        viewMode = mode
+        rows = buildRows(for: mode)
+        applySorting()
+    }
+
+    private func buildRows(for mode: QuarterlyViewMode) -> [QuarterlyRow] {
+        switch mode {
+        case .sinceQuarter:
+            return buildSinceQuarterRows()
+        case .duringQuarter:
+            return buildDuringQuarterRows()
+        }
+    }
+
+    private func buildSinceQuarterRows() -> [QuarterlyRow] {
+        storedWatchlist.map { symbol in
             var changes: [String: Double?] = [:]
-            for qi in quarterInfos {
-                guard let quarterEndPrice = quarterPrices[qi.identifier]?[symbol],
+            for qi in quarters {
+                guard let quarterEndPrice = storedQuarterPrices[qi.identifier]?[symbol],
                       quarterEndPrice > 0,
-                      let quote = quotes[symbol],
+                      let quote = storedQuotes[symbol],
                       !quote.isPlaceholder else {
                     changes[qi.identifier] = nil
                     continue
@@ -77,29 +122,27 @@ class QuarterlyPanelViewModel: ObservableObject {
             }
             return QuarterlyRow(id: symbol, symbol: symbol, quarterChanges: changes)
         }
-
-        applySorting()
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]]) {
-        guard !quarters.isEmpty else { return }
-
-        rows = rows.map { row in
+    private func buildDuringQuarterRows() -> [QuarterlyRow] {
+        storedWatchlist.map { symbol in
             var changes: [String: Double?] = [:]
             for qi in quarters {
-                guard let quarterEndPrice = quarterPrices[qi.identifier]?[row.symbol],
-                      quarterEndPrice > 0,
-                      let quote = quotes[row.symbol],
-                      !quote.isPlaceholder else {
+                var priorYear = qi.year
+                var priorQ = qi.quarter - 1
+                if priorQ < 1 { priorQ = 4; priorYear -= 1 }
+                let priorId = QuarterCalculation.quarterIdentifier(year: priorYear, quarter: priorQ)
+                guard let endPrice = storedQuarterPrices[qi.identifier]?[symbol],
+                      endPrice > 0,
+                      let startPrice = storedQuarterPrices[priorId]?[symbol],
+                      startPrice > 0 else {
                     changes[qi.identifier] = nil
                     continue
                 }
-                changes[qi.identifier] = ((quote.price - quarterEndPrice) / quarterEndPrice) * 100
+                changes[qi.identifier] = ((endPrice - startPrice) / startPrice) * 100
             }
-            return QuarterlyRow(id: row.symbol, symbol: row.symbol, quarterChanges: changes)
+            return QuarterlyRow(id: symbol, symbol: symbol, quarterChanges: changes)
         }
-
-        applySorting()
     }
 
     func sort(by column: QuarterlySortColumn) {
@@ -161,7 +204,18 @@ struct QuarterlyPanelView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
-            Text("Percent change from each quarter's open to current price")
+            Picker("View Mode", selection: Binding(
+                get: { viewModel.viewMode },
+                set: { viewModel.switchMode($0) }
+            )) {
+                ForEach(QuarterlyViewMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            Text(viewModel.viewMode == .sinceQuarter
+                 ? "Percent change from each quarter's open to current price"
+                 : "Percent change from start to end of each quarter")
                 .foregroundColor(.secondary)
                 .font(.caption)
         }
@@ -279,25 +333,6 @@ struct QuarterlyPanelView: View {
     private func cellColor(_ pct: Double) -> Color {
         if abs(pct) < TradingHours.nearZeroThreshold { return .secondary }
         return pct > 0 ? .green : .red
-    }
-}
-
-// MARK: - Color Helpers
-
-private func colorFromConfigString(_ name: String) -> Color {
-    switch name.lowercased() {
-    case "yellow": return .yellow
-    case "orange": return .orange
-    case "red": return .red
-    case "pink": return .pink
-    case "purple": return .purple
-    case "blue": return .blue
-    case "cyan": return .cyan
-    case "teal": return .teal
-    case "green": return .green
-    case "gray", "grey": return .gray
-    case "brown": return .brown
-    default: return .yellow
     }
 }
 

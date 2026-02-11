@@ -8,7 +8,7 @@ A lightweight macOS menu bar app for tracking stocks, ETFs, and crypto with real
 
 ## Features
 
-**Real-time watchlist** — Track up to 50 symbols with live price, change, percent change, and year-to-date performance. Symbols rotate in the menu bar during market hours.
+**Real-time watchlist** — Track up to 64 symbols with live price, change, percent change, and year-to-date performance. Symbols rotate in the menu bar during market hours.
 
 **Scrolling index marquee** — SPX, DJI, NDX, VIX, RUT, and BTC scroll across the top of the dropdown. Switches to crypto (BTC, ETH, SOL, DOGE, XRP) when the market is closed.
 
@@ -21,6 +21,8 @@ A lightweight macOS menu bar app for tracking stocks, ETFs, and crypto with real
 **Customizable highlights** — Background color highlighting for key symbols with configurable color and opacity.
 
 **Market schedule** — NYSE open/close status with countdown timer and holiday awareness.
+
+**Quarterly performance** — Standalone window (Cmd+Opt+Q) showing percent change across the last 12 quarters. Two view modes: "Since Quarter" (quarter end to current price) and "During Quarter" (within each quarter). Sortable columns, pinned headers, and row highlighting.
 
 **Debug window** — Inspect API requests with full URL, headers, and response body (Cmd+Opt+D).
 
@@ -75,7 +77,7 @@ Config file location: `~/.stockticker/config.json` (auto-created on first launch
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `watchlist` | Symbols to track (max 50) | `["SPY", "QQQ", "XLK", ...]` |
+| `watchlist` | Symbols to track (max 64) | `["SPY", "QQQ", "XLK", ...]` |
 | `menuBarRotationInterval` | Seconds between menu bar symbol rotation | `5` |
 | `refreshInterval` | Seconds between API refreshes | `15` |
 | `defaultSort` | Dropdown sort order | `percentDesc` |
@@ -138,7 +140,7 @@ Config file location: `~/.stockticker/config.json` (auto-created on first launch
 
 The app follows clean code principles with protocol-based dependency injection, actor-based concurrency for thread safety, and comprehensive test coverage. See [CLAUDE.md](CLAUDE.md) for the full architecture guide, file dependency map, and design patterns.
 
-**14 source files** | **12 test files** | **Swift/SwiftUI + AppKit**
+**19 source files** | **18 test files** | **Swift/SwiftUI + AppKit**
 
 ## Development
 
@@ -163,6 +165,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 - **Stock/ETF/crypto quotes** — Yahoo Finance Chart API (v8)
 - **News headlines** — Yahoo Finance RSS, CNBC Top News RSS
 - **YTD prices** — Cached locally at `~/.stockticker/ytd-cache.json`
+- **Quarterly prices** — Cached locally at `~/.stockticker/quarterly-cache.json`
 
 ## Troubleshooting
 
