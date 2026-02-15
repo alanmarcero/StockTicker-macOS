@@ -361,10 +361,11 @@ class MenuBarController: NSObject, ObservableObject {
     func refreshAllQuotes() async {
         let scheduleInfo = marketSchedule.getTodaySchedule()
         let isWeekend = scheduleInfo.schedule.contains("Weekend")
+        let isInitialLoad = !hasCompletedInitialLoad
 
         let fetchedSymbols: Set<String>
 
-        if !hasCompletedInitialLoad {
+        if isInitialLoad {
             fetchedSymbols = await fetchInitialLoad(isWeekend: isWeekend)
         } else if scheduleInfo.state == .closed || isWeekend {
             fetchedSymbols = await fetchClosedMarket()
@@ -376,8 +377,11 @@ class MenuBarController: NSObject, ObservableObject {
 
         self.lastRefreshTime = Date()
         attachYTDPricesToQuotes()
-        let fetchedCaps = await stockService.fetchMarketCaps(symbols: config.watchlist)
-        marketCaps.merge(fetchedCaps) { _, new in new }
+
+        if isInitialLoad || scheduleInfo.state == .open {
+            let fetchedCaps = await stockService.fetchMarketCaps(symbols: config.watchlist)
+            marketCaps.merge(fetchedCaps) { _, new in new }
+        }
         attachMarketCapsToQuotes()
         highlightFetchedSymbols(fetchedSymbols)
 
