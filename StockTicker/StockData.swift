@@ -76,6 +76,7 @@ struct QuoteResponseData: Codable {
 struct QuoteResult: Codable {
     let symbol: String
     let marketCap: Double?
+    let quoteType: String?
 }
 
 // MARK: - Trading Session

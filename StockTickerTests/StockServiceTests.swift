@@ -299,6 +299,42 @@ final class YahooQuoteResponseTests: XCTestCase {
         XCTAssertNil(decoded.quoteResponse.result[0].marketCap)
     }
 
+    func testDecoding_parsesQuoteType() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": [
+                    {"symbol": "AAPL", "marketCap": 3759435415552, "quoteType": "EQUITY"},
+                    {"symbol": "SPY", "marketCap": 625697882112, "quoteType": "ETF"},
+                    {"symbol": "BTC-USD", "marketCap": 1366578429952, "quoteType": "CRYPTOCURRENCY"}
+                ]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertEqual(decoded.quoteResponse.result[0].quoteType, "EQUITY")
+        XCTAssertEqual(decoded.quoteResponse.result[1].quoteType, "ETF")
+        XCTAssertEqual(decoded.quoteResponse.result[2].quoteType, "CRYPTOCURRENCY")
+    }
+
+    func testDecoding_missingQuoteType_parsesAsNil() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": [
+                    {"symbol": "AAPL", "marketCap": 100}
+                ]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertNil(decoded.quoteResponse.result[0].quoteType)
+    }
+
     func testDecoding_emptyResult_parsesSuccessfully() throws {
         let json = """
         {

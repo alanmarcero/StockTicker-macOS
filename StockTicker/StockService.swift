@@ -135,7 +135,7 @@ actor StockService: StockServiceProtocol {
         }
 
         let symbolList = symbols.joined(separator: ",")
-        guard let url = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap") else {
+        guard let url = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap,quoteType") else {
             return nil
         }
 
@@ -148,9 +148,8 @@ actor StockService: StockServiceProtocol {
             let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
             var result: [String: Double] = [:]
             for quote in decoded.quoteResponse.result {
-                if let cap = quote.marketCap {
-                    result[quote.symbol] = cap
-                }
+                guard quote.quoteType != "ETF", let cap = quote.marketCap else { continue }
+                result[quote.symbol] = cap
             }
             return result
         } catch {
