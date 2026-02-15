@@ -255,6 +255,65 @@ final class StockServiceTests: XCTestCase {
     }
 }
 
+// MARK: - YahooQuoteResponse Decoding Tests
+
+final class YahooQuoteResponseTests: XCTestCase {
+
+    func testDecoding_validResponse_parsesMarketCap() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": [
+                    {"symbol": "AAPL", "marketCap": 3759435415552},
+                    {"symbol": "MSFT", "marketCap": 2982761988096},
+                    {"symbol": "BTC-USD", "marketCap": 1366578429952}
+                ]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertEqual(decoded.quoteResponse.result.count, 3)
+        XCTAssertEqual(decoded.quoteResponse.result[0].symbol, "AAPL")
+        XCTAssertEqual(decoded.quoteResponse.result[0].marketCap, 3759435415552)
+        XCTAssertEqual(decoded.quoteResponse.result[1].symbol, "MSFT")
+        XCTAssertEqual(decoded.quoteResponse.result[2].symbol, "BTC-USD")
+    }
+
+    func testDecoding_missingMarketCap_parsesAsNil() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": [
+                    {"symbol": "UNKNOWN"}
+                ]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertEqual(decoded.quoteResponse.result.count, 1)
+        XCTAssertEqual(decoded.quoteResponse.result[0].symbol, "UNKNOWN")
+        XCTAssertNil(decoded.quoteResponse.result[0].marketCap)
+    }
+
+    func testDecoding_emptyResult_parsesSuccessfully() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": []
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertTrue(decoded.quoteResponse.result.isEmpty)
+    }
+}
+
 // MARK: - URLResponse.isSuccessfulHTTP Tests
 
 final class URLResponseIsSuccessfulHTTPTests: XCTestCase {

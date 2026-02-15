@@ -8,8 +8,8 @@ final class SortOptionTests: XCTestCase {
     func testRawValue_correctStrings() {
         XCTAssertEqual(SortOption.tickerAsc.rawValue, "Ticker ↑")
         XCTAssertEqual(SortOption.tickerDesc.rawValue, "Ticker ↓")
-        XCTAssertEqual(SortOption.changeAsc.rawValue, "Price Change ↑")
-        XCTAssertEqual(SortOption.changeDesc.rawValue, "Price Change ↓")
+        XCTAssertEqual(SortOption.marketCapAsc.rawValue, "Market Cap ↑")
+        XCTAssertEqual(SortOption.marketCapDesc.rawValue, "Market Cap ↓")
         XCTAssertEqual(SortOption.percentAsc.rawValue, "% Change ↑")
         XCTAssertEqual(SortOption.percentDesc.rawValue, "% Change ↓")
         XCTAssertEqual(SortOption.ytdAsc.rawValue, "YTD % ↑")
@@ -19,8 +19,8 @@ final class SortOptionTests: XCTestCase {
     func testFromConfigString_validStrings() {
         XCTAssertEqual(SortOption.from(configString: "tickerAsc"), .tickerAsc)
         XCTAssertEqual(SortOption.from(configString: "tickerDesc"), .tickerDesc)
-        XCTAssertEqual(SortOption.from(configString: "changeAsc"), .changeAsc)
-        XCTAssertEqual(SortOption.from(configString: "changeDesc"), .changeDesc)
+        XCTAssertEqual(SortOption.from(configString: "marketCapAsc"), .marketCapAsc)
+        XCTAssertEqual(SortOption.from(configString: "marketCapDesc"), .marketCapDesc)
         XCTAssertEqual(SortOption.from(configString: "percentAsc"), .percentAsc)
         XCTAssertEqual(SortOption.from(configString: "percentDesc"), .percentDesc)
         XCTAssertEqual(SortOption.from(configString: "ytdAsc"), .ytdAsc)
@@ -32,11 +32,16 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.from(configString: ""), .percentDesc)
     }
 
+    func testFromConfigString_legacyChangeValues_returnDefault() {
+        XCTAssertEqual(SortOption.from(configString: "changeAsc"), .percentDesc)
+        XCTAssertEqual(SortOption.from(configString: "changeDesc"), .percentDesc)
+    }
+
     func testConfigString_returnsCorrectStrings() {
         XCTAssertEqual(SortOption.tickerAsc.configString, "tickerAsc")
         XCTAssertEqual(SortOption.tickerDesc.configString, "tickerDesc")
-        XCTAssertEqual(SortOption.changeAsc.configString, "changeAsc")
-        XCTAssertEqual(SortOption.changeDesc.configString, "changeDesc")
+        XCTAssertEqual(SortOption.marketCapAsc.configString, "marketCapAsc")
+        XCTAssertEqual(SortOption.marketCapDesc.configString, "marketCapDesc")
         XCTAssertEqual(SortOption.percentAsc.configString, "percentAsc")
         XCTAssertEqual(SortOption.percentDesc.configString, "percentDesc")
         XCTAssertEqual(SortOption.ytdAsc.configString, "ytdAsc")
@@ -55,8 +60,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.allCases.count, 8)
         XCTAssertTrue(SortOption.allCases.contains(.tickerAsc))
         XCTAssertTrue(SortOption.allCases.contains(.tickerDesc))
-        XCTAssertTrue(SortOption.allCases.contains(.changeAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.changeDesc))
+        XCTAssertTrue(SortOption.allCases.contains(.marketCapAsc))
+        XCTAssertTrue(SortOption.allCases.contains(.marketCapDesc))
         XCTAssertTrue(SortOption.allCases.contains(.percentAsc))
         XCTAssertTrue(SortOption.allCases.contains(.percentDesc))
         XCTAssertTrue(SortOption.allCases.contains(.ytdAsc))
@@ -69,10 +74,14 @@ final class SortOptionTests: XCTestCase {
 final class SortOptionSortTests: XCTestCase {
 
     let testQuotes: [String: StockQuote] = [
-        "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .regular),  // +5, +3.45%
-        "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0, session: .regular),  // -10, -3.23%
-        "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 140.0, session: .regular), // 0, 0%
-        "SPY": StockQuote(symbol: "SPY", price: 450.0, previousClose: 440.0, session: .regular),    // +10, +2.27%
+        "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .regular,
+                           marketCap: 3_000_000_000_000),  // +5, +3.45%, $3T
+        "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0, session: .regular,
+                           marketCap: 2_500_000_000_000),  // -10, -3.23%, $2.5T
+        "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 140.0, session: .regular,
+                            marketCap: 1_800_000_000_000), // 0, 0%, $1.8T
+        "SPY": StockQuote(symbol: "SPY", price: 450.0, previousClose: 440.0, session: .regular,
+                          marketCap: 600_000_000_000),     // +10, +2.27%, $600B
     ]
 
     // MARK: - Ticker sorting
@@ -91,22 +100,35 @@ final class SortOptionSortTests: XCTestCase {
         XCTAssertEqual(sorted, ["SPY", "MSFT", "GOOGL", "AAPL"])
     }
 
-    // MARK: - Price change sorting
+    // MARK: - Market cap sorting
 
-    func testSort_changeAsc_sortsByPriceChangeAscending() {
+    func testSort_marketCapAsc_sortsByMarketCapAscending() {
         let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
-        let sorted = SortOption.changeAsc.sort(symbols, using: testQuotes)
+        let sorted = SortOption.marketCapAsc.sort(symbols, using: testQuotes)
 
-        // MSFT: -10, GOOGL: 0, AAPL: +5, SPY: +10
-        XCTAssertEqual(sorted, ["MSFT", "GOOGL", "AAPL", "SPY"])
+        // SPY: $600B, GOOGL: $1.8T, MSFT: $2.5T, AAPL: $3T
+        XCTAssertEqual(sorted, ["SPY", "GOOGL", "MSFT", "AAPL"])
     }
 
-    func testSort_changeDesc_sortsByPriceChangeDescending() {
+    func testSort_marketCapDesc_sortsByMarketCapDescending() {
         let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
-        let sorted = SortOption.changeDesc.sort(symbols, using: testQuotes)
+        let sorted = SortOption.marketCapDesc.sort(symbols, using: testQuotes)
 
-        // SPY: +10, AAPL: +5, GOOGL: 0, MSFT: -10
-        XCTAssertEqual(sorted, ["SPY", "AAPL", "GOOGL", "MSFT"])
+        // AAPL: $3T, MSFT: $2.5T, GOOGL: $1.8T, SPY: $600B
+        XCTAssertEqual(sorted, ["AAPL", "MSFT", "GOOGL", "SPY"])
+    }
+
+    func testSort_marketCapDesc_missingCap_treatsAsZero() {
+        let quotesWithMissing: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .regular,
+                               marketCap: 3_000_000_000_000),
+            "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0, session: .regular),
+        ]
+        let symbols = ["AAPL", "MSFT"]
+        let sorted = SortOption.marketCapDesc.sort(symbols, using: quotesWithMissing)
+
+        // AAPL: $3T, MSFT: nil (treated as 0)
+        XCTAssertEqual(sorted, ["AAPL", "MSFT"])
     }
 
     // MARK: - Percent change sorting
@@ -183,9 +205,9 @@ final class SortOptionSortTests: XCTestCase {
 
     func testSort_missingQuotes_treatsAsZero() {
         let symbols = ["AAPL", "UNKNOWN"]
-        let sorted = SortOption.changeDesc.sort(symbols, using: testQuotes)
+        let sorted = SortOption.marketCapDesc.sort(symbols, using: testQuotes)
 
-        // AAPL has +5 change, UNKNOWN treated as 0
+        // AAPL has $3T cap, UNKNOWN treated as 0
         XCTAssertEqual(sorted, ["AAPL", "UNKNOWN"])
     }
 
@@ -193,10 +215,10 @@ final class SortOptionSortTests: XCTestCase {
         let emptyQuotes: [String: StockQuote] = [:]
         let symbols = ["SPY", "AAPL", "QQQ"]
 
-        // With no quotes, all changes are 0, so order depends on stable sort
-        let sorted = SortOption.changeDesc.sort(symbols, using: emptyQuotes)
+        // With no quotes, all caps are 0, so order depends on stable sort
+        let sorted = SortOption.marketCapDesc.sort(symbols, using: emptyQuotes)
 
-        // All have 0 change, should maintain relative order based on sort stability
+        // All have 0 cap, should maintain relative order based on sort stability
         XCTAssertEqual(sorted.count, 3)
     }
 }

@@ -257,6 +257,57 @@ final class StockQuoteTests: XCTestCase {
         XCTAssertTrue(quote.formattedChangePercent.hasSuffix("%"))
     }
 
+    // MARK: - Market Cap
+
+    func testFormattedMarketCap_withValue_formatsAbbreviated() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular,
+            marketCap: 3_760_000_000_000
+        )
+        XCTAssertEqual(quote.formattedMarketCap, "$3.8T")
+    }
+
+    func testFormattedMarketCap_nilValue_returnsDash() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular
+        )
+        XCTAssertEqual(quote.formattedMarketCap, "--")
+    }
+
+    func testWithMarketCap_preservesOtherFields() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular,
+            ytdStartPrice: 140.0
+        )
+        let updated = quote.withMarketCap(3_000_000_000_000)
+        XCTAssertEqual(updated.symbol, "AAPL")
+        XCTAssertEqual(updated.price, 150.0)
+        XCTAssertEqual(updated.ytdStartPrice, 140.0)
+        XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+    }
+
+    func testWithYTDStartPrice_preservesMarketCap() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular,
+            marketCap: 3_000_000_000_000
+        )
+        let updated = quote.withYTDStartPrice(140.0)
+        XCTAssertEqual(updated.ytdStartPrice, 140.0)
+        XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+    }
+
     // MARK: - Extended hours with CLOSED session (time-based fallback)
 
     func testHasExtendedHoursData_closedSessionWithPostMarketData_usesTimeBased() {
@@ -471,5 +522,36 @@ final class FormattingTests: XCTestCase {
 
     func testSignedPercent_zero() {
         XCTAssertEqual(Formatting.signedPercent(0, isPositive: true), "+0.00%")
+    }
+
+    // MARK: - Market Cap Formatting
+
+    func testMarketCap_trillions_oneDecimal() {
+        XCTAssertEqual(Formatting.marketCap(3_760_000_000_000), "$3.8T")
+        XCTAssertEqual(Formatting.marketCap(1_100_000_000_000), "$1.1T")
+    }
+
+    func testMarketCap_trillions_largeNoDecimal() {
+        XCTAssertEqual(Formatting.marketCap(100_000_000_000_000), "$100T")
+    }
+
+    func testMarketCap_billions_threeDigitNoDecimal() {
+        XCTAssertEqual(Formatting.marketCap(131_000_000_000), "$131B")
+        XCTAssertEqual(Formatting.marketCap(626_000_000_000), "$626B")
+    }
+
+    func testMarketCap_billions_oneDecimal() {
+        XCTAssertEqual(Formatting.marketCap(12_300_000_000), "$12.3B")
+        XCTAssertEqual(Formatting.marketCap(3_800_000_000), "$3.8B")
+    }
+
+    func testMarketCap_millions() {
+        XCTAssertEqual(Formatting.marketCap(115_000_000), "$115M")
+        XCTAssertEqual(Formatting.marketCap(17_400_000), "$17.4M")
+        XCTAssertEqual(Formatting.marketCap(1_500_000), "$1.5M")
+    }
+
+    func testMarketCap_belowMillion() {
+        XCTAssertEqual(Formatting.marketCap(500_000), "$500000")
     }
 }

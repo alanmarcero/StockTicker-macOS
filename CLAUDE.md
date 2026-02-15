@@ -33,15 +33,15 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (20 files, ~4,895 lines)
+## Source Files (20 files, ~5,028 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (999L)  Main controller: menu bar UI, state, display styling
-MenuBarController+Cache.swift    (87L)   Extension: YTD and quarterly cache coordination methods
+MenuBarView.swift                (1003L) Main controller: menu bar UI, state, display styling
+MenuBarController+Cache.swift    (97L)   Extension: YTD, quarterly, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (259L)  Yahoo Finance API client (actor)
-StockData.swift                  (383L)  Data models: StockQuote, TradingSession, TradingHours, Formatting enum
+StockService.swift               (315L)  Yahoo Finance API client (actor), market cap via v7 quote API
+StockData.swift                  (446L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (375L)  Config loading/saving, OpaqueContainerView, ColorMapping, protocols
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
@@ -58,18 +58,18 @@ QuarterlyPanelView.swift         (402L)  Quarterly performance window: view mode
 LayoutConfig.swift               (77L)   Centralized layout constants
 ```
 
-## Test Files (20 files, ~5,626 lines)
+## Test Files (20 files, ~5,789 lines)
 
 ```
-StockDataTests.swift          (475L)  Quote calculations, session detection, formatting
-StockServiceTests.swift       (288L)  API mocking, fetch operations, extended hours
+StockDataTests.swift          (557L)  Quote calculations, session detection, formatting, market cap
+StockServiceTests.swift       (347L)  API mocking, fetch operations, extended hours, v7 response decoding
 MarketScheduleTests.swift     (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift       (682L)  Config load/save, encoding, legacy backward compat
 TickerEditorStateTests.swift  (314L)  Editor state machine, validation
 TickerListOperationsTests.swift (212L) Pure watchlist function tests
 TickerValidatorTests.swift    (406L)  Symbol validation, HTTP mocking
 TickerAddErrorTests.swift     (95L)   Error enum and result type tests
-MenuBarViewTests.swift        (202L)  SortOption tests, sorting with quotes (including YTD)
+MenuBarViewTests.swift        (224L)  SortOption tests, sorting with quotes (market cap, YTD)
 MarqueeViewTests.swift        (106L)  Config constants, layer setup, scrolling, ping animation
 MenuItemFactoryTests.swift    (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift           (289L)  Cache load/save, year rollover, DateProvider injection
@@ -177,7 +177,7 @@ All magic numbers are extracted into namespaced enums:
 - `WatchlistOperations` — symbol add/remove/sort operations
 - `SortOption.sort()` — sorting with quote context
 - Color helpers: `priceChangeColor()`, `ColorMapping.nsColor(from:)`, `ColorMapping.color(from:)`
-- Formatting: `Formatting.currency()`, `Formatting.signedCurrency()`, `Formatting.signedPercent()`
+- Formatting: `Formatting.currency()`, `Formatting.signedCurrency()`, `Formatting.signedPercent()`, `Formatting.marketCap()`
 - `QuarterCalculation` — quarter date math, identifier/label generation
 
 ### Callback Cleanup
@@ -191,10 +191,22 @@ Batches 5 highlight parameters into a single struct with `resolve()`, `withPingB
 
 ## API Integration
 
-### Yahoo Finance Chart API (v8)
+### Yahoo Finance Chart API (v8) — Price Data
 ```
 https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}?interval=1m&range=1d&includePrePost=true
 ```
+
+### Yahoo Finance Quote API (v7) — Market Cap
+```
+https://query2.finance.yahoo.com/v7/finance/quote?symbols={SYMBOLS}&crumb={CRUMB}&fields=marketCap
+```
+
+Requires crumb/cookie authentication. StockService manages this internally:
+1. `GET https://fc.yahoo.com/v1/test` → establishes cookies in URLSession.shared
+2. `GET https://query2.finance.yahoo.com/v1/test/getcrumb` → returns crumb string
+3. Use crumb + cookies for v7 quote requests. Crumb auto-refreshes on 401.
+
+Batch request for all watchlist symbols. Returns `marketCap` per symbol. Fetched each refresh cycle alongside chart data. Response: `YahooQuoteResponse` → `QuoteResponseData` → `[QuoteResult]`.
 
 ### HTTP Client Architecture
 ```
@@ -308,7 +320,7 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 - **Countdown** — Shows last refresh time and seconds until next: `"Last: 10:32 AM · Next in 12s"`
 - **Index marquee** — `MarqueeView` custom NSView scrolling at ~32px/sec with seamless looping. Bold index names, regular weight values. Ping animation on data refresh.
 - **News headlines** — Proportional font (headlineFont/headlineFontBold). Top-from-source uses highlight background.
-- **Ticker list** — Sorted by `defaultSort`, shows price/change/percent/YTD/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
+- **Ticker list** — Sorted by `defaultSort`, shows price/market cap/percent/YTD/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
 - **Submenus** — Edit Watchlist, Quarterly Performance, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
 
 ### Color Helpers
@@ -345,7 +357,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 
 Saved with `prettyPrinted` and `sortedKeys`. Supports legacy field names via `decodeLegacy()` helper.
 
-Sort options: `tickerAsc`/`Desc`, `changeAsc`/`Desc`, `percentAsc`/`Desc`, `ytdAsc`/`Desc`
+Sort options: `tickerAsc`/`Desc`, `marketCapAsc`/`Desc`, `percentAsc`/`Desc`, `ytdAsc`/`Desc`
 
 Highlight colors: `yellow`, `green`, `blue`, `red`, `orange`, `purple`, `pink`, `cyan`, `teal`, `gray`, `brown`
 

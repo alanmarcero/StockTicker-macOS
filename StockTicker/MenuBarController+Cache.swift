@@ -84,4 +84,14 @@ extension MenuBarController {
             }
         }
     }
+
+    // MARK: - Market Cap Attachment
+
+    func attachMarketCapsToQuotes() {
+        for (symbol, quote) in quotes {
+            if let cap = marketCaps[symbol] {
+                quotes[symbol] = quote.withMarketCap(cap)
+            }
+        }
+    }
 }

@@ -63,6 +63,21 @@ struct ChartMeta: Codable {
     let postMarketChangePercent: Double?
 }
 
+// MARK: - Yahoo Finance Quote API Response Models (v7)
+
+struct YahooQuoteResponse: Codable {
+    let quoteResponse: QuoteResponseData
+}
+
+struct QuoteResponseData: Codable {
+    let result: [QuoteResult]
+}
+
+struct QuoteResult: Codable {
+    let symbol: String
+    let marketCap: Double?
+}
+
 // MARK: - Trading Session
 
 enum TradingSession: Sendable {
@@ -115,10 +130,13 @@ struct StockQuote: Identifiable, Sendable {
     // YTD data (Dec 31 close price of previous year)
     let ytdStartPrice: Double?
 
+    // Market capitalization
+    let marketCap: Double?
+
     init(symbol: String, price: Double, previousClose: Double, session: TradingSession = .closed,
          preMarketPrice: Double? = nil, preMarketChange: Double? = nil, preMarketChangePercent: Double? = nil,
          postMarketPrice: Double? = nil, postMarketChange: Double? = nil, postMarketChangePercent: Double? = nil,
-         ytdStartPrice: Double? = nil) {
+         ytdStartPrice: Double? = nil, marketCap: Double? = nil) {
         self.id = UUID()
         self.symbol = symbol
         self.price = price
@@ -131,6 +149,7 @@ struct StockQuote: Identifiable, Sendable {
         self.postMarketChange = postMarketChange
         self.postMarketChangePercent = postMarketChangePercent
         self.ytdStartPrice = ytdStartPrice
+        self.marketCap = marketCap
     }
 
     // Regular market change (always based on regular price)
@@ -199,6 +218,11 @@ struct StockQuote: Identifiable, Sendable {
 
     var formattedChangePercent: String {
         Formatting.signedPercent(changePercent, isPositive: isPositive)
+    }
+
+    var formattedMarketCap: String {
+        guard let cap = marketCap else { return "--" }
+        return Formatting.marketCap(cap)
     }
 
     // MARK: - Extended Hours Display
@@ -351,6 +375,26 @@ enum Formatting {
         let sign = isPositive ? "+" : ""
         return String(format: "%@%.2f%%", sign, value)
     }
+
+    static func marketCap(_ value: Double) -> String {
+        let trillion = 1_000_000_000_000.0
+        let billion = 1_000_000_000.0
+        let million = 1_000_000.0
+
+        if value >= trillion {
+            let v = value / trillion
+            return v >= 100 ? String(format: "$%.0fT", v) : String(format: "$%.1fT", v)
+        }
+        if value >= billion {
+            let v = value / billion
+            return v >= 100 ? String(format: "$%.0fB", v) : String(format: "$%.1fB", v)
+        }
+        if value >= million {
+            let v = value / million
+            return v >= 100 ? String(format: "$%.0fM", v) : String(format: "$%.1fM", v)
+        }
+        return String(format: "$%.0f", value)
+    }
 }
 
 // MARK: - Placeholder
@@ -377,7 +421,26 @@ extension StockQuote {
             postMarketPrice: postMarketPrice,
             postMarketChange: postMarketChange,
             postMarketChangePercent: postMarketChangePercent,
-            ytdStartPrice: ytdPrice
+            ytdStartPrice: ytdPrice,
+            marketCap: marketCap
+        )
+    }
+
+    /// Returns a new StockQuote with the market cap set
+    func withMarketCap(_ cap: Double?) -> StockQuote {
+        StockQuote(
+            symbol: symbol,
+            price: price,
+            previousClose: previousClose,
+            session: session,
+            preMarketPrice: preMarketPrice,
+            preMarketChange: preMarketChange,
+            preMarketChangePercent: preMarketChangePercent,
+            postMarketPrice: postMarketPrice,
+            postMarketChange: postMarketChange,
+            postMarketChangePercent: postMarketChangePercent,
+            ytdStartPrice: ytdStartPrice,
+            marketCap: cap
         )
     }
 }

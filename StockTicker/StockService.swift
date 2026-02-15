@@ -6,6 +6,7 @@ protocol StockServiceProtocol: Sendable {
     func fetchQuote(symbol: String) async -> StockQuote?
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote]
     func fetchMarketState(symbol: String) async -> String?
+    func fetchMarketCaps(symbols: [String]) async -> [String: Double]
     func fetchYTDStartPrice(symbol: String) async -> Double?
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double]
     func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double?
@@ -31,6 +32,11 @@ extension URLResponse {
 actor StockService: StockServiceProtocol {
     private let httpClient: HTTPClient
     private let baseURL = "https://query1.finance.yahoo.com/v8/finance/chart/"
+    private var crumb: String?
+
+    private enum MarketCapConfig {
+        static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+    }
 
     init(httpClient: HTTPClient = LoggingHTTPClient()) {
         self.httpClient = httpClient
@@ -90,6 +96,66 @@ actor StockService: StockServiceProtocol {
     func fetchMarketState(symbol: String = "SPY") async -> String? {
         guard let response = await fetchChartData(symbol: symbol) else { return nil }
         return response.chart.result?.first?.meta.marketState
+    }
+
+    // MARK: - Market Cap (v7 Quote API)
+
+    func fetchMarketCaps(symbols: [String]) async -> [String: Double] {
+        guard !symbols.isEmpty else { return [:] }
+
+        if crumb == nil { await refreshCrumb() }
+
+        if let result = await performMarketCapFetch(symbols: symbols) {
+            return result
+        }
+
+        // Crumb may have expired, refresh and retry once
+        await refreshCrumb()
+        return await performMarketCapFetch(symbols: symbols) ?? [:]
+    }
+
+    private func refreshCrumb() async {
+        guard let testURL = URL(string: "https://fc.yahoo.com/v1/test") else { return }
+        var testRequest = URLRequest(url: testURL)
+        testRequest.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
+        _ = try? await URLSession.shared.data(for: testRequest)
+
+        guard let crumbURL = URL(string: "https://query2.finance.yahoo.com/v1/test/getcrumb") else { return }
+        var crumbRequest = URLRequest(url: crumbURL)
+        crumbRequest.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: crumbRequest),
+              response.isSuccessfulHTTP else { return }
+        crumb = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func performMarketCapFetch(symbols: [String]) async -> [String: Double]? {
+        guard let crumb = crumb,
+              let encodedCrumb = crumb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return nil
+        }
+
+        let symbolList = symbols.joined(separator: ",")
+        guard let url = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap") else {
+            return nil
+        }
+
+        do {
+            var request = URLRequest(url: url)
+            request.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+            var result: [String: Double] = [:]
+            for quote in decoded.quoteResponse.result {
+                if let cap = quote.marketCap {
+                    result[quote.symbol] = cap
+                }
+            }
+            return result
+        } catch {
+            return nil
+        }
     }
 
     func fetchYTDStartPrice(symbol: String) async -> Double? {

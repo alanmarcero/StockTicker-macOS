@@ -58,7 +58,7 @@ private enum Layout {
 
     static let tickerSymbolWidth = LayoutConfig.Ticker.symbolWidth
     static let tickerPriceWidth = LayoutConfig.Ticker.priceWidth
-    static let tickerChangeWidth = LayoutConfig.Ticker.changeWidth
+    static let tickerMarketCapWidth = LayoutConfig.Ticker.marketCapWidth
     static let tickerPercentWidth = LayoutConfig.Ticker.percentWidth
     static let tickerYTDWidth = LayoutConfig.Ticker.ytdWidth
     static let tickerExtendedHoursWidth = LayoutConfig.Ticker.extendedHoursWidth
@@ -182,6 +182,7 @@ class MenuBarController: NSObject, ObservableObject {
     let quarterlyCacheManager: QuarterlyCacheManager
     var quarterlyPrices: [String: [String: Double]] = [:]
     var quarterInfos: [QuarterInfo] = []
+    var marketCaps: [String: Double] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -375,6 +376,9 @@ class MenuBarController: NSObject, ObservableObject {
 
         self.lastRefreshTime = Date()
         attachYTDPricesToQuotes()
+        let fetchedCaps = await stockService.fetchMarketCaps(symbols: config.watchlist)
+        marketCaps.merge(fetchedCaps) { _, new in new }
+        attachMarketCapsToQuotes()
         highlightFetchedSymbols(fetchedSymbols)
 
         quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices)
@@ -759,7 +763,7 @@ class MenuBarController: NSObject, ObservableObject {
         // Main price line
         let symbolStr = quote.symbol.padding(toLength: Layout.tickerSymbolWidth, withPad: " ", startingAt: 0)
         let priceStr = quote.formattedPrice.padding(toLength: Layout.tickerPriceWidth, withPad: " ", startingAt: 0)
-        let changeStr = quote.formattedChange.padding(toLength: Layout.tickerChangeWidth, withPad: " ", startingAt: 0)
+        let marketCapStr = quote.formattedMarketCap.padding(toLength: Layout.tickerMarketCapWidth, withPad: " ", startingAt: 0)
         let percentStr = quote.formattedChangePercent.padding(
             toLength: Layout.tickerPercentWidth, withPad: " ", startingAt: 0
         )
@@ -769,7 +773,7 @@ class MenuBarController: NSObject, ObservableObject {
             : highlight
         let (mainColor, mainBgColor) = mainHighlight.resolve(defaultColor: quote.displayColor)
 
-        result.append(.styled("\(symbolStr) \(priceStr) \(changeStr) \(percentStr)",
+        result.append(.styled("\(symbolStr) \(priceStr) \(marketCapStr) \(percentStr)",
                               font: MenuItemFactory.monoFont, color: mainColor, backgroundColor: mainBgColor))
 
         // YTD display
