@@ -540,15 +540,15 @@ final class FormattingTests: XCTestCase {
         XCTAssertEqual(Formatting.marketCap(626_000_000_000), "$626B")
     }
 
-    func testMarketCap_billions_oneDecimal() {
-        XCTAssertEqual(Formatting.marketCap(12_300_000_000), "$12.3B")
-        XCTAssertEqual(Formatting.marketCap(3_800_000_000), "$3.8B")
+    func testMarketCap_billions_rounded() {
+        XCTAssertEqual(Formatting.marketCap(12_300_000_000), "$12B")
+        XCTAssertEqual(Formatting.marketCap(3_800_000_000), "$4B")
     }
 
     func testMarketCap_millions() {
         XCTAssertEqual(Formatting.marketCap(115_000_000), "$115M")
-        XCTAssertEqual(Formatting.marketCap(17_400_000), "$17.4M")
-        XCTAssertEqual(Formatting.marketCap(1_500_000), "$1.5M")
+        XCTAssertEqual(Formatting.marketCap(17_400_000), "$17M")
+        XCTAssertEqual(Formatting.marketCap(1_500_000), "$2M")
     }
 
     func testMarketCap_belowMillion() {

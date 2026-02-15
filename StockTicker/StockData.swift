@@ -387,12 +387,10 @@ enum Formatting {
             return v >= 100 ? String(format: "$%.0fT", v) : String(format: "$%.1fT", v)
         }
         if value >= billion {
-            let v = value / billion
-            return v >= 100 ? String(format: "$%.0fB", v) : String(format: "$%.1fB", v)
+            return String(format: "$%.0fB", (value / billion).rounded())
         }
         if value >= million {
-            let v = value / million
-            return v >= 100 ? String(format: "$%.0fM", v) : String(format: "$%.1fM", v)
+            return String(format: "$%.0fM", (value / million).rounded())
         }
         return String(format: "$%.0f", value)
     }
