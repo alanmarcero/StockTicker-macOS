@@ -79,9 +79,6 @@ private enum Strings {
 
 private enum Timing {
     static let highlightFadeStep: CGFloat = 0.03
-    static let highlightFadeInterval: TimeInterval = 0.05
-    static let countdownUpdateInterval: TimeInterval = 1.0
-    static let scheduleRefreshInterval: TimeInterval = 4 * 60 * 60  // 4 hours
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
 }
@@ -168,12 +165,7 @@ class MenuBarController: NSObject, ObservableObject {
     // MARK: - Private State
 
     private var statusItem: NSStatusItem?
-    private var cycleTimer: Timer?
-    private var refreshTimer: Timer?
-    private var countdownTimer: Timer?
-    private var scheduleRefreshTimer: Timer?
-    private var highlightTimer: Timer?
-    private var newsRefreshTimer: Timer?
+    private let timerManager = TimerManager()
     var indexQuotes: [String: StockQuote] = [:]
     private var newsItems: [NewsItem] = []
     private var marqueeView: MarqueeView?
@@ -217,6 +209,7 @@ class MenuBarController: NSObject, ObservableObject {
 
         super.init()
 
+        timerManager.delegate = self
         setupStatusItem()
         startTimers()
         Task {
@@ -323,74 +316,25 @@ class MenuBarController: NSObject, ObservableObject {
     // MARK: - Timer Management
 
     private func startTimers() {
-        cycleTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(config.menuBarRotationInterval), repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.cycleToNextTicker() }
-        }
-
-        refreshTimer = createCommonModeTimer(interval: TimeInterval(config.refreshInterval)) { [weak self] in
-            Task { @MainActor in await self?.refreshAllQuotes() }
-        }
-
-        updateCountdown()
-        countdownTimer = createCommonModeTimer(interval: Timing.countdownUpdateInterval) { [weak self] in
-            DispatchQueue.main.async { self?.updateCountdown() }
-        }
-
-        scheduleRefreshTimer = Timer.scheduledTimer(withTimeInterval: Timing.scheduleRefreshInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.updateMarketStatus() }
-        }
-
-        // News refresh timer (separate from stock refresh, typically every 5 minutes)
-        if config.showNewsHeadlines {
-            newsRefreshTimer = createCommonModeTimer(interval: TimeInterval(config.newsRefreshInterval)) { [weak self] in
-                Task { @MainActor in await self?.refreshNews() }
-            }
-        }
-
-        scheduleMidnightRefresh()
-    }
-
-    private func createCommonModeTimer(interval: TimeInterval, block: @escaping () -> Void) -> Timer {
-        let timer = Timer(timeInterval: interval, repeats: true) { _ in block() }
-        RunLoop.main.add(timer, forMode: .common)
-        return timer
+        timerManager.startTimers(
+            cycleInterval: config.menuBarRotationInterval,
+            refreshInterval: config.refreshInterval,
+            newsEnabled: config.showNewsHeadlines,
+            newsInterval: config.newsRefreshInterval
+        )
     }
 
     private func stopTimers() {
-        [cycleTimer, refreshTimer, countdownTimer, scheduleRefreshTimer, newsRefreshTimer].forEach { $0?.invalidate() }
-        cycleTimer = nil
-        refreshTimer = nil
-        countdownTimer = nil
-        scheduleRefreshTimer = nil
-        newsRefreshTimer = nil
+        timerManager.stopTimers()
         marqueeView?.stopScrolling()
     }
 
-    private func scheduleMidnightRefresh() {
-        let calendar = Calendar.current
-        guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: Date()),
-              let midnight = calendar.date(bySettingHour: 0, minute: 0, second: 5, of: tomorrow) else { return }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + midnight.timeIntervalSinceNow) { [weak self] in
-            Task { @MainActor in
-                self?.updateMarketStatus()
-                self?.scheduleMidnightRefresh()
-            }
-        }
-    }
-
-    // MARK: - Highlight Timer
-
     private func startHighlightTimer() {
-        highlightTimer?.invalidate()
-        highlightTimer = createCommonModeTimer(interval: Timing.highlightFadeInterval) { [weak self] in
-            DispatchQueue.main.async { self?.updateHighlights() }
-        }
+        timerManager.startHighlightTimer()
     }
 
     private func stopHighlightTimer() {
-        highlightTimer?.invalidate()
-        highlightTimer = nil
+        timerManager.stopHighlightTimer()
     }
 
     private func updateHighlights() {
@@ -1019,5 +963,37 @@ extension MenuBarController: NSMenuDelegate {
             highlightIntensity.removeAll()
             marqueeView?.stopScrolling()
         }
+    }
+}
+
+// MARK: - TimerManagerDelegate
+
+extension MenuBarController: TimerManagerDelegate {
+    func timerManagerCycleTick() {
+        cycleToNextTicker()
+    }
+
+    func timerManagerRefreshTick() async {
+        await refreshAllQuotes()
+    }
+
+    func timerManagerCountdownTick() {
+        updateCountdown()
+    }
+
+    func timerManagerScheduleRefreshTick() {
+        updateMarketStatus()
+    }
+
+    func timerManagerNewsRefreshTick() async {
+        await refreshNews()
+    }
+
+    func timerManagerHighlightTick() {
+        updateHighlights()
+    }
+
+    func timerManagerMidnightTick() {
+        updateMarketStatus()
     }
 }

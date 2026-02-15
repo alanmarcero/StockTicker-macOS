@@ -320,7 +320,7 @@ struct QuarterlyPanelView: View {
     private func cellView(_ change: Double?) -> some View {
         Group {
             if let pct = change {
-                Text(formatSignedPercent(pct, isPositive: pct >= 0))
+                Text(Formatting.signedPercent(pct, isPositive: pct >= 0))
                     .foregroundColor(cellColor(pct))
             } else {
                 Text(QuarterlyFormatting.noData)

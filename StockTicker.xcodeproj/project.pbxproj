@@ -45,6 +45,9 @@ I1000003232C5A0000000001 /* QuarterlyPanelTests.swift in Sources */ = {isa = PBX
 J1000001232C5A0000000001 /* TestUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = J1000002232C5A0000000001 /* TestUtilities.swift */; };
 K1000001232C5A0000000001 /* MenuBarController+Cache.swift in Sources */ = {isa = PBXBuildFile; fileRef = K1000002232C5A0000000001 /* MenuBarController+Cache.swift */; };
 K1000003232C5A0000000001 /* ColorMappingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K1000004232C5A0000000001 /* ColorMappingTests.swift */; };
+L1000001232C5A0000000001 /* TimerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000002232C5A0000000001 /* TimerManager.swift */; };
+L1000003232C5A0000000001 /* TimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000004232C5A0000000001 /* TimerManagerTests.swift */; };
+L1000005232C5A0000000001 /* RequestLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000006232C5A0000000001 /* RequestLoggerTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +102,9 @@ I1000004232C5A0000000001 /* QuarterlyPanelTests.swift */ = {isa = PBXFileReferen
 J1000002232C5A0000000001 /* TestUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestUtilities.swift; sourceTree = "<group>"; };
 K1000002232C5A0000000001 /* MenuBarController+Cache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MenuBarController+Cache.swift"; sourceTree = "<group>"; };
 K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorMappingTests.swift; sourceTree = "<group>"; };
+L1000002232C5A0000000001 /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
+L1000004232C5A0000000001 /* TimerManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManagerTests.swift; sourceTree = "<group>"; };
+L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestLoggerTests.swift; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,6 +156,7 @@ K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference
 				F1000002232C5A0000000001 /* SortOption.swift */,
 				F1000004232C5A0000000001 /* MarqueeView.swift */,
 				F1000006232C5A0000000001 /* MenuItemFactory.swift */,
+				L1000002232C5A0000000001 /* TimerManager.swift */,
 				A100000C232C5A0000000001 /* Assets.xcassets */,
 				A100000D232C5A0000000001 /* Info.plist */,
 			);
@@ -186,6 +193,8 @@ K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference
 				G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */,
 				J1000002232C5A0000000001 /* TestUtilities.swift */,
 				K1000004232C5A0000000001 /* ColorMappingTests.swift */,
+				L1000004232C5A0000000001 /* TimerManagerTests.swift */,
+				L1000006232C5A0000000001 /* RequestLoggerTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -308,6 +317,7 @@ K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference
 				F1000003232C5A0000000001 /* MarqueeView.swift in Sources */,
 				F1000005232C5A0000000001 /* MenuItemFactory.swift in Sources */,
 				K1000001232C5A0000000001 /* MenuBarController+Cache.swift in Sources */,
+				L1000001232C5A0000000001 /* TimerManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,6 +343,8 @@ K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference
 				G1000003232C5A0000000001 /* MenuItemFactoryTests.swift in Sources */,
 				J1000001232C5A0000000001 /* TestUtilities.swift in Sources */,
 				K1000003232C5A0000000001 /* ColorMappingTests.swift in Sources */,
+				L1000003232C5A0000000001 /* TimerManagerTests.swift in Sources */,
+				L1000005232C5A0000000001 /* RequestLoggerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

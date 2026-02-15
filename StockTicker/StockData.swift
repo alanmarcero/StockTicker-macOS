@@ -190,15 +190,15 @@ struct StockQuote: Identifiable, Sendable {
     }
 
     var formattedPrice: String {
-        formatCurrency(price)
+        Formatting.currency(price)
     }
 
     var formattedChange: String {
-        formatSignedCurrency(change, isPositive: isPositive)
+        Formatting.signedCurrency(change, isPositive: isPositive)
     }
 
     var formattedChangePercent: String {
-        formatSignedPercent(changePercent, isPositive: isPositive)
+        Formatting.signedPercent(changePercent, isPositive: isPositive)
     }
 
     // MARK: - Extended Hours Display
@@ -258,7 +258,7 @@ struct StockQuote: Identifiable, Sendable {
 
     var formattedExtendedHoursChangePercent: String? {
         guard let percent = extendedHoursChangePercent else { return nil }
-        return formatSignedPercent(percent, isPositive: percent >= 0)
+        return Formatting.signedPercent(percent, isPositive: percent >= 0)
     }
 
     var extendedHoursIsPositive: Bool {
@@ -316,7 +316,7 @@ struct StockQuote: Identifiable, Sendable {
     /// Formatted YTD percentage string (e.g., "+4.35%")
     var formattedYTDChangePercent: String? {
         guard let percent = ytdChangePercent else { return nil }
-        return formatSignedPercent(percent, isPositive: percent >= 0)
+        return Formatting.signedPercent(percent, isPositive: percent >= 0)
     }
 
     /// YTD is positive or unchanged
@@ -327,28 +327,30 @@ struct StockQuote: Identifiable, Sendable {
 
 // MARK: - Formatting Helpers
 
-private let currencyFormatter: NumberFormatter = {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .currency
-    formatter.currencySymbol = "$"
-    formatter.minimumFractionDigits = 2
-    formatter.maximumFractionDigits = 2
-    return formatter
-}()
+enum Formatting {
+    private static let currencyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencySymbol = "$"
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
 
-func formatCurrency(_ value: Double) -> String {
-    currencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "$%.2f", value)
-}
+    static func currency(_ value: Double) -> String {
+        currencyFormatter.string(from: NSNumber(value: value)) ?? String(format: "$%.2f", value)
+    }
 
-func formatSignedCurrency(_ value: Double, isPositive: Bool) -> String {
-    let sign = isPositive ? "+" : "-"
-    let formatted = currencyFormatter.string(from: NSNumber(value: abs(value))) ?? String(format: "$%.2f", abs(value))
-    return "\(sign)\(formatted)"
-}
+    static func signedCurrency(_ value: Double, isPositive: Bool) -> String {
+        let sign = isPositive ? "+" : "-"
+        let formatted = currencyFormatter.string(from: NSNumber(value: abs(value))) ?? String(format: "$%.2f", abs(value))
+        return "\(sign)\(formatted)"
+    }
 
-func formatSignedPercent(_ value: Double, isPositive: Bool) -> String {
-    let sign = isPositive ? "+" : ""
-    return String(format: "%@%.2f%%", sign, value)
+    static func signedPercent(_ value: Double, isPositive: Bool) -> String {
+        let sign = isPositive ? "+" : ""
+        return String(format: "%@%.2f%%", sign, value)
+    }
 }
 
 // MARK: - Placeholder

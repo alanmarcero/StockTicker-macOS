@@ -442,34 +442,34 @@ final class StockQuoteTests: XCTestCase {
 
 final class FormattingTests: XCTestCase {
 
-    func testFormatCurrency_formatsWithCommas() {
-        XCTAssertEqual(formatCurrency(150.50), "$150.50")
-        XCTAssertEqual(formatCurrency(1234.56), "$1,234.56")
-        XCTAssertEqual(formatCurrency(0.99), "$0.99")
-        XCTAssertEqual(formatCurrency(10000.00), "$10,000.00")
+    func testCurrency_formatsWithCommas() {
+        XCTAssertEqual(Formatting.currency(150.50), "$150.50")
+        XCTAssertEqual(Formatting.currency(1234.56), "$1,234.56")
+        XCTAssertEqual(Formatting.currency(0.99), "$0.99")
+        XCTAssertEqual(Formatting.currency(10000.00), "$10,000.00")
     }
 
-    func testFormatSignedCurrency_positiveValue() {
-        XCTAssertEqual(formatSignedCurrency(2.50, isPositive: true), "+$2.50")
+    func testSignedCurrency_positiveValue() {
+        XCTAssertEqual(Formatting.signedCurrency(2.50, isPositive: true), "+$2.50")
     }
 
-    func testFormatSignedCurrency_negativeValue() {
-        XCTAssertEqual(formatSignedCurrency(-2.50, isPositive: false), "-$2.50")
+    func testSignedCurrency_negativeValue() {
+        XCTAssertEqual(Formatting.signedCurrency(-2.50, isPositive: false), "-$2.50")
     }
 
-    func testFormatSignedCurrency_largeValue_hasCommas() {
-        XCTAssertEqual(formatSignedCurrency(1234.56, isPositive: true), "+$1,234.56")
+    func testSignedCurrency_largeValue_hasCommas() {
+        XCTAssertEqual(Formatting.signedCurrency(1234.56, isPositive: true), "+$1,234.56")
     }
 
-    func testFormatSignedPercent_positiveValue() {
-        XCTAssertEqual(formatSignedPercent(5.25, isPositive: true), "+5.25%")
+    func testSignedPercent_positiveValue() {
+        XCTAssertEqual(Formatting.signedPercent(5.25, isPositive: true), "+5.25%")
     }
 
-    func testFormatSignedPercent_negativeValue() {
-        XCTAssertEqual(formatSignedPercent(-5.25, isPositive: false), "-5.25%")
+    func testSignedPercent_negativeValue() {
+        XCTAssertEqual(Formatting.signedPercent(-5.25, isPositive: false), "-5.25%")
     }
 
-    func testFormatSignedPercent_zero() {
-        XCTAssertEqual(formatSignedPercent(0, isPositive: true), "+0.00%")
+    func testSignedPercent_zero() {
+        XCTAssertEqual(Formatting.signedPercent(0, isPositive: true), "+0.00%")
     }
 }

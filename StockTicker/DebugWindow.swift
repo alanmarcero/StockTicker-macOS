@@ -35,17 +35,35 @@ struct DebugView: View {
     }
 
     private var header: some View {
-        HStack {
-            Text("API Requests (Last 60s)")
-                .font(.headline)
-            Spacer()
-            Text("\(viewModel.entries.count) requests")
-                .foregroundColor(.secondary)
-                .font(.caption)
-            Button("Clear") {
-                viewModel.clear()
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("API Requests (Last 60s)")
+                    .font(.headline)
+                if viewModel.errorCount > 0 {
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 8, height: 8)
+                        Text("\(viewModel.errorCount)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.red)
+                    }
+                }
+                Spacer()
+                Text("\(viewModel.entries.count) requests")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+                Button("Clear") {
+                    viewModel.clear()
+                }
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
+            if let errorMessage = viewModel.lastErrorMessage {
+                Text("Last error: \(errorMessage)")
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
         }
         .padding()
     }
@@ -174,11 +192,16 @@ struct RequestRowView: View {
 @MainActor
 class DebugViewModel: ObservableObject {
     @Published var entries: [RequestLogEntry] = []
+    @Published var errorCount: Int = 0
+    @Published var lastErrorMessage: String?
     private var refreshTask: Task<Void, Never>?
 
     func refresh() {
         Task {
             entries = await RequestLogger.shared.getEntries()
+            errorCount = await RequestLogger.shared.getErrorCount()
+            let lastError = await RequestLogger.shared.getLastError()
+            lastErrorMessage = lastError?.error ?? lastError.map { "HTTP \($0.statusCode ?? 0)" }
         }
     }
 
@@ -186,6 +209,8 @@ class DebugViewModel: ObservableObject {
         Task {
             await RequestLogger.shared.clear()
             entries = []
+            errorCount = 0
+            lastErrorMessage = nil
         }
     }
 

@@ -134,7 +134,7 @@ actor RequestLogger {
 
     private var entries: [RequestLogEntry] = []
 
-    private init() {}
+    init() {}
 
     func log(_ entry: RequestLogEntry) {
         pruneOldEntries()
@@ -144,6 +144,16 @@ actor RequestLogger {
     func getEntries() -> [RequestLogEntry] {
         pruneOldEntries()
         return entries.sorted { $0.timestamp > $1.timestamp }
+    }
+
+    func getErrorCount() -> Int {
+        pruneOldEntries()
+        return entries.filter { !$0.isSuccess }.count
+    }
+
+    func getLastError() -> RequestLogEntry? {
+        pruneOldEntries()
+        return entries.filter { !$0.isSuccess }.max { $0.timestamp < $1.timestamp }
     }
 
     func clear() {
