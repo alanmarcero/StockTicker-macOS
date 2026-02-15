@@ -146,13 +146,43 @@ create_config() {
     print_success "Config will be created on first launch"
 }
 
+# Run a command with a timeout (portable, no coreutils needed)
+run_with_timeout() {
+    local secs=$1; shift
+    "$@" &
+    local pid=$!
+    ( sleep "$secs"; kill "$pid" 2>/dev/null ) &
+    local watchdog=$!
+    wait "$pid" 2>/dev/null
+    local rc=$?
+    kill "$watchdog" 2>/dev/null
+    wait "$watchdog" 2>/dev/null
+    return $rc
+}
+
 # Setup login item
 setup_login_item() {
     print_step "Checking login items..."
 
-    # Check if already in login items
-    if osascript -e 'tell application "System Events" to get the name of every login item' 2>/dev/null | grep -q "$APP_NAME"; then
-        print_success "Already configured to start at login"
+    # Check if already in login items (timeout after 5s to avoid hanging on permission prompts)
+    local login_items
+    if login_items=$(run_with_timeout 5 osascript -e 'tell application "System Events" to get the name of every login item' 2>/dev/null); then
+        if echo "$login_items" | grep -q "$APP_NAME"; then
+            print_success "Already configured to start at login"
+            return
+        fi
+    else
+        print_warning "Could not check login items (permission required or timed out)"
+        return
+    fi
+
+    # Non-interactive (piped stdin) — add silently
+    if [[ ! -t 0 ]]; then
+        if run_with_timeout 5 osascript -e "tell application \"System Events\" to make login item at end with properties {path:\"$APP_DEST\", hidden:false}" > /dev/null 2>&1; then
+            print_success "Added to login items"
+        else
+            print_warning "Could not add login item"
+        fi
         return
     fi
 
