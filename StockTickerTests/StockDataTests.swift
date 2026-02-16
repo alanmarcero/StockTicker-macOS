@@ -620,3 +620,67 @@ final class FormattingTests: XCTestCase {
         XCTAssertEqual(Formatting.marketCap(500_000), "$500000")
     }
 }
+
+// MARK: - Yahoo Timeseries Response Tests
+
+final class YahooTimeseriesResponseTests: XCTestCase {
+
+    func testDecoding_validJSON_decodesResponse() throws {
+        let json = """
+        {
+            "timeseries": {
+                "result": [{
+                    "meta": {
+                        "symbol": ["AAPL"],
+                        "type": ["quarterlyForwardPeRatio"]
+                    },
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 28.5, "fmt": "28.50"}},
+                        {"asOfDate": "2025-12-31", "reportedValue": {"raw": 27.8, "fmt": "27.80"}}
+                    ]
+                }]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooTimeseriesResponse.self, from: data)
+
+        XCTAssertNotNil(decoded.timeseries.result)
+        XCTAssertEqual(decoded.timeseries.result?.count, 1)
+
+        let first = decoded.timeseries.result!.first!
+        XCTAssertEqual(first.meta.symbol, ["AAPL"])
+        XCTAssertEqual(first.meta.type, ["quarterlyForwardPeRatio"])
+        XCTAssertEqual(first.quarterlyForwardPeRatio?.count, 2)
+    }
+
+    func testForwardPeEntry_decodesAsOfDateAndValue() throws {
+        let json = """
+        {"asOfDate": "2025-09-30", "reportedValue": {"raw": 30.2, "fmt": "30.20"}}
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ForwardPeEntry.self, from: data)
+
+        XCTAssertEqual(decoded.asOfDate, "2025-09-30")
+        XCTAssertEqual(decoded.reportedValue.raw, 30.2)
+        XCTAssertEqual(decoded.reportedValue.fmt, "30.20")
+    }
+
+    func testQuoteResult_decodesForwardPE() throws {
+        let json = """
+        {
+            "quoteResponse": {
+                "result": [
+                    {"symbol": "AAPL", "marketCap": 3759435415552, "quoteType": "EQUITY", "forwardPE": 28.5},
+                    {"symbol": "SPY", "marketCap": 625697882112, "quoteType": "ETF"}
+                ]
+            }
+        }
+        """
+        let data = json.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
+
+        XCTAssertEqual(decoded.quoteResponse.result[0].forwardPE, 28.5)
+        XCTAssertNil(decoded.quoteResponse.result[1].forwardPE)
+    }
+}

@@ -326,6 +326,104 @@ final class StockServiceTests: XCTestCase {
 
         XCTAssertNil(highest)
     }
+    // MARK: - fetchForwardPERatios tests
+
+    func testFetchForwardPERatios_validResponse_parsesQuarterValues() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "timeseries": {
+                "result": [{
+                    "meta": {
+                        "symbol": ["AAPL"],
+                        "type": ["quarterlyForwardPeRatio"]
+                    },
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 28.5, "fmt": "28.50"}},
+                        {"asOfDate": "2025-09-30", "reportedValue": {"raw": 30.2, "fmt": "30.20"}},
+                        {"asOfDate": "2025-12-31", "reportedValue": {"raw": 27.8, "fmt": "27.80"}}
+                    ]
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchForwardPERatios(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?["Q2-2025"], 28.5)
+        XCTAssertEqual(result?["Q3-2025"], 30.2)
+        XCTAssertEqual(result?["Q4-2025"], 27.8)
+    }
+
+    func testFetchForwardPERatios_emptyResult_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "timeseries": {
+                "result": [{
+                    "meta": {
+                        "symbol": ["BTC-USD"],
+                        "type": ["quarterlyForwardPeRatio"]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/BTC-USD?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchForwardPERatios(symbol: "BTC-USD", period1: 100, period2: 200)
+
+        XCTAssertNil(result)
+    }
+
+    func testFetchForwardPERatios_networkError_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchForwardPERatios(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNil(result)
+    }
+
+    func testFetchForwardPERatios_parsesAsOfDateToQuarter() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "timeseries": {
+                "result": [{
+                    "meta": {
+                        "symbol": ["AAPL"],
+                        "type": ["quarterlyForwardPeRatio"]
+                    },
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2024-03-31", "reportedValue": {"raw": 25.0, "fmt": "25.00"}},
+                        {"asOfDate": "2024-12-31", "reportedValue": {"raw": 29.0, "fmt": "29.00"}}
+                    ]
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchForwardPERatios(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?["Q1-2024"], 25.0)  // March → Q1
+        XCTAssertEqual(result?["Q4-2024"], 29.0)  // December → Q4
+    }
 }
 
 // MARK: - YahooQuoteResponse Decoding Tests

@@ -7,9 +7,11 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var quotesToReturn: [String: StockQuote] = [:]
     var marketStateToReturn: String? = "REGULAR"
     var marketCapsToReturn: [String: Double] = [:]
+    var forwardPEsToReturn: [String: Double] = [:]
     var ytdPricesToReturn: [String: Double] = [:]
     var quarterEndPricesToReturn: [String: Double] = [:]
     var highestClosesToReturn: [String: Double] = [:]
+    var forwardPERatiosToReturn: [String: [String: Double]] = [:]
 
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
@@ -28,8 +30,10 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
         return marketStateToReturn
     }
 
-    func fetchMarketCaps(symbols: [String]) async -> [String: Double] {
-        marketCapsToReturn.filter { symbols.contains($0.key) }
+    func fetchQuoteFields(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double]) {
+        let caps = marketCapsToReturn.filter { symbols.contains($0.key) }
+        let pes = forwardPEsToReturn.filter { symbols.contains($0.key) }
+        return (caps, pes)
     }
 
     func fetchYTDStartPrice(symbol: String) async -> Double? {
@@ -54,6 +58,18 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
 
     func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
         highestClosesToReturn.filter { symbols.contains($0.key) }
+    }
+
+    func fetchForwardPERatios(symbol: String, period1: Int, period2: Int) async -> [String: Double]? {
+        forwardPERatiosToReturn[symbol]
+    }
+
+    func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]] {
+        var result: [String: [String: Double]] = [:]
+        for symbol in symbols {
+            result[symbol] = forwardPERatiosToReturn[symbol] ?? [:]
+        }
+        return result
     }
 }
 

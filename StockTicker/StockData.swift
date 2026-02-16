@@ -77,6 +77,37 @@ struct QuoteResult: Codable {
     let symbol: String
     let marketCap: Double?
     let quoteType: String?
+    let forwardPE: Double?
+}
+
+// MARK: - Yahoo Finance Timeseries API Response Models
+
+struct YahooTimeseriesResponse: Codable {
+    let timeseries: TimeseriesResult
+}
+
+struct TimeseriesResult: Codable {
+    let result: [TimeseriesData]?
+}
+
+struct TimeseriesData: Codable {
+    let meta: TimeseriesMeta
+    let quarterlyForwardPeRatio: [ForwardPeEntry]?
+}
+
+struct TimeseriesMeta: Codable {
+    let symbol: [String]
+    let type: [String]
+}
+
+struct ForwardPeEntry: Codable {
+    let asOfDate: String
+    let reportedValue: ReportedValue
+}
+
+struct ReportedValue: Codable {
+    let raw: Double
+    let fmt: String
 }
 
 // MARK: - Trading Session

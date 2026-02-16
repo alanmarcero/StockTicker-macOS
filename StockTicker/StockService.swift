@@ -6,13 +6,15 @@ protocol StockServiceProtocol: Sendable {
     func fetchQuote(symbol: String) async -> StockQuote?
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote]
     func fetchMarketState(symbol: String) async -> String?
-    func fetchMarketCaps(symbols: [String]) async -> [String: Double]
+    func fetchQuoteFields(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double])
     func fetchYTDStartPrice(symbol: String) async -> Double?
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double]
     func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double?
     func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
     func fetchHighestClose(symbol: String, period1: Int, period2: Int) async -> Double?
     func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
+    func fetchForwardPERatios(symbol: String, period1: Int, period2: Int) async -> [String: Double]?
+    func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]]
 }
 
 // MARK: - HTTP Client Protocol
@@ -40,6 +42,7 @@ actor StockService: StockServiceProtocol {
         static let cookieSetup = "https://fc.yahoo.com/v1/test"
         static let crumbFetch = "https://query2.finance.yahoo.com/v1/test/getcrumb"
         static let quoteBase = "https://query2.finance.yahoo.com/v7/finance/quote"
+        static let timeseriesBase = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
         static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
     }
 

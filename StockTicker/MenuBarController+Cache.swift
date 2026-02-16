@@ -151,6 +151,53 @@ extension MenuBarController {
         return "\(oldest.identifier):\(newest.identifier)"
     }
 
+    // MARK: - Forward P/E Cache
+
+    func loadForwardPECache() async {
+        await forwardPECacheManager.load()
+
+        let currentRange = forwardPEQuarterRange()
+        if await forwardPECacheManager.needsInvalidation(currentRange: currentRange) {
+            await forwardPECacheManager.clearForNewRange(currentRange)
+        }
+
+        await fetchMissingForwardPERatios()
+    }
+
+    func fetchMissingForwardPERatios() async {
+        let missingSymbols = await forwardPECacheManager.getMissingSymbols(from: config.watchlist)
+
+        guard !missingSymbols.isEmpty else {
+            forwardPEData = await forwardPECacheManager.getAllData()
+            return
+        }
+
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last else {
+            forwardPEData = await forwardPECacheManager.getAllData()
+            return
+        }
+
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        let fetched = await stockService.batchFetchForwardPERatios(
+            symbols: missingSymbols, period1: period1, period2: period2
+        )
+        for (symbol, quarterPEs) in fetched {
+            await forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs)
+        }
+        await forwardPECacheManager.save()
+
+        forwardPEData = await forwardPECacheManager.getAllData()
+    }
+
+    private func forwardPEQuarterRange() -> String {
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
+        return "\(oldest.identifier):\(newest.identifier)"
+    }
+
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {

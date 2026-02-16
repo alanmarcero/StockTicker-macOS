@@ -59,6 +59,9 @@
 		P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */; };
 		Q1000001232C5A0000000001 /* QuoteFetchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */; };
 		Q1000003232C5A0000000001 /* QuoteFetchCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */; };
+		R1000001232C5A0000000001 /* StockService+ForwardPE.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1000002232C5A0000000001 /* StockService+ForwardPE.swift */; };
+		S1000001232C5A0000000001 /* ForwardPECache.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1000002232C5A0000000001 /* ForwardPECache.swift */; };
+		S1000003232C5A0000000001 /* ForwardPECacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1000004232C5A0000000001 /* ForwardPECacheTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -127,6 +130,9 @@
 		P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilderTests.swift; sourceTree = "<group>"; };
 		Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteFetchCoordinator.swift; sourceTree = "<group>"; };
 		Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteFetchCoordinatorTests.swift; sourceTree = "<group>"; };
+		R1000002232C5A0000000001 /* StockService+ForwardPE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+ForwardPE.swift"; sourceTree = "<group>"; };
+		S1000002232C5A0000000001 /* ForwardPECache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardPECache.swift; sourceTree = "<group>"; };
+		S1000004232C5A0000000001 /* ForwardPECacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardPECacheTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -166,6 +172,7 @@
 				A1000006232C5A0000000001 /* StockService.swift */,
 				O1000002232C5A0000000001 /* StockService+MarketCap.swift */,
 				O1000004232C5A0000000001 /* StockService+Historical.swift */,
+				R1000002232C5A0000000001 /* StockService+ForwardPE.swift */,
 				A1000008232C5A0000000001 /* StockData.swift */,
 				C1000004232C5A0000000001 /* NewsService.swift */,
 				C1000002232C5A0000000001 /* NewsData.swift */,
@@ -187,6 +194,7 @@
 				A100000C232C5A0000000001 /* Assets.xcassets */,
 				A100000D232C5A0000000001 /* Info.plist */,
 				8C29186FAEA57A1B6F14F793 /* HighestCloseCache.swift */,
+				S1000002232C5A0000000001 /* ForwardPECache.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -228,6 +236,7 @@
 				P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */,
 				Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */,
 				B8E6A4B9EAD659CB2CC72C19 /* HighestCloseCacheTests.swift */,
+				S1000004232C5A0000000001 /* ForwardPECacheTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -357,6 +366,8 @@
 				P1000001232C5A0000000001 /* TickerDisplayBuilder.swift in Sources */,
 				Q1000001232C5A0000000001 /* QuoteFetchCoordinator.swift in Sources */,
 				80968955CD736935C5EBE952 /* HighestCloseCache.swift in Sources */,
+				R1000001232C5A0000000001 /* StockService+ForwardPE.swift in Sources */,
+				S1000001232C5A0000000001 /* ForwardPECache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -389,6 +400,7 @@
 				P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */,
 				Q1000003232C5A0000000001 /* QuoteFetchCoordinatorTests.swift in Sources */,
 				69D8111D3DF339FAA362648B /* HighestCloseCacheTests.swift in Sources */,
+				S1000003232C5A0000000001 /* ForwardPECacheTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -33,17 +33,18 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (26 files, ~5,413 lines)
+## Source Files (28 files, ~5,784 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (802L)  Main controller: menu bar UI, state management
-MenuBarController+Cache.swift    (163L)  Extension: YTD, quarterly, highest close, and market cap cache coordination
+MenuBarView.swift                (812L)  Main controller: menu bar UI, state management
+MenuBarController+Cache.swift    (210L)  Extension: YTD, quarterly, highest close, forward P/E, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (190L)  Yahoo Finance API client (actor), chart v8 methods
-StockService+MarketCap.swift     (64L)   Extension: market cap via v7 quote API with crumb auth
+StockService.swift               (193L)  Yahoo Finance API client (actor), chart v8 methods
+StockService+MarketCap.swift     (69L)   Extension: market cap + forward P/E via v7 quote API with crumb auth
 StockService+Historical.swift    (109L)  Extension: historical price fetching (YTD, quarterly, highest close)
-StockData.swift                  (486L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
+StockService+ForwardPE.swift     (57L)   Extension: historical forward P/E ratios via timeseries API
+StockData.swift                  (517L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (375L)  Config loading/saving, OpaqueContainerView, ColorMapping, protocols
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
@@ -56,19 +57,20 @@ NewsService.swift                (130L)  RSS feed fetcher for financial news (ac
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift         (429L)  Quarterly performance window: view model, SwiftUI view, controller
+QuarterlyPanelView.swift         (543L)  Quarterly performance window: view model, SwiftUI view, controller
 LayoutConfig.swift               (79L)   Centralized layout constants
-CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close caches)
+CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E caches)
 TickerDisplayBuilder.swift       (182L)  Ticker display formatting, color helpers, HighlightConfig
 QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
 HighestCloseCache.swift          (109L)  Highest daily close cache manager (actor), daily refresh
+ForwardPECache.swift             (92L)   Forward P/E ratio cache manager (actor), permanent per-quarter cache
 ```
 
-## Test Files (25 files, ~7,027 lines)
+## Test Files (26 files, ~7,662 lines)
 
 ```
-StockDataTests.swift             (622L)  Quote calculations, session detection, formatting, market cap, highest close
-StockServiceTests.swift          (456L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close
+StockDataTests.swift             (686L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
+StockServiceTests.swift          (554L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -80,7 +82,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (554L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close
+QuarterlyPanelTests.swift        (706L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (98L)   Layout constant validation
@@ -90,8 +92,9 @@ TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, 
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
-QuoteFetchCoordinatorTests.swift (202L)  Fetch modes, FetchResult correctness, MockStockService
+QuoteFetchCoordinatorTests.swift (218L)  Fetch modes, FetchResult correctness, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
+ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
 ```
 
 ## File Dependencies
@@ -114,6 +117,7 @@ MenuBarView.swift (MenuBarController)
 ├── YTDCache.swift (YTDCacheManager)
 ├── QuarterlyCache.swift (QuarterlyCacheManager, QuarterCalculation, QuarterInfo)
 ├── HighestCloseCache.swift (HighestCloseCacheManager)
+├── ForwardPECache.swift (ForwardPECacheManager)
 ├── QuarterlyPanelView.swift (QuarterlyPanelWindowController)
 ├── TickerEditorView.swift (WatchlistEditorWindowController)
 ├── DebugWindow.swift (DebugWindowController)
@@ -121,8 +125,9 @@ MenuBarView.swift (MenuBarController)
 └── QuoteFetchCoordinator.swift (QuoteFetchCoordinator, FetchResult)
 
 StockService.swift
-├── StockService+MarketCap.swift (market cap extension)
+├── StockService+MarketCap.swift (market cap + forward P/E extension)
 ├── StockService+Historical.swift (historical price extension)
+├── StockService+ForwardPE.swift (forward P/E timeseries extension)
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
 
@@ -164,6 +169,10 @@ HighestCloseCache.swift
 ├── TickerConfig.swift (FileSystemProtocol, DateProvider)
 └── CacheStorage.swift (CacheStorage)
 
+ForwardPECache.swift
+├── TickerConfig.swift (FileSystemProtocol, DateProvider)
+└── CacheStorage.swift (CacheStorage)
+
 DebugWindow.swift
 └── RequestLogger.swift (RequestLogger, RequestLogEntry)
 ```
@@ -177,7 +186,7 @@ All major components use protocols for testability:
 - `TimerManagerDelegate` — timer lifecycle callbacks
 - `FileSystemProtocol` / `WorkspaceProtocol` — file operations
 - `SymbolValidator` — symbol validation
-- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager, HighestCloseCacheManager)
+- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager, HighestCloseCacheManager, ForwardPECacheManager)
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Actors for Thread Safety
@@ -187,6 +196,7 @@ All major components use protocols for testability:
 - `YTDCacheManager` — thread-safe YTD price cache
 - `QuarterlyCacheManager` — thread-safe quarterly price cache
 - `HighestCloseCacheManager` — thread-safe highest close price cache
+- `ForwardPECacheManager` — thread-safe forward P/E ratio cache
 
 ### State Management
 - `MenuBarController` — `@MainActor`, `@Published` properties, drives all UI
@@ -223,7 +233,7 @@ All magic numbers are extracted into namespaced enums:
 Batches 5 highlight parameters into a single struct with `resolve()`, `withPingBackground()`, `withPingDisabled()` helpers. Defined in `TickerDisplayBuilder.swift`, used by both MenuBarView and QuarterlyPanelView.
 
 ### Generic CacheStorage\<T\>
-Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManager, and HighestCloseCacheManager. Single `CacheStorage<T: Codable>` struct handles JSON encoding/decoding, directory creation, and error logging.
+Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManager, HighestCloseCacheManager, and ForwardPECacheManager. Single `CacheStorage<T: Codable>` struct handles JSON encoding/decoding, directory creation, and error logging.
 
 ### Legacy Config Decoding
 `decodeLegacy()` extension on `KeyedDecodingContainer` handles backward-compatible field names (e.g. `tickers` → `watchlist`, `cycleInterval` → `menuBarRotationInterval`). Two overloads: required (throws) and optional (with default).
@@ -235,9 +245,9 @@ Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManage
 https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}?interval=1m&range=1d&includePrePost=true
 ```
 
-### Yahoo Finance Quote API (v7) — Market Cap
+### Yahoo Finance Quote API (v7) — Market Cap + Current Forward P/E
 ```
-https://query2.finance.yahoo.com/v7/finance/quote?symbols={SYMBOLS}&crumb={CRUMB}&fields=marketCap
+https://query2.finance.yahoo.com/v7/finance/quote?symbols={SYMBOLS}&crumb={CRUMB}&fields=marketCap,quoteType,forwardPE
 ```
 
 Requires crumb/cookie authentication. StockService manages this internally:
@@ -245,7 +255,14 @@ Requires crumb/cookie authentication. StockService manages this internally:
 2. `GET https://query2.finance.yahoo.com/v1/test/getcrumb` → returns crumb string
 3. Use crumb + cookies for v7 quote requests. Crumb auto-refreshes on 401.
 
-Batch request for all watchlist symbols. Returns `marketCap` per symbol. Fetched each refresh cycle alongside chart data. Response: `YahooQuoteResponse` → `QuoteResponseData` → `[QuoteResult]`.
+Batch request for all watchlist symbols. Returns `marketCap` and `forwardPE` per symbol via `fetchQuoteFields()`. Fetched each refresh cycle alongside chart data. Response: `YahooQuoteResponse` → `QuoteResponseData` → `[QuoteResult]`.
+
+### Yahoo Finance Fundamentals Timeseries API — Historical Forward P/E
+```
+https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{SYMBOL}?type=quarterlyForwardPeRatio&period1={P1}&period2={P2}
+```
+
+No authentication required. One call per symbol. Returns quarterly forward P/E ratios with `asOfDate` (e.g. "2024-12-31") mapped to quarter identifiers (e.g. "Q4-2024"). Response: `YahooTimeseriesResponse` → `TimeseriesResult` → `[TimeseriesData]` → `[ForwardPeEntry]`.
 
 ### HTTP Client Architecture
 ```
@@ -287,7 +304,7 @@ Weekend handling:
 - App forces `yahooMarketState = "CLOSED"` on weekends
 - Extended hours labels (Pre/AH) not shown on weekends
 
-Config reload resets `hasCompletedInitialLoad = false` and calls `fetchMissingYTDPrices()` and `fetchMissingQuarterlyPrices()`.
+Config reload resets `hasCompletedInitialLoad = false` and calls `fetchMissingYTDPrices()`, `fetchMissingQuarterlyPrices()`, and `fetchMissingForwardPERatios()`.
 
 ### Extended Hours Calculation
 
@@ -339,9 +356,32 @@ Cached at `~/.stockticker/highest-close-cache.json`:
 
 Key methods: `loadHighestCloseCache()`, `fetchMissingHighestCloses()`, `attachHighestClosesToQuotes()`, `refreshHighestClosesIfNeeded()`
 
+## Forward P/E Tracking
+
+Historical forward P/E ratios per quarter end, fetched from Yahoo Finance Fundamentals Timeseries API. Cached at `~/.stockticker/forward-pe-cache.json`:
+
+```json
+{
+  "quarterRange": "Q1-2023:Q4-2025",
+  "lastUpdated": "2026-02-16T12:00:00Z",
+  "symbols": {
+    "AAPL": { "Q4-2025": 28.5, "Q3-2025": 30.2 },
+    "BTC-USD": {}
+  }
+}
+```
+
+**Flow:** App startup loads cache → checks quarter range invalidation → fetches missing symbols → stores results (empty dict for non-equity symbols) → displayed in Quarterly Performance Forward P/E tab.
+
+**Permanent cache:** Quarter-end P/E values are immutable historical facts. No daily refresh. Only fetches on startup for missing symbols or when quarter range changes (new quarter completes). Symbols with no P/E data stored as empty `{}` to avoid refetching.
+
+**API:** One timeseries call per symbol for the full 3-year range. Batch fetch via TaskGroup.
+
+Key methods: `loadForwardPECache()`, `fetchMissingForwardPERatios()`, `forwardPEQuarterRange()`
+
 ## Quarterly Performance (Cmd+Opt+Q)
 
-Standalone window with two view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end). Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
+Standalone window with three view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end); **Forward P/E** shows historical forward P/E ratios per quarter end. Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
 
 ```json
 {
@@ -357,13 +397,15 @@ Standalone window with two view modes (segmented picker): **Since Quarter** show
 
 **Fetching strategy:** Per-quarter sequential, per-symbol parallel via TaskGroup. Cache saved after each quarter (preserves progress if interrupted). First run ~832 API calls (64 symbols x 13 quarters); subsequent runs only fetch new symbols or newly completed quarters.
 
-**View modes:** `QuarterlyViewMode` enum — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`. A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`) so rows recompute when toggling modes via `switchMode()`.
+**View modes:** `QuarterlyViewMode` enum — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end. A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`) so rows recompute when toggling modes via `switchMode()`.
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
-**Sortable columns:** Symbol, High (% from highest close), and each quarter column. Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
+**Sortable columns:** Symbol, High/Current (% from highest close in price modes, current forward P/E in P/E mode), and each quarter column. Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
 
 **Row highlighting:** Config-highlighted symbols (`config.highlightedSymbols`) get a persistent colored background row using `highlightColor` and `highlightOpacity`. These cannot be toggled off by clicking. Non-config rows can be click-toggled on/off for readability. `ColorMapping` enum in TickerConfig.swift provides shared color name mapping for both NSColor and SwiftUI Color.
+
+**Forward P/E mode:** Filters to equity symbols only (symbols with at least one non-empty P/E entry). Shows "Current" column (current forward P/E from v7 API, always secondary color) and quarter columns (historical P/E as of quarter end). Color: green when P/E decreased vs prior quarter, red when increased, secondary when no prior value.
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 
@@ -482,4 +524,4 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 7. **No Side Effects** — Pure functions for sorting, formatting, operations
 8. **Fail Fast** — Guard clauses, early returns, error logging on file I/O
 9. **KISS/YAGNI** — No premature abstraction
-10. **Write Tests** — Protocol-based DI enables comprehensive testing; 24 test files with mock doubles
+10. **Write Tests** — Protocol-based DI enables comprehensive testing; 26 test files with mock doubles

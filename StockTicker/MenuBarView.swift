@@ -99,6 +99,9 @@ class MenuBarController: NSObject, ObservableObject {
     var marketCaps: [String: Double] = [:]
     let highestCloseCacheManager: HighestCloseCacheManager
     var highestClosePrices: [String: Double] = [:]
+    let forwardPECacheManager: ForwardPECacheManager
+    var forwardPEData: [String: [String: Double]] = [:]
+    var currentForwardPEs: [String: Double] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -111,7 +114,8 @@ class MenuBarController: NSObject, ObservableObject {
         urlOpener: URLOpener = NSWorkspace.shared,
         ytdCacheManager: YTDCacheManager = YTDCacheManager(),
         quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager(),
-        highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager()
+        highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager(),
+        forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -121,6 +125,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.ytdCacheManager = ytdCacheManager
         self.quarterlyCacheManager = quarterlyCacheManager
         self.highestCloseCacheManager = highestCloseCacheManager
+        self.forwardPECacheManager = forwardPECacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -135,6 +140,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadYTDCache()
             await loadQuarterlyCache()
             await loadHighestCloseCache()
+            await loadForwardPECache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -318,15 +324,16 @@ class MenuBarController: NSObject, ObservableObject {
         attachYTDPricesToQuotes()
 
         if isInitialLoad || scheduleInfo.state == .open {
-            let fetchedCaps = await stockService.fetchMarketCaps(symbols: config.watchlist)
+            let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: config.watchlist)
             marketCaps.merge(fetchedCaps) { _, new in new }
+            currentForwardPEs.merge(fetchedPEs) { _, new in new }
         }
         attachMarketCapsToQuotes()
         await refreshHighestClosesIfNeeded()
         attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices)
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -655,6 +662,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingYTDPrices()
             await fetchMissingQuarterlyPrices()
             await fetchMissingHighestCloses()
+            await fetchMissingForwardPERatios()
             await refreshAllQuotes()
         }
     }
@@ -716,7 +724,9 @@ class MenuBarController: NSObject, ObservableObject {
             highlightedSymbols: Set(config.highlightedSymbols),
             highlightColor: config.highlightColor,
             highlightOpacity: config.highlightOpacity,
-            highestClosePrices: highestClosePrices
+            highestClosePrices: highestClosePrices,
+            forwardPEData: forwardPEData,
+            currentForwardPEs: currentForwardPEs
         )
     }
 

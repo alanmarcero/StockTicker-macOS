@@ -4,18 +4,18 @@ import Foundation
 
 extension StockService {
 
-    func fetchMarketCaps(symbols: [String]) async -> [String: Double] {
-        guard !symbols.isEmpty else { return [:] }
+    func fetchQuoteFields(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double]) {
+        guard !symbols.isEmpty else { return ([:], [:]) }
 
         if crumb == nil { await refreshCrumb() }
 
-        if let result = await performMarketCapFetch(symbols: symbols) {
+        if let result = await performQuoteFieldsFetch(symbols: symbols) {
             return result
         }
 
         // Crumb may have expired, refresh and retry once
         await refreshCrumb()
-        return await performMarketCapFetch(symbols: symbols) ?? [:]
+        return await performQuoteFieldsFetch(symbols: symbols) ?? ([:], [:])
     }
 
     func refreshCrumb() async {
@@ -32,14 +32,14 @@ extension StockService {
         crumb = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func performMarketCapFetch(symbols: [String]) async -> [String: Double]? {
+    func performQuoteFieldsFetch(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double])? {
         guard let crumb = crumb,
               let encodedCrumb = crumb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             return nil
         }
 
         let symbolList = symbols.joined(separator: ",")
-        guard let url = URL(string: "\(APIEndpoints.quoteBase)?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap,quoteType") else {
+        guard let url = URL(string: "\(APIEndpoints.quoteBase)?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap,quoteType,forwardPE") else {
             return nil
         }
 
@@ -50,14 +50,19 @@ extension StockService {
             guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
-            var result: [String: Double] = [:]
+            var caps: [String: Double] = [:]
+            var pes: [String: Double] = [:]
             for quote in decoded.quoteResponse.result {
-                guard quote.quoteType != "ETF", let cap = quote.marketCap else { continue }
-                result[quote.symbol] = cap
+                if quote.quoteType != "ETF", let cap = quote.marketCap {
+                    caps[quote.symbol] = cap
+                }
+                if let pe = quote.forwardPE {
+                    pes[quote.symbol] = pe
+                }
             }
-            return result
+            return (caps, pes)
         } catch {
-            print("Market cap fetch failed: \(error.localizedDescription)")
+            print("Quote fields fetch failed: \(error.localizedDescription)")
             return nil
         }
     }

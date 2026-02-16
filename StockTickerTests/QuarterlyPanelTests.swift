@@ -506,6 +506,158 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertNil(q2Change)
     }
 
+    // MARK: - Forward P/E Mode
+
+    func testBuildForwardPERows_filtersSymbolsWithoutData() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+            "BTC-USD": makeQuote(symbol: "BTC-USD", price: 60000.0),
+        ]
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5, "Q3-2025": 30.2],
+            "BTC-USD": [:]  // No P/E data for crypto
+        ]
+
+        vm.update(watchlist: ["AAPL", "BTC-USD"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.switchMode(.forwardPE)
+
+        // BTC-USD filtered out because empty dict
+        XCTAssertEqual(vm.rows.count, 1)
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+    }
+
+    func testBuildForwardPERows_mapsQuarterPEValues() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5, "Q3-2025": 30.2, "Q2-2025": 26.0]
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.switchMode(.forwardPE)
+
+        let row = vm.rows[0]
+        let q4 = row.quarterChanges["Q4-2025"] ?? nil
+        let q3 = row.quarterChanges["Q3-2025"] ?? nil
+        let q2 = row.quarterChanges["Q2-2025"] ?? nil
+        XCTAssertEqual(q4, 28.5)
+        XCTAssertEqual(q3, 30.2)
+        XCTAssertEqual(q2, 26.0)
+    }
+
+    func testBuildForwardPERows_includesCurrentForwardPE() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5]
+        ]
+        let currentForwardPEs: [String: Double] = ["AAPL": 27.3]
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.forwardPE)
+
+        XCTAssertEqual(vm.rows[0].currentForwardPE, 27.3)
+    }
+
+    func testBuildForwardPERows_missingQuarter_showsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5]  // Only Q4 has data
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.switchMode(.forwardPE)
+
+        let row = vm.rows[0]
+        let q3 = row.quarterChanges["Q3-2025"] ?? nil
+        XCTAssertNil(q3)
+    }
+
+    func testSwitchMode_toForwardPE_rebuildsRows() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
+        ]
+        let quarterPrices: [String: [String: Double]] = [
+            "Q4-2025": ["AAPL": 180.0],
+        ]
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5]
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters, forwardPEData: forwardPEData)
+
+        // In sinceQuarter mode, quarterChanges has percent values
+        let sinceQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(sinceQ4!, 11.11, accuracy: 0.01)
+
+        vm.switchMode(.forwardPE)
+
+        // In forwardPE mode, quarterChanges has P/E ratio values
+        let peQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
+        XCTAssertEqual(peQ4, 28.5)
+    }
+
+    func testForwardPEMode_highestCloseIsNil() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5]
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL"], quotes: ["AAPL": makeQuote(symbol: "AAPL", price: 150.0)], quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData)
+        vm.switchMode(.forwardPE)
+
+        XCTAssertNil(vm.rows[0].highestCloseChangePercent)
+    }
+
+    func testSort_byCurrentPE() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5],
+            "MSFT": ["Q4-2025": 32.1],
+        ]
+        let currentForwardPEs: [String: Double] = ["AAPL": 28.5, "MSFT": 32.1]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.forwardPE)
+
+        vm.sort(by: .currentPE)
+
+        // Ascending: AAPL (28.5) < MSFT (32.1)
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.rows[1].symbol, "MSFT")
+
+        // Toggle descending
+        vm.sort(by: .currentPE)
+        XCTAssertEqual(vm.rows[0].symbol, "MSFT")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+    }
+
+    func testSort_byQuarterColumn_inForwardPEMode() {
+        let vm = QuarterlyPanelViewModel()
+
+        let forwardPEData: [String: [String: Double]] = [
+            "AAPL": ["Q4-2025": 28.5],
+            "MSFT": ["Q4-2025": 32.1],
+        ]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.switchMode(.forwardPE)
+
+        vm.sort(by: .quarter("Q4-2025"))
+
+        // Ascending: AAPL (28.5) < MSFT (32.1)
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.rows[1].symbol, "MSFT")
+    }
+
     func testSwitchMode_backToSinceQuarter_restoresOriginal() {
         let vm = QuarterlyPanelViewModel()
 
