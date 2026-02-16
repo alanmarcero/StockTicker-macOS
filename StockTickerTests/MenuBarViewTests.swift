@@ -14,6 +14,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.percentDesc.rawValue, "% Change ↓")
         XCTAssertEqual(SortOption.ytdAsc.rawValue, "YTD % ↑")
         XCTAssertEqual(SortOption.ytdDesc.rawValue, "YTD % ↓")
+        XCTAssertEqual(SortOption.highAsc.rawValue, "High % ↑")
+        XCTAssertEqual(SortOption.highDesc.rawValue, "High % ↓")
     }
 
     func testFromConfigString_validStrings() {
@@ -25,6 +27,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.from(configString: "percentDesc"), .percentDesc)
         XCTAssertEqual(SortOption.from(configString: "ytdAsc"), .ytdAsc)
         XCTAssertEqual(SortOption.from(configString: "ytdDesc"), .ytdDesc)
+        XCTAssertEqual(SortOption.from(configString: "highAsc"), .highAsc)
+        XCTAssertEqual(SortOption.from(configString: "highDesc"), .highDesc)
     }
 
     func testFromConfigString_invalidString_returnsDefault() {
@@ -46,6 +50,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.percentDesc.configString, "percentDesc")
         XCTAssertEqual(SortOption.ytdAsc.configString, "ytdAsc")
         XCTAssertEqual(SortOption.ytdDesc.configString, "ytdDesc")
+        XCTAssertEqual(SortOption.highAsc.configString, "highAsc")
+        XCTAssertEqual(SortOption.highDesc.configString, "highDesc")
     }
 
     func testConfigString_roundTrip() {
@@ -57,7 +63,7 @@ final class SortOptionTests: XCTestCase {
     }
 
     func testAllCases_containsAllOptions() {
-        XCTAssertEqual(SortOption.allCases.count, 8)
+        XCTAssertEqual(SortOption.allCases.count, 10)
         XCTAssertTrue(SortOption.allCases.contains(.tickerAsc))
         XCTAssertTrue(SortOption.allCases.contains(.tickerDesc))
         XCTAssertTrue(SortOption.allCases.contains(.marketCapAsc))
@@ -66,6 +72,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertTrue(SortOption.allCases.contains(.percentDesc))
         XCTAssertTrue(SortOption.allCases.contains(.ytdAsc))
         XCTAssertTrue(SortOption.allCases.contains(.ytdDesc))
+        XCTAssertTrue(SortOption.allCases.contains(.highAsc))
+        XCTAssertTrue(SortOption.allCases.contains(.highDesc))
     }
 }
 
@@ -177,6 +185,48 @@ final class SortOptionSortTests: XCTestCase {
 
         // AAPL: +7.14%, SPY: +4.65%, GOOGL: 0%, MSFT: -6.25%
         XCTAssertEqual(sorted, ["AAPL", "SPY", "GOOGL", "MSFT"])
+    }
+
+    // MARK: - Highest close percent sorting
+
+    func testSort_highAsc_sortsByHighestClosePercentAscending() {
+        let highQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 180.0, previousClose: 175.0, highestClose: 200.0),  // -10%
+            "MSFT": StockQuote(symbol: "MSFT", price: 310.0, previousClose: 305.0, highestClose: 300.0),  // +3.33%
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 138.0, highestClose: 150.0), // -6.67%
+            "SPY": StockQuote(symbol: "SPY", price: 520.0, previousClose: 515.0, highestClose: 500.0),    // +4%
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
+        let sorted = SortOption.highAsc.sort(symbols, using: highQuotes)
+
+        // AAPL: -10%, GOOGL: -6.67%, MSFT: +3.33%, SPY: +4%
+        XCTAssertEqual(sorted, ["AAPL", "GOOGL", "MSFT", "SPY"])
+    }
+
+    func testSort_highDesc_sortsByHighestClosePercentDescending() {
+        let highQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 180.0, previousClose: 175.0, highestClose: 200.0),  // -10%
+            "MSFT": StockQuote(symbol: "MSFT", price: 310.0, previousClose: 305.0, highestClose: 300.0),  // +3.33%
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 138.0, highestClose: 150.0), // -6.67%
+            "SPY": StockQuote(symbol: "SPY", price: 520.0, previousClose: 515.0, highestClose: 500.0),    // +4%
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
+        let sorted = SortOption.highDesc.sort(symbols, using: highQuotes)
+
+        // SPY: +4%, MSFT: +3.33%, GOOGL: -6.67%, AAPL: -10%
+        XCTAssertEqual(sorted, ["SPY", "MSFT", "GOOGL", "AAPL"])
+    }
+
+    func testSort_highDesc_missingHighData_treatsAsZero() {
+        let highQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 180.0, previousClose: 175.0, highestClose: 200.0),  // -10%
+            "MSFT": StockQuote(symbol: "MSFT", price: 310.0, previousClose: 305.0),                        // nil -> 0%
+        ]
+        let symbols = ["AAPL", "MSFT"]
+        let sorted = SortOption.highDesc.sort(symbols, using: highQuotes)
+
+        // MSFT: nil (treated as 0%), AAPL: -10%
+        XCTAssertEqual(sorted, ["MSFT", "AAPL"])
     }
 
     func testSort_ytdDesc_missingYTDData_treatsAsZero() {

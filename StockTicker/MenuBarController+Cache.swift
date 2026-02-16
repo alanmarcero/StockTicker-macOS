@@ -85,6 +85,72 @@ extension MenuBarController {
         }
     }
 
+    // MARK: - Highest Close Cache
+
+    func loadHighestCloseCache() async {
+        await highestCloseCacheManager.load()
+
+        let currentRange = highestCloseQuarterRange()
+        if await highestCloseCacheManager.needsInvalidation(currentRange: currentRange) {
+            await highestCloseCacheManager.clearForNewRange(currentRange)
+        }
+
+        if await highestCloseCacheManager.needsDailyRefresh() {
+            await highestCloseCacheManager.clearPricesForDailyRefresh()
+        }
+
+        await fetchMissingHighestCloses()
+    }
+
+    func fetchMissingHighestCloses() async {
+        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
+        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allSymbols)
+
+        guard !missingSymbols.isEmpty else {
+            highestClosePrices = await highestCloseCacheManager.getAllPrices()
+            return
+        }
+
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last else {
+            highestClosePrices = await highestCloseCacheManager.getAllPrices()
+            return
+        }
+
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        let fetched = await stockService.batchFetchHighestCloses(
+            symbols: missingSymbols, period1: period1, period2: period2
+        )
+        for (symbol, price) in fetched {
+            await highestCloseCacheManager.setHighestClose(for: symbol, price: price)
+        }
+        await highestCloseCacheManager.save()
+
+        highestClosePrices = await highestCloseCacheManager.getAllPrices()
+    }
+
+    func attachHighestClosesToQuotes() {
+        for (symbol, quote) in quotes {
+            if let highest = highestClosePrices[symbol] {
+                quotes[symbol] = quote.withHighestClose(highest)
+            }
+        }
+    }
+
+    func refreshHighestClosesIfNeeded() async {
+        guard await highestCloseCacheManager.needsDailyRefresh() else { return }
+        await highestCloseCacheManager.clearPricesForDailyRefresh()
+        await fetchMissingHighestCloses()
+    }
+
+    private func highestCloseQuarterRange() -> String {
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
+        return "\(oldest.identifier):\(newest.identifier)"
+    }
+
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {

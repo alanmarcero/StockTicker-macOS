@@ -35,6 +35,34 @@ extension StockService {
         }
     }
 
+    func fetchHighestClose(symbol: String, period1: Int, period2: Int) async -> Double? {
+        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
+            return nil
+        }
+
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let closes = result.indicators?.quote?.first?.close else {
+                return nil
+            }
+
+            return closes.compactMap({ $0 }).max()
+        } catch {
+            print("Highest close fetch failed for \(symbol): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
+        await batchFetchHistoricalClosePrices(symbols: symbols) { symbol in
+            await self.fetchHighestClose(symbol: symbol, period1: period1, period2: period2)
+        }
+    }
+
     func fetchHistoricalClosePrice(symbol: String, period1: Int, period2: Int) async -> Double? {
         guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
             return nil

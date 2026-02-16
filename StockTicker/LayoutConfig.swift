@@ -13,6 +13,7 @@ enum LayoutConfig {
         static let marketCapWidth = 7  // "$3.8T", "$131B"
         static let percentWidth = 7
         static let ytdWidth = 13  // "YTD: +12.34%"
+        static let highWidth = 14  // "High: -12.34%"
         static let extendedHoursWidth = 12  // "Pre: +12.34%"
     }
 
@@ -67,6 +68,7 @@ enum LayoutConfig {
         static let minHeight: CGFloat = 350
         static let symbolColumnWidth: CGFloat = 80
         static let quarterColumnWidth: CGFloat = 85
+        static let highColumnWidth: CGFloat = 85
     }
 
     // MARK: - Watchlist

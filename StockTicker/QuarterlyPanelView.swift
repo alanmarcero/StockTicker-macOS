@@ -9,6 +9,7 @@ private enum QuarterlyWindowSize {
     static let minWidth = LayoutConfig.QuarterlyWindow.minWidth
     static let minHeight = LayoutConfig.QuarterlyWindow.minHeight
     static let symbolColumnWidth = LayoutConfig.QuarterlyWindow.symbolColumnWidth
+    static let highColumnWidth = LayoutConfig.QuarterlyWindow.highColumnWidth
     static let quarterColumnWidth = LayoutConfig.QuarterlyWindow.quarterColumnWidth
 }
 
@@ -28,6 +29,7 @@ enum QuarterlyViewMode: String, CaseIterable {
 struct QuarterlyRow: Identifiable {
     let id: String
     let symbol: String
+    let highestCloseChangePercent: Double?
     let quarterChanges: [String: Double?]  // quarter identifier -> percent change
 }
 
@@ -35,6 +37,7 @@ struct QuarterlyRow: Identifiable {
 
 enum QuarterlySortColumn: Equatable {
     case symbol
+    case highestClose
     case quarter(String)  // quarter identifier
 }
 
@@ -55,6 +58,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     private var storedWatchlist: [String] = []
     private var storedQuotes: [String: StockQuote] = [:]
     private var storedQuarterPrices: [String: [String: Double]] = [:]
+    private var storedHighestClosePrices: [String: Double] = [:]
 
     func setupHighlights(symbols: Set<String>, color: String, opacity: Double) {
         configSymbols = symbols
@@ -72,21 +76,23 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo]) {
+    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:]) {
         self.quarters = quarterInfos
         self.storedWatchlist = watchlist
         self.storedQuotes = quotes
         self.storedQuarterPrices = quarterPrices
+        self.storedHighestClosePrices = highestClosePrices
 
         rows = buildRows(for: viewMode)
         applySorting()
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]]) {
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:]) {
         guard !quarters.isEmpty else { return }
 
         self.storedQuotes = quotes
         self.storedQuarterPrices = quarterPrices
+        self.storedHighestClosePrices = highestClosePrices
 
         rows = buildRows(for: viewMode)
         applySorting()
@@ -120,7 +126,8 @@ class QuarterlyPanelViewModel: ObservableObject {
                 }
                 changes[qi.identifier] = ((quote.price - quarterEndPrice) / quarterEndPrice) * 100
             }
-            return QuarterlyRow(id: symbol, symbol: symbol, quarterChanges: changes)
+            let highPct = highestClosePercent(for: symbol)
+            return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes)
         }
     }
 
@@ -141,8 +148,15 @@ class QuarterlyPanelViewModel: ObservableObject {
                 }
                 changes[qi.identifier] = ((endPrice - startPrice) / startPrice) * 100
             }
-            return QuarterlyRow(id: symbol, symbol: symbol, quarterChanges: changes)
+            let highPct = highestClosePercent(for: symbol)
+            return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes)
         }
+    }
+
+    private func highestClosePercent(for symbol: String) -> Double? {
+        guard let highest = storedHighestClosePrices[symbol], highest > 0,
+              let quote = storedQuotes[symbol], !quote.isPlaceholder else { return nil }
+        return ((quote.price - highest) / highest) * 100
     }
 
     func sort(by column: QuarterlySortColumn) {
@@ -161,6 +175,13 @@ class QuarterlyPanelViewModel: ObservableObject {
             switch sortColumn {
             case .symbol:
                 result = a.symbol < b.symbol
+            case .highestClose:
+                switch (a.highestCloseChangePercent, b.highestCloseChangePercent) {
+                case let (av?, bv?): result = av < bv
+                case (nil, .some): result = true
+                case (.some, nil): result = false
+                case (nil, nil): result = a.symbol < b.symbol
+                }
             case .quarter(let qId):
                 let aVal = a.quarterChanges[qId] ?? nil
                 let bVal = b.quarterChanges[qId] ?? nil
@@ -257,6 +278,8 @@ struct QuarterlyPanelView: View {
         HStack(spacing: 0) {
             sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
 
+            sortableHeader("High", column: .highestClose, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+
             ForEach(viewModel.quarters, id: \.identifier) { qi in
                 sortableHeader(qi.displayLabel, column: .quarter(qi.identifier), width: QuarterlyWindowSize.quarterColumnWidth, alignment: .trailing)
             }
@@ -296,6 +319,9 @@ struct QuarterlyPanelView: View {
                 .font(.system(.body, design: .monospaced))
                 .fontWeight(.medium)
                 .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+
+            cellView(row.highestCloseChangePercent)
+                .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 
             ForEach(viewModel.quarters, id: \.identifier) { qi in
                 cellView(row.quarterChanges[qi.identifier] ?? nil)
@@ -350,7 +376,8 @@ class QuarterlyPanelWindowController {
         quarterInfos: [QuarterInfo],
         highlightedSymbols: Set<String> = [],
         highlightColor: String = "yellow",
-        highlightOpacity: Double = 0.25
+        highlightOpacity: Double = 0.25,
+        highestClosePrices: [String: Double] = [:]
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -360,7 +387,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos)
+        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)
@@ -395,8 +422,8 @@ class QuarterlyPanelWindowController {
         window = newWindow
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]]) {
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:]) {
         guard let window = window, window.isVisible else { return }
-        viewModel?.refresh(quotes: quotes, quarterPrices: quarterPrices)
+        viewModel?.refresh(quotes: quotes, quarterPrices: quarterPrices, highestClosePrices: highestClosePrices)
     }
 }

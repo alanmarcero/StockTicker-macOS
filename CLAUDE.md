@@ -33,17 +33,17 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (24 files, ~5,101 lines)
+## Source Files (26 files, ~5,413 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (793L)  Main controller: menu bar UI, state management
-MenuBarController+Cache.swift    (97L)   Extension: YTD, quarterly, and market cap cache coordination
+MenuBarView.swift                (802L)  Main controller: menu bar UI, state management
+MenuBarController+Cache.swift    (163L)  Extension: YTD, quarterly, highest close, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (188L)  Yahoo Finance API client (actor), chart v8 methods
+StockService.swift               (190L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (64L)   Extension: market cap via v7 quote API with crumb auth
-StockService+Historical.swift    (81L)   Extension: historical price fetching (YTD, quarterly)
-StockData.swift                  (445L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
+StockService+Historical.swift    (109L)  Extension: historical price fetching (YTD, quarterly, highest close)
+StockData.swift                  (486L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (375L)  Config loading/saving, OpaqueContainerView, ColorMapping, protocols
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
@@ -55,19 +55,20 @@ MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems
 NewsService.swift                (130L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
-QuarterlyCache.swift             (178L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift         (402L)  Quarterly performance window: view model, SwiftUI view, controller
-LayoutConfig.swift               (77L)   Centralized layout constants
-CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD and quarterly caches)
-TickerDisplayBuilder.swift       (161L)  Ticker display formatting, color helpers, HighlightConfig
+QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
+QuarterlyPanelView.swift         (429L)  Quarterly performance window: view model, SwiftUI view, controller
+LayoutConfig.swift               (79L)   Centralized layout constants
+CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close caches)
+TickerDisplayBuilder.swift       (182L)  Ticker display formatting, color helpers, HighlightConfig
 QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
+HighestCloseCache.swift          (109L)  Highest daily close cache manager (actor), daily refresh
 ```
 
-## Test Files (24 files, ~6,356 lines)
+## Test Files (25 files, ~7,027 lines)
 
 ```
-StockDataTests.swift             (557L)  Quote calculations, session detection, formatting, market cap
-StockServiceTests.swift          (383L)  API mocking, fetch operations, extended hours, v7 response decoding
+StockDataTests.swift             (622L)  Quote calculations, session detection, formatting, market cap, highest close
+StockServiceTests.swift          (456L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -78,8 +79,8 @@ MenuBarViewTests.swift           (224L)  SortOption tests, sorting with quotes (
 MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrolling, ping animation
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
-QuarterlyCacheTests.swift        (446L)  Quarter calculations, cache operations, pruning
-QuarterlyPanelTests.swift        (459L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes
+QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
+QuarterlyPanelTests.swift        (554L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (98L)   Layout constant validation
@@ -88,8 +89,9 @@ TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, st
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
-TickerDisplayBuilderTests.swift  (170L)  Menu bar title, ticker title, highlights, color helpers
-QuoteFetchCoordinatorTests.swift (193L)  Fetch modes, FetchResult correctness, MockStockService
+TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
+QuoteFetchCoordinatorTests.swift (202L)  Fetch modes, FetchResult correctness, MockStockService
+HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ```
 
 ## File Dependencies
@@ -111,6 +113,7 @@ MenuBarView.swift (MenuBarController)
 ├── MenuItemFactory.swift (MenuItemFactory)
 ├── YTDCache.swift (YTDCacheManager)
 ├── QuarterlyCache.swift (QuarterlyCacheManager, QuarterCalculation, QuarterInfo)
+├── HighestCloseCache.swift (HighestCloseCacheManager)
 ├── QuarterlyPanelView.swift (QuarterlyPanelWindowController)
 ├── TickerEditorView.swift (WatchlistEditorWindowController)
 ├── DebugWindow.swift (DebugWindowController)
@@ -157,6 +160,10 @@ YTDCache.swift
 ├── TickerConfig.swift (FileSystemProtocol, DateProvider)
 └── CacheStorage.swift (CacheStorage)
 
+HighestCloseCache.swift
+├── TickerConfig.swift (FileSystemProtocol, DateProvider)
+└── CacheStorage.swift (CacheStorage)
+
 DebugWindow.swift
 └── RequestLogger.swift (RequestLogger, RequestLogEntry)
 ```
@@ -170,7 +177,7 @@ All major components use protocols for testability:
 - `TimerManagerDelegate` — timer lifecycle callbacks
 - `FileSystemProtocol` / `WorkspaceProtocol` — file operations
 - `SymbolValidator` — symbol validation
-- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager)
+- `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager, HighestCloseCacheManager)
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Actors for Thread Safety
@@ -179,6 +186,7 @@ All major components use protocols for testability:
 - `RequestLogger` — thread-safe request log storage
 - `YTDCacheManager` — thread-safe YTD price cache
 - `QuarterlyCacheManager` — thread-safe quarterly price cache
+- `HighestCloseCacheManager` — thread-safe highest close price cache
 
 ### State Management
 - `MenuBarController` — `@MainActor`, `@Published` properties, drives all UI
@@ -215,7 +223,7 @@ All magic numbers are extracted into namespaced enums:
 Batches 5 highlight parameters into a single struct with `resolve()`, `withPingBackground()`, `withPingDisabled()` helpers. Defined in `TickerDisplayBuilder.swift`, used by both MenuBarView and QuarterlyPanelView.
 
 ### Generic CacheStorage\<T\>
-Eliminates duplicate load/save file I/O in YTDCacheManager and QuarterlyCacheManager. Single `CacheStorage<T: Codable>` struct handles JSON encoding/decoding, directory creation, and error logging.
+Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManager, and HighestCloseCacheManager. Single `CacheStorage<T: Codable>` struct handles JSON encoding/decoding, directory creation, and error logging.
 
 ### Legacy Config Decoding
 `decodeLegacy()` extension on `KeyedDecodingContainer` handles backward-compatible field names (e.g. `tickers` → `watchlist`, `cycleInterval` → `menuBarRotationInterval`). Two overloads: required (throws) and optional (with default).
@@ -309,6 +317,28 @@ Year-to-date prices cached at `~/.stockticker/ytd-cache.json`:
 
 Key methods: `loadYTDCache()`, `fetchMissingYTDPrices()`, `attachYTDPricesToQuotes()`
 
+## Highest Close Tracking
+
+Shows how far each symbol's current price is from its highest daily closing price over the trailing 12 completed quarters (~3 years). Displayed as `High: -8.52%` in both the main dropdown ticker and the Quarterly Performance window.
+
+Cached at `~/.stockticker/highest-close-cache.json`:
+
+```json
+{
+  "quarterRange": "Q1-2023:Q4-2025",
+  "lastUpdated": "2026-02-16T12:00:00Z",
+  "prices": { "AAPL": 254.23, "SPY": 602.10 }
+}
+```
+
+**Flow:** App startup loads cache → checks quarter range invalidation (new quarter = new range) → checks daily freshness → fetches missing prices → each refresh attaches cached highest close to quotes.
+
+**Invalidation:** `quarterRange` changes when a new quarter completes. Daily refresh clears prices so new daily closes are captured.
+
+**API:** One chart v8 call per symbol for the full 3-year range (`interval=1d`), extracts `.max()` from close prices (~750 daily bars, ~20-30KB).
+
+Key methods: `loadHighestCloseCache()`, `fetchMissingHighestCloses()`, `attachHighestClosesToQuotes()`, `refreshHighestClosesIfNeeded()`
+
 ## Quarterly Performance (Cmd+Opt+Q)
 
 Standalone window with two view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end). Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
@@ -331,7 +361,7 @@ Standalone window with two view modes (segmented picker): **Since Quarter** show
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
-**Sortable columns:** Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
+**Sortable columns:** Symbol, High (% from highest close), and each quarter column. Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
 
 **Row highlighting:** Config-highlighted symbols (`config.highlightedSymbols`) get a persistent colored background row using `highlightColor` and `highlightOpacity`. These cannot be toggled off by clicking. Non-config rows can be click-toggled on/off for readability. `ColorMapping` enum in TickerConfig.swift provides shared color name mapping for both NSColor and SwiftUI Color.
 
@@ -351,15 +381,15 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 - **Countdown** — Shows last refresh time and seconds until next: `"Last: 10:32 AM · Next in 12s"`
 - **Index marquee** — `MarqueeView` custom NSView scrolling at ~32px/sec with seamless looping. Bold index names, regular weight values. Ping animation on data refresh.
 - **News headlines** — Proportional font (headlineFont/headlineFontBold). Top-from-source uses highlight background.
-- **Ticker list** — Sorted by `defaultSort`, shows price/market cap/percent/YTD/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
+- **Ticker list** — Sorted by `defaultSort`, shows price/market cap/percent/YTD/highest close/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
 - **Submenus** — Edit Watchlist, Quarterly Performance, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
 
 ### Color Helpers
 - `priceChangeColor(_:neutral:)` — green/red/neutral using `TradingHours.nearZeroThreshold`
 - `ColorMapping.nsColor(from:)` — config string to NSColor (shared, in TickerConfig.swift)
 - `ColorMapping.color(from:)` — config string to SwiftUI Color via `Color(nsColor:)` bridge
-- `StockQuote` extensions: `displayColor`, `highlightColor`, `extendedHoursColor`, `ytdColor`
-- YTD zero-change uses `.labelColor` (adapts to light/dark mode)
+- `StockQuote` extensions: `displayColor`, `highlightColor`, `extendedHoursColor`, `ytdColor`, `highestCloseColor`
+- YTD/highest close zero-change uses `.labelColor` (adapts to light/dark mode)
 
 ### Symbol Validation
 `YahooSymbolValidator` makes a real API request, checks 200 status + valid `regularMarketPrice`.
@@ -388,7 +418,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 
 Saved with `prettyPrinted` and `sortedKeys`. Supports legacy field names via `decodeLegacy()` helper.
 
-Sort options: `tickerAsc`/`Desc`, `marketCapAsc`/`Desc`, `percentAsc`/`Desc`, `ytdAsc`/`Desc`
+Sort options: `tickerAsc`/`Desc`, `marketCapAsc`/`Desc`, `percentAsc`/`Desc`, `ytdAsc`/`Desc`, `highAsc`/`Desc`
 
 Highlight colors: `yellow`, `green`, `blue`, `red`, `orange`, `purple`, `pink`, `cyan`, `teal`, `gray`, `brown`
 
@@ -427,6 +457,7 @@ struct StockTickerApp: App {
 - Menu bar: `TickerDisplayBuilder.menuBarTitle(for:showExtendedHours:)`
 - Dropdown: `TickerDisplayBuilder.tickerTitle(quote:highlight:)` with `HighlightConfig`
 - YTD section: `TickerDisplayBuilder.appendYTDSection()`
+- Highest close section: `TickerDisplayBuilder.appendHighestCloseSection()`
 - Extended hours: `TickerDisplayBuilder.appendExtendedHoursSection()`
 
 ### Change API data source

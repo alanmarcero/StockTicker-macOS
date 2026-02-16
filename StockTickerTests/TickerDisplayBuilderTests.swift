@@ -103,6 +103,46 @@ final class TickerDisplayBuilderTests: XCTestCase {
         XCTAssertEqual(result.string, "")
     }
 
+    // MARK: - Highest Close Section
+
+    func testAppendHighestCloseSection_withData() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, highestClose: 200.0)
+        let highlight = HighlightConfig(
+            isPingHighlighted: false, pingBackgroundColor: nil,
+            isPersistentHighlighted: false, persistentHighlightColor: .yellow, persistentHighlightOpacity: 0.25
+        )
+
+        let result = NSMutableAttributedString()
+        TickerDisplayBuilder.appendHighestCloseSection(to: result, quote: quote, highlight: highlight)
+
+        XCTAssertTrue(result.string.contains("High:"))
+    }
+
+    func testAppendHighestCloseSection_noData_appendsNothing() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        let highlight = HighlightConfig(
+            isPingHighlighted: false, pingBackgroundColor: nil,
+            isPersistentHighlighted: false, persistentHighlightColor: .yellow, persistentHighlightOpacity: 0.25
+        )
+
+        let result = NSMutableAttributedString()
+        TickerDisplayBuilder.appendHighestCloseSection(to: result, quote: quote, highlight: highlight)
+
+        XCTAssertEqual(result.string, "")
+    }
+
+    func testTickerTitle_includesHighestCloseSection() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, ytdStartPrice: 130.0, highestClose: 200.0)
+        let highlight = HighlightConfig(
+            isPingHighlighted: false, pingBackgroundColor: nil,
+            isPersistentHighlighted: false, persistentHighlightColor: .yellow, persistentHighlightOpacity: 0.25
+        )
+
+        let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
+        XCTAssertTrue(result.string.contains("High:"))
+        XCTAssertTrue(result.string.contains("YTD:"))
+    }
+
     // MARK: - Extended Hours Section
 
     func testAppendExtendedHoursSection_noExtendedHours_appendsNothing() {
@@ -155,6 +195,26 @@ final class TickerDisplayBuilderTests: XCTestCase {
         let (fg, bg) = config.resolve(defaultColor: .systemRed)
         XCTAssertEqual(fg, .white)
         XCTAssertEqual(bg, .systemGreen)
+    }
+
+    func testHighestCloseColor_negative() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, highestClose: 200.0)
+        XCTAssertEqual(quote.highestCloseColor, .systemRed)
+    }
+
+    func testHighestCloseColor_positive() {
+        let quote = StockQuote(symbol: "AAPL", price: 220.0, previousClose: 210.0, highestClose: 200.0)
+        XCTAssertEqual(quote.highestCloseColor, .systemGreen)
+    }
+
+    func testHighestCloseColor_nil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        XCTAssertEqual(quote.highestCloseColor, .secondaryLabelColor)
+    }
+
+    func testHighestCloseColor_nearZero() {
+        let quote = StockQuote(symbol: "AAPL", price: 200.0, previousClose: 195.0, highestClose: 200.0)
+        XCTAssertEqual(quote.highestCloseColor, .labelColor)
     }
 
     func testHighlightConfig_withPingDisabled() {

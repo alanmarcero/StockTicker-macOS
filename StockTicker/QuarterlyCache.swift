@@ -74,6 +74,13 @@ enum QuarterCalculation {
         return "Q\(quarter)'\(String(format: "%02d", shortYear))"
     }
 
+    static func quarterStartTimestamp(year: Int, quarter: Int) -> Int {
+        let startMonth = (quarter - 1) * 3 + 1
+        let calendar = Calendar.current
+        guard let date = calendar.date(from: DateComponents(year: year, month: startMonth, day: 1)) else { return 0 }
+        return Int(date.timeIntervalSince1970)
+    }
+
     // MARK: - Private
 
     private static func lastDayOfMonth(year: Int, month: Int, calendar: Calendar) -> Int {

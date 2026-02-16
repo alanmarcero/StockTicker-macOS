@@ -134,10 +134,13 @@ struct StockQuote: Identifiable, Sendable {
     // Market capitalization
     let marketCap: Double?
 
+    // Highest daily close over trailing 12 quarters (~3 years)
+    let highestClose: Double?
+
     init(symbol: String, price: Double, previousClose: Double, session: TradingSession = .closed,
          preMarketPrice: Double? = nil, preMarketChange: Double? = nil, preMarketChangePercent: Double? = nil,
          postMarketPrice: Double? = nil, postMarketChange: Double? = nil, postMarketChangePercent: Double? = nil,
-         ytdStartPrice: Double? = nil, marketCap: Double? = nil) {
+         ytdStartPrice: Double? = nil, marketCap: Double? = nil, highestClose: Double? = nil) {
         self.id = UUID()
         self.symbol = symbol
         self.price = price
@@ -151,6 +154,7 @@ struct StockQuote: Identifiable, Sendable {
         self.postMarketChangePercent = postMarketChangePercent
         self.ytdStartPrice = ytdStartPrice
         self.marketCap = marketCap
+        self.highestClose = highestClose
     }
 
     // Regular market change (always based on regular price)
@@ -348,6 +352,22 @@ struct StockQuote: Identifiable, Sendable {
     var ytdIsPositive: Bool {
         (ytdChangePercent ?? 0) >= 0
     }
+
+    // MARK: - Highest Close Properties
+
+    var highestCloseChangePercent: Double? {
+        guard let highest = highestClose, highest > 0 else { return nil }
+        return ((price - highest) / highest) * 100
+    }
+
+    var formattedHighestCloseChangePercent: String? {
+        guard let percent = highestCloseChangePercent else { return nil }
+        return Formatting.signedPercent(percent, isPositive: percent >= 0)
+    }
+
+    var highestCloseIsPositive: Bool {
+        (highestCloseChangePercent ?? 0) >= 0
+    }
 }
 
 // MARK: - Formatting Helpers
@@ -421,7 +441,8 @@ extension StockQuote {
             postMarketChange: postMarketChange,
             postMarketChangePercent: postMarketChangePercent,
             ytdStartPrice: ytdPrice,
-            marketCap: marketCap
+            marketCap: marketCap,
+            highestClose: highestClose
         )
     }
 
@@ -439,7 +460,27 @@ extension StockQuote {
             postMarketChange: postMarketChange,
             postMarketChangePercent: postMarketChangePercent,
             ytdStartPrice: ytdStartPrice,
-            marketCap: cap
+            marketCap: cap,
+            highestClose: highestClose
+        )
+    }
+
+    /// Returns a new StockQuote with the highest close set
+    func withHighestClose(_ highest: Double?) -> StockQuote {
+        StockQuote(
+            symbol: symbol,
+            price: price,
+            previousClose: previousClose,
+            session: session,
+            preMarketPrice: preMarketPrice,
+            preMarketChange: preMarketChange,
+            preMarketChangePercent: preMarketChangePercent,
+            postMarketPrice: postMarketPrice,
+            postMarketChange: postMarketChange,
+            postMarketChangePercent: postMarketChangePercent,
+            ytdStartPrice: ytdStartPrice,
+            marketCap: marketCap,
+            highestClose: highest
         )
     }
 }

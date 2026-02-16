@@ -97,6 +97,8 @@ class MenuBarController: NSObject, ObservableObject {
     var quarterlyPrices: [String: [String: Double]] = [:]
     var quarterInfos: [QuarterInfo] = []
     var marketCaps: [String: Double] = [:]
+    let highestCloseCacheManager: HighestCloseCacheManager
+    var highestClosePrices: [String: Double] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -108,7 +110,8 @@ class MenuBarController: NSObject, ObservableObject {
         marketSchedule: MarketSchedule = .shared,
         urlOpener: URLOpener = NSWorkspace.shared,
         ytdCacheManager: YTDCacheManager = YTDCacheManager(),
-        quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager()
+        quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager(),
+        highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -117,6 +120,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.urlOpener = urlOpener
         self.ytdCacheManager = ytdCacheManager
         self.quarterlyCacheManager = quarterlyCacheManager
+        self.highestCloseCacheManager = highestCloseCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -130,6 +134,7 @@ class MenuBarController: NSObject, ObservableObject {
         Task {
             await loadYTDCache()
             await loadQuarterlyCache()
+            await loadHighestCloseCache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -317,9 +322,11 @@ class MenuBarController: NSObject, ObservableObject {
             marketCaps.merge(fetchedCaps) { _, new in new }
         }
         attachMarketCapsToQuotes()
+        await refreshHighestClosesIfNeeded()
+        attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices)
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -647,6 +654,7 @@ class MenuBarController: NSObject, ObservableObject {
         Task {
             await fetchMissingYTDPrices()
             await fetchMissingQuarterlyPrices()
+            await fetchMissingHighestCloses()
             await refreshAllQuotes()
         }
     }
@@ -707,7 +715,8 @@ class MenuBarController: NSObject, ObservableObject {
             quarterInfos: quarterInfos,
             highlightedSymbols: Set(config.highlightedSymbols),
             highlightColor: config.highlightColor,
-            highlightOpacity: config.highlightOpacity
+            highlightOpacity: config.highlightOpacity,
+            highestClosePrices: highestClosePrices
         )
     }
 

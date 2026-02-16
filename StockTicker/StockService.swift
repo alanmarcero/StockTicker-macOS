@@ -11,6 +11,8 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double]
     func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double?
     func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
+    func fetchHighestClose(symbol: String, period1: Int, period2: Int) async -> Double?
+    func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
 }
 
 // MARK: - HTTP Client Protocol

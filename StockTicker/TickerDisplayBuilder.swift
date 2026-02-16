@@ -17,6 +17,11 @@ extension StockQuote {
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
         return pct >= 0 ? .systemGreen : .systemRed
     }
+    var highestCloseColor: NSColor {
+        guard let pct = highestCloseChangePercent else { return .secondaryLabelColor }
+        if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
+        return pct >= 0 ? .systemGreen : .systemRed
+    }
 }
 
 // MARK: - Attributed String Helpers
@@ -118,6 +123,7 @@ enum TickerDisplayBuilder {
                               font: MenuItemFactory.monoFont, color: mainColor, backgroundColor: mainBgColor))
 
         appendYTDSection(to: result, quote: quote, highlight: highlight)
+        appendHighestCloseSection(to: result, quote: quote, highlight: highlight)
         appendExtendedHoursSection(to: result, quote: quote, highlight: highlight)
 
         return result
@@ -134,6 +140,17 @@ enum TickerDisplayBuilder {
                               font: MenuItemFactory.monoFont, color: ytdColor, backgroundColor: ytdBgColor))
     }
 
+    static func appendHighestCloseSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
+        guard let highPercent = quote.formattedHighestCloseChangePercent else { return }
+        let highContent = "High: \(highPercent)"
+        let paddedContent = highContent.count >= LayoutConfig.Ticker.highWidth
+            ? highContent
+            : highContent.padding(toLength: LayoutConfig.Ticker.highWidth, withPad: " ", startingAt: 0)
+        let (highColor, highBgColor) = highlight.resolve(defaultColor: quote.highestCloseColor)
+        result.append(.styled("  \(paddedContent)",
+                              font: MenuItemFactory.monoFont, color: highColor, backgroundColor: highBgColor))
+    }
+
     static func appendExtendedHoursSection(
         to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig
     ) {
@@ -141,6 +158,10 @@ enum TickerDisplayBuilder {
 
         if quote.formattedYTDChangePercent == nil {
             let emptyPadding = String(repeating: " ", count: LayoutConfig.Ticker.ytdWidth + 2)
+            result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
+        }
+        if quote.formattedHighestCloseChangePercent == nil {
+            let emptyPadding = String(repeating: " ", count: LayoutConfig.Ticker.highWidth + 2)
             result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
         }
 

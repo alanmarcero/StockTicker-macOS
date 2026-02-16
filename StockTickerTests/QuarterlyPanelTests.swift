@@ -218,6 +218,101 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.rows[1].symbol, "AAPL")
     }
 
+    // MARK: - Highest Close in Rows
+
+    func testUpdate_includesHighestCloseChangePercent() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+
+        let row = vm.rows[0]
+        // (150-200)/200 * 100 = -25%
+        XCTAssertNotNil(row.highestCloseChangePercent)
+        XCTAssertEqual(row.highestCloseChangePercent!, -25.0, accuracy: 0.01)
+    }
+
+    func testUpdate_highestCloseNilWhenMissing() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+
+        let row = vm.rows[0]
+        XCTAssertNil(row.highestCloseChangePercent)
+    }
+
+    func testSort_byHighestClose() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        // AAPL: (150-200)/200 = -25%, SPY: (500-450)/450 = +11.11%
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 450.0]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+
+        vm.sort(by: .highestClose)
+
+        // Ascending: AAPL (-25%) < SPY (+11.11%)
+        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.rows[1].symbol, "SPY")
+
+        // Toggle descending
+        vm.sort(by: .highestClose)
+        XCTAssertEqual(vm.rows[0].symbol, "SPY")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+    }
+
+    func testSort_byHighestClose_nilSortsFirst() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
+            "NEW": makeQuote(symbol: "NEW", price: 50.0),
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL", "NEW"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+
+        vm.sort(by: .highestClose)
+
+        // nil sorts before any value in ascending
+        XCTAssertEqual(vm.rows[0].symbol, "NEW")
+        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+    }
+
+    func testRefresh_threadsHighestClosePrices() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+
+        // Refresh with updated prices
+        let updatedQuotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 180.0),
+        ]
+        vm.refresh(quotes: updatedQuotes, quarterPrices: [:], highestClosePrices: highestClosePrices)
+
+        let row = vm.rows[0]
+        // (180-200)/200 * 100 = -10%
+        XCTAssertNotNil(row.highestCloseChangePercent)
+        XCTAssertEqual(row.highestCloseChangePercent!, -10.0, accuracy: 0.01)
+    }
+
     // MARK: - Refresh
 
     func testRefresh_updatesWithNewQuotes() {

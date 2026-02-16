@@ -11,6 +11,8 @@ enum SortOption: String, CaseIterable {
     case percentDesc = "% Change ↓"
     case ytdAsc = "YTD % ↑"
     case ytdDesc = "YTD % ↓"
+    case highAsc = "High % ↑"
+    case highDesc = "High % ↓"
 
     static func from(configString: String) -> SortOption {
         switch configString {
@@ -22,6 +24,8 @@ enum SortOption: String, CaseIterable {
         case "percentDesc": return .percentDesc
         case "ytdAsc": return .ytdAsc
         case "ytdDesc": return .ytdDesc
+        case "highAsc": return .highAsc
+        case "highDesc": return .highDesc
         default: return .percentDesc
         }
     }
@@ -36,6 +40,8 @@ enum SortOption: String, CaseIterable {
         case .percentDesc: return "percentDesc"
         case .ytdAsc: return "ytdAsc"
         case .ytdDesc: return "ytdDesc"
+        case .highAsc: return "highAsc"
+        case .highDesc: return "highDesc"
         }
     }
 
@@ -52,6 +58,12 @@ enum SortOption: String, CaseIterable {
         }
         case .ytdDesc: return symbols.sorted {
             (quotes[$0]?.ytdChangePercent ?? 0) > (quotes[$1]?.ytdChangePercent ?? 0)
+        }
+        case .highAsc: return symbols.sorted {
+            (quotes[$0]?.highestCloseChangePercent ?? 0) < (quotes[$1]?.highestCloseChangePercent ?? 0)
+        }
+        case .highDesc: return symbols.sorted {
+            (quotes[$0]?.highestCloseChangePercent ?? 0) > (quotes[$1]?.highestCloseChangePercent ?? 0)
         }
         }
     }

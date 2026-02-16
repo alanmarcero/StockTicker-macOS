@@ -9,6 +9,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var marketCapsToReturn: [String: Double] = [:]
     var ytdPricesToReturn: [String: Double] = [:]
     var quarterEndPricesToReturn: [String: Double] = [:]
+    var highestClosesToReturn: [String: Double] = [:]
 
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
@@ -45,6 +46,14 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
 
     func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
         quarterEndPricesToReturn.filter { symbols.contains($0.key) }
+    }
+
+    func fetchHighestClose(symbol: String, period1: Int, period2: Int) async -> Double? {
+        highestClosesToReturn[symbol]
+    }
+
+    func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
+        highestClosesToReturn.filter { symbols.contains($0.key) }
     }
 }
 

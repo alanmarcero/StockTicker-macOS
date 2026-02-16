@@ -253,6 +253,79 @@ final class StockServiceTests: XCTestCase {
 
         XCTAssertNil(state)
     }
+
+    // MARK: - fetchHighestClose tests
+
+    func testFetchHighestClose_extractsMaxFromCloses() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [140.0, 155.0, 148.0, 160.0, 152.0, null, 145.0]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let highest = await service.fetchHighestClose(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertEqual(highest, 160.0)
+    }
+
+    func testFetchHighestClose_error_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let highest = await service.fetchHighestClose(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNil(highest)
+    }
+
+    func testFetchHighestClose_emptyCloses_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [null, null]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let highest = await service.fetchHighestClose(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNil(highest)
+    }
 }
 
 // MARK: - YahooQuoteResponse Decoding Tests

@@ -144,6 +144,41 @@ final class QuarterCalculationTests: XCTestCase {
         XCTAssertEqual(calendar.component(.day, from: p2Date), 2)
     }
 
+    // MARK: - quarterStartTimestamp
+
+    func testQuarterStartTimestamp_Q1_returnsJan1() {
+        let ts = QuarterCalculation.quarterStartTimestamp(year: 2025, quarter: 1)
+        let date = Date(timeIntervalSince1970: TimeInterval(ts))
+        let calendar = Calendar.current
+        XCTAssertEqual(calendar.component(.year, from: date), 2025)
+        XCTAssertEqual(calendar.component(.month, from: date), 1)
+        XCTAssertEqual(calendar.component(.day, from: date), 1)
+    }
+
+    func testQuarterStartTimestamp_Q2_returnsApr1() {
+        let ts = QuarterCalculation.quarterStartTimestamp(year: 2025, quarter: 2)
+        let date = Date(timeIntervalSince1970: TimeInterval(ts))
+        let calendar = Calendar.current
+        XCTAssertEqual(calendar.component(.month, from: date), 4)
+        XCTAssertEqual(calendar.component(.day, from: date), 1)
+    }
+
+    func testQuarterStartTimestamp_Q3_returnsJul1() {
+        let ts = QuarterCalculation.quarterStartTimestamp(year: 2025, quarter: 3)
+        let date = Date(timeIntervalSince1970: TimeInterval(ts))
+        let calendar = Calendar.current
+        XCTAssertEqual(calendar.component(.month, from: date), 7)
+        XCTAssertEqual(calendar.component(.day, from: date), 1)
+    }
+
+    func testQuarterStartTimestamp_Q4_returnsOct1() {
+        let ts = QuarterCalculation.quarterStartTimestamp(year: 2025, quarter: 4)
+        let date = Date(timeIntervalSince1970: TimeInterval(ts))
+        let calendar = Calendar.current
+        XCTAssertEqual(calendar.component(.month, from: date), 10)
+        XCTAssertEqual(calendar.component(.day, from: date), 1)
+    }
+
     // MARK: - quarterIdentifier
 
     func testQuarterIdentifier_producesCorrectFormat() {

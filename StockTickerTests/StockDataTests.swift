@@ -286,13 +286,15 @@ final class StockQuoteTests: XCTestCase {
             price: 150.0,
             previousClose: 148.0,
             session: .regular,
-            ytdStartPrice: 140.0
+            ytdStartPrice: 140.0,
+            highestClose: 160.0
         )
         let updated = quote.withMarketCap(3_000_000_000_000)
         XCTAssertEqual(updated.symbol, "AAPL")
         XCTAssertEqual(updated.price, 150.0)
         XCTAssertEqual(updated.ytdStartPrice, 140.0)
         XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+        XCTAssertEqual(updated.highestClose, 160.0)
     }
 
     func testWithYTDStartPrice_preservesMarketCap() {
@@ -301,11 +303,74 @@ final class StockQuoteTests: XCTestCase {
             price: 150.0,
             previousClose: 148.0,
             session: .regular,
-            marketCap: 3_000_000_000_000
+            marketCap: 3_000_000_000_000,
+            highestClose: 160.0
         )
         let updated = quote.withYTDStartPrice(140.0)
         XCTAssertEqual(updated.ytdStartPrice, 140.0)
         XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+        XCTAssertEqual(updated.highestClose, 160.0)
+    }
+
+    // MARK: - Highest Close Properties
+
+    func testHighestCloseChangePercent_correctPercent() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, highestClose: 200.0)
+        // (150-200)/200 * 100 = -25%
+        XCTAssertEqual(quote.highestCloseChangePercent!, -25.0, accuracy: 0.01)
+    }
+
+    func testHighestCloseChangePercent_nilWhenMissing() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0)
+        XCTAssertNil(quote.highestCloseChangePercent)
+    }
+
+    func testHighestCloseChangePercent_zeroAtHigh() {
+        let quote = StockQuote(symbol: "AAPL", price: 200.0, previousClose: 195.0, highestClose: 200.0)
+        XCTAssertEqual(quote.highestCloseChangePercent!, 0.0, accuracy: 0.01)
+    }
+
+    func testHighestCloseChangePercent_positiveAboveHigh() {
+        let quote = StockQuote(symbol: "AAPL", price: 220.0, previousClose: 210.0, highestClose: 200.0)
+        // (220-200)/200 * 100 = 10%
+        XCTAssertEqual(quote.highestCloseChangePercent!, 10.0, accuracy: 0.01)
+    }
+
+    func testFormattedHighestCloseChangePercent_formatting() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, highestClose: 200.0)
+        XCTAssertEqual(quote.formattedHighestCloseChangePercent, "-25.00%")
+    }
+
+    func testFormattedHighestCloseChangePercent_nilWhenMissing() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0)
+        XCTAssertNil(quote.formattedHighestCloseChangePercent)
+    }
+
+    func testHighestCloseIsPositive_positive() {
+        let quote = StockQuote(symbol: "AAPL", price: 220.0, previousClose: 210.0, highestClose: 200.0)
+        XCTAssertTrue(quote.highestCloseIsPositive)
+    }
+
+    func testHighestCloseIsPositive_negative() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, highestClose: 200.0)
+        XCTAssertFalse(quote.highestCloseIsPositive)
+    }
+
+    func testWithHighestClose_preservesOtherFields() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular,
+            ytdStartPrice: 140.0,
+            marketCap: 3_000_000_000_000
+        )
+        let updated = quote.withHighestClose(200.0)
+        XCTAssertEqual(updated.symbol, "AAPL")
+        XCTAssertEqual(updated.price, 150.0)
+        XCTAssertEqual(updated.ytdStartPrice, 140.0)
+        XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+        XCTAssertEqual(updated.highestClose, 200.0)
     }
 
     // MARK: - Extended hours with CLOSED session (time-based fallback)
