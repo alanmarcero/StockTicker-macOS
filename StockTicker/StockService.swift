@@ -30,11 +30,14 @@ extension URLResponse {
 // MARK: - Stock Service Implementation
 
 actor StockService: StockServiceProtocol {
-    private let httpClient: HTTPClient
-    private let baseURL = "https://query1.finance.yahoo.com/v8/finance/chart/"
-    private var crumb: String?
+    let httpClient: HTTPClient
+    var crumb: String?
 
-    private enum MarketCapConfig {
+    enum APIEndpoints {
+        static let chartBase = "https://query1.finance.yahoo.com/v8/finance/chart/"
+        static let cookieSetup = "https://fc.yahoo.com/v1/test"
+        static let crumbFetch = "https://query2.finance.yahoo.com/v1/test/getcrumb"
+        static let quoteBase = "https://query2.finance.yahoo.com/v7/finance/quote"
         static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
     }
 
@@ -54,7 +57,6 @@ actor StockService: StockServiceProtocol {
         let meta = result.meta
         let session = TradingSession(fromYahooState: meta.marketState)
 
-        // Calculate extended hours data from chart indicators if available
         let extendedHoursData = calculateExtendedHoursData(
             result: result,
             regularMarketPrice: regularMarketPrice,
@@ -98,144 +100,9 @@ actor StockService: StockServiceProtocol {
         return response.chart.result?.first?.meta.marketState
     }
 
-    // MARK: - Market Cap (v7 Quote API)
-
-    func fetchMarketCaps(symbols: [String]) async -> [String: Double] {
-        guard !symbols.isEmpty else { return [:] }
-
-        if crumb == nil { await refreshCrumb() }
-
-        if let result = await performMarketCapFetch(symbols: symbols) {
-            return result
-        }
-
-        // Crumb may have expired, refresh and retry once
-        await refreshCrumb()
-        return await performMarketCapFetch(symbols: symbols) ?? [:]
-    }
-
-    private func refreshCrumb() async {
-        guard let testURL = URL(string: "https://fc.yahoo.com/v1/test") else { return }
-        var testRequest = URLRequest(url: testURL)
-        testRequest.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
-        _ = try? await URLSession.shared.data(for: testRequest)
-
-        guard let crumbURL = URL(string: "https://query2.finance.yahoo.com/v1/test/getcrumb") else { return }
-        var crumbRequest = URLRequest(url: crumbURL)
-        crumbRequest.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await URLSession.shared.data(for: crumbRequest),
-              response.isSuccessfulHTTP else { return }
-        crumb = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func performMarketCapFetch(symbols: [String]) async -> [String: Double]? {
-        guard let crumb = crumb,
-              let encodedCrumb = crumb.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-            return nil
-        }
-
-        let symbolList = symbols.joined(separator: ",")
-        guard let url = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=\(symbolList)&crumb=\(encodedCrumb)&fields=marketCap,quoteType") else {
-            return nil
-        }
-
-        do {
-            var request = URLRequest(url: url)
-            request.setValue(MarketCapConfig.userAgent, forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
-            var result: [String: Double] = [:]
-            for quote in decoded.quoteResponse.result {
-                guard quote.quoteType != "ETF", let cap = quote.marketCap else { continue }
-                result[quote.symbol] = cap
-            }
-            return result
-        } catch {
-            return nil
-        }
-    }
-
-    func fetchYTDStartPrice(symbol: String) async -> Double? {
-        let calendar = Calendar.current
-        let currentYear = calendar.component(.year, from: Date())
-
-        guard let dec31 = calendar.date(from: DateComponents(year: currentYear - 1, month: 12, day: 31)),
-              let jan2 = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 2)) else {
-            return nil
-        }
-
-        let period1 = Int(dec31.timeIntervalSince1970)
-        let period2 = Int(jan2.timeIntervalSince1970)
-
-        return await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
-    }
-
-    func batchFetchYTDPrices(symbols: [String]) async -> [String: Double] {
-        await batchFetchHistoricalClosePrices(symbols: symbols) { symbol in
-            await self.fetchYTDStartPrice(symbol: symbol)
-        }
-    }
-
-    func fetchQuarterEndPrice(symbol: String, period1: Int, period2: Int) async -> Double? {
-        await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
-    }
-
-    func batchFetchQuarterEndPrices(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
-        await batchFetchHistoricalClosePrices(symbols: symbols) { symbol in
-            await self.fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
-        }
-    }
-
-    // MARK: - Private
-
-    private func fetchHistoricalClosePrice(symbol: String, period1: Int, period2: Int) async -> Double? {
-        guard let url = URL(string: "\(baseURL)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close,
-                  let closePrice = closes.compactMap({ $0 }).last else {
-                return nil
-            }
-
-            return closePrice
-        } catch {
-            return nil
-        }
-    }
-
-    private func batchFetchHistoricalClosePrices(
-        symbols: [String],
-        fetcher: @escaping @Sendable (String) async -> Double?
-    ) async -> [String: Double] {
-        await withTaskGroup(of: (String, Double?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await fetcher(symbol))
-                }
-            }
-
-            var results: [String: Double] = [:]
-            for await (symbol, price) in group {
-                if let price = price {
-                    results[symbol] = price
-                }
-            }
-            return results
-        }
-    }
-
-    private func fetchChartData(symbol: String) async -> YahooChartResponse? {
+    func fetchChartData(symbol: String) async -> YahooChartResponse? {
         // Use 1-minute intervals with includePrePost to get extended hours data
-        guard let url = URL(string: "\(baseURL)\(symbol)?interval=1m&range=1d&includePrePost=true") else {
+        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?interval=1m&range=1d&includePrePost=true") else {
             return nil
         }
 
@@ -245,13 +112,14 @@ actor StockService: StockServiceProtocol {
 
             return try JSONDecoder().decode(YahooChartResponse.self, from: data)
         } catch {
+            print("Chart data fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
         }
     }
 
     // MARK: - Extended Hours Calculation
 
-    private struct ExtendedHoursData {
+    struct ExtendedHoursData {
         var preMarketPrice: Double?
         var preMarketChange: Double?
         var preMarketChangePercent: Double?
@@ -269,13 +137,11 @@ actor StockService: StockServiceProtocol {
     ) -> ExtendedHoursData {
         var data = ExtendedHoursData()
 
-        // Get the latest close price from the indicators
         guard let closes = result.indicators?.quote?.first?.close,
               !closes.isEmpty else {
             return data
         }
 
-        // Find the last non-nil close price
         var latestPrice: Double?
         for close in closes.reversed() {
             if let price = close {
@@ -288,7 +154,6 @@ actor StockService: StockServiceProtocol {
             return data
         }
 
-        // Determine if we're in extended hours based on time
         let timeBasedSession = StockQuote.currentTimeBasedSession()
 
         // Only calculate if the current price differs from regular market price
@@ -314,7 +179,6 @@ actor StockService: StockServiceProtocol {
                     data.postMarketChangePercent = ((currentPrice - regularMarketPrice) / regularMarketPrice) * 100
                 }
             case .regular, .closed:
-                // During regular hours or when truly closed, no extended hours data
                 break
             }
         }

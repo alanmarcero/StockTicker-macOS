@@ -194,20 +194,25 @@ class DebugViewModel: ObservableObject {
     @Published var entries: [RequestLogEntry] = []
     @Published var errorCount: Int = 0
     @Published var lastErrorMessage: String?
+    private let logger: RequestLogger
     private var refreshTask: Task<Void, Never>?
+
+    init(logger: RequestLogger = .shared) {
+        self.logger = logger
+    }
 
     func refresh() {
         Task {
-            entries = await RequestLogger.shared.getEntries()
-            errorCount = await RequestLogger.shared.getErrorCount()
-            let lastError = await RequestLogger.shared.getLastError()
+            entries = await logger.getEntries()
+            errorCount = await logger.getErrorCount()
+            let lastError = await logger.getLastError()
             lastErrorMessage = lastError?.error ?? lastError.map { "HTTP \($0.statusCode ?? 0)" }
         }
     }
 
     func clear() {
         Task {
-            await RequestLogger.shared.clear()
+            await logger.clear()
             entries = []
             errorCount = 0
             lastErrorMessage = nil

@@ -11,57 +11,11 @@ extension NSWorkspace: URLOpener {
     func openInBrowser(_ url: URL) { open(url) }
 }
 
-// MARK: - Color Helpers
-
-private func priceChangeColor(_ change: Double, neutral: NSColor) -> NSColor {
-    if abs(change) < TradingHours.nearZeroThreshold { return neutral }
-    return change > 0 ? .systemGreen : .systemRed
-}
-
-private extension StockQuote {
-    var displayColor: NSColor { priceChangeColor(change, neutral: .secondaryLabelColor) }
-    var highlightColor: NSColor { priceChangeColor(change, neutral: .systemGray) }
-    var extendedHoursColor: NSColor { priceChangeColor(extendedHoursChangePercent ?? 0, neutral: .secondaryLabelColor) }
-    var extendedHoursHighlightColor: NSColor { priceChangeColor(extendedHoursChangePercent ?? 0, neutral: .systemGray) }
-    var ytdColor: NSColor {
-        guard let pct = ytdChangePercent else { return .secondaryLabelColor }
-        if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
-        return pct >= 0 ? .systemGreen : .systemRed
-    }
-}
-
-// MARK: - Attributed String Helpers
-
-private extension NSAttributedString {
-    static func styled(
-        _ string: String, font: NSFont, color: NSColor? = nil, backgroundColor: NSColor? = nil
-    ) -> NSAttributedString {
-        var attributes: [Key: Any] = [.font: font]
-        if let color = color { attributes[.foregroundColor] = color }
-        if let backgroundColor = backgroundColor { attributes[.backgroundColor] = backgroundColor }
-        return NSAttributedString(string: string, attributes: attributes)
-    }
-}
-
-private extension NSMutableAttributedString {
-    func append(_ string: String, font: NSFont, color: NSColor? = nil) {
-        append(.styled(string, font: font, color: color))
-    }
-}
-
 // MARK: - Layout Constants (referencing centralized LayoutConfig)
 
 private enum Layout {
-    static let fontSize: CGFloat = LayoutConfig.Font.size
     static let headerFontSize: CGFloat = LayoutConfig.Font.headerSize
     static let scheduleFontSize: CGFloat = LayoutConfig.Font.scheduleSize
-
-    static let tickerSymbolWidth = LayoutConfig.Ticker.symbolWidth
-    static let tickerPriceWidth = LayoutConfig.Ticker.priceWidth
-    static let tickerMarketCapWidth = LayoutConfig.Ticker.marketCapWidth
-    static let tickerPercentWidth = LayoutConfig.Ticker.percentWidth
-    static let tickerYTDWidth = LayoutConfig.Ticker.ytdWidth
-    static let tickerExtendedHoursWidth = LayoutConfig.Ticker.extendedHoursWidth
 }
 
 // MARK: - Display Strings
@@ -81,46 +35,6 @@ private enum Timing {
     static let highlightFadeStep: CGFloat = 0.03
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
-}
-
-// MARK: - Highlight Configuration
-
-private struct HighlightConfig {
-    let isPingHighlighted: Bool
-    let pingBackgroundColor: NSColor?
-    let isPersistentHighlighted: Bool
-    let persistentHighlightColor: NSColor
-    let persistentHighlightOpacity: Double
-
-    func resolve(defaultColor: NSColor) -> (foreground: NSColor, background: NSColor?) {
-        if isPingHighlighted {
-            return (.white, pingBackgroundColor)
-        }
-        if isPersistentHighlighted {
-            return (defaultColor, persistentHighlightColor.withAlphaComponent(persistentHighlightOpacity))
-        }
-        return (defaultColor, nil)
-    }
-
-    func withPingBackground(_ color: NSColor?) -> HighlightConfig {
-        HighlightConfig(
-            isPingHighlighted: isPingHighlighted,
-            pingBackgroundColor: color,
-            isPersistentHighlighted: isPersistentHighlighted,
-            persistentHighlightColor: persistentHighlightColor,
-            persistentHighlightOpacity: persistentHighlightOpacity
-        )
-    }
-
-    func withPingDisabled() -> HighlightConfig {
-        HighlightConfig(
-            isPingHighlighted: false,
-            pingBackgroundColor: nil,
-            isPersistentHighlighted: isPersistentHighlighted,
-            persistentHighlightColor: persistentHighlightColor,
-            persistentHighlightOpacity: persistentHighlightOpacity
-        )
-    }
 }
 
 // MARK: - Menu Bar Controller
@@ -352,28 +266,48 @@ class MenuBarController: NSObject, ObservableObject {
 
     // MARK: - Data Refresh
 
-    private func ensureClosedMarketSymbol(in symbols: [String]) -> [String] {
-        let closedMarketSymbol = config.menuBarAssetWhenClosed.symbol
-        guard !symbols.contains(closedMarketSymbol) else { return symbols }
-        return symbols + [closedMarketSymbol]
-    }
-
     func refreshAllQuotes() async {
         let scheduleInfo = marketSchedule.getTodaySchedule()
         let isWeekend = scheduleInfo.schedule.contains("Weekend")
         let isInitialLoad = !hasCompletedInitialLoad
 
-        let fetchedSymbols: Set<String>
+        let closedMarketSymbol = config.menuBarAssetWhenClosed.symbol
+        let indexSymbols = config.indexSymbols.map { $0.symbol }
+        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
 
+        let result: FetchResult
         if isInitialLoad {
-            fetchedSymbols = await fetchInitialLoad(isWeekend: isWeekend)
+            result = await QuoteFetchCoordinator.fetchInitialLoad(
+                service: stockService, watchlist: config.watchlist,
+                indexSymbols: indexSymbols, alwaysOpenSymbols: alwaysOpenSymbols,
+                closedMarketSymbol: closedMarketSymbol, isWeekend: isWeekend
+            )
         } else if scheduleInfo.state == .closed || isWeekend {
-            fetchedSymbols = await fetchClosedMarket()
+            result = await QuoteFetchCoordinator.fetchClosedMarket(
+                service: stockService, closedMarketSymbol: closedMarketSymbol,
+                alwaysOpenSymbols: alwaysOpenSymbols
+            )
         } else if scheduleInfo.state == .open {
-            fetchedSymbols = await fetchRegularSession()
+            result = await QuoteFetchCoordinator.fetchRegularSession(
+                service: stockService, watchlist: config.watchlist,
+                indexSymbols: indexSymbols, closedMarketSymbol: closedMarketSymbol
+            )
         } else {
-            fetchedSymbols = await fetchExtendedHours()
+            result = await QuoteFetchCoordinator.fetchExtendedHours(
+                service: stockService, watchlist: config.watchlist,
+                alwaysOpenSymbols: alwaysOpenSymbols, closedMarketSymbol: closedMarketSymbol
+            )
         }
+
+        if result.shouldMergeQuotes {
+            self.quotes.merge(result.quotes) { _, new in new }
+            self.indexQuotes.merge(result.indexQuotes) { _, new in new }
+        } else {
+            self.quotes = result.quotes
+            self.indexQuotes = result.indexQuotes
+        }
+        self.yahooMarketState = result.yahooMarketState
+        if result.isInitialLoadComplete { hasCompletedInitialLoad = true }
 
         self.lastRefreshTime = Date()
         attachYTDPricesToQuotes()
@@ -383,7 +317,7 @@ class MenuBarController: NSObject, ObservableObject {
             marketCaps.merge(fetchedCaps) { _, new in new }
         }
         attachMarketCapsToQuotes()
-        highlightFetchedSymbols(fetchedSymbols)
+        highlightFetchedSymbols(result.fetchedSymbols)
 
         quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices)
 
@@ -392,71 +326,6 @@ class MenuBarController: NSObject, ObservableObject {
         updateMarketStatus()
         updateCountdown()
         updateIndexLine()
-    }
-
-    private func fetchInitialLoad(isWeekend: Bool) async -> Set<String> {
-        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-        let indexSymbols = config.indexSymbols.map { $0.symbol }
-        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-
-        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-        async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
-        async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
-        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-        self.quotes = await fetchedQuotes
-        self.indexQuotes = await fetchedIndexQuotes
-        self.indexQuotes.merge(await fetchedAlwaysOpen) { _, new in new }
-
-        // On weekends, force CLOSED regardless of what API returns
-        // (API may still report POST from Friday's after-hours)
-        self.yahooMarketState = isWeekend ? "CLOSED" : await fetchedMarketState
-
-        hasCompletedInitialLoad = true
-        return Set(allSymbols)
-    }
-
-    private func fetchClosedMarket() async -> Set<String> {
-        let cryptoSymbol = config.menuBarAssetWhenClosed.symbol
-        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-        let symbolsToFetch = Set([cryptoSymbol] + alwaysOpenSymbols)
-
-        let fetchedQuotes = await stockService.fetchQuotes(symbols: Array(symbolsToFetch))
-        self.quotes.merge(fetchedQuotes) { _, new in new }
-        self.indexQuotes.merge(fetchedQuotes) { _, new in new }
-        self.yahooMarketState = "CLOSED"
-
-        return symbolsToFetch
-    }
-
-    private func fetchRegularSession() async -> Set<String> {
-        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-        let indexSymbols = config.indexSymbols.map { $0.symbol }
-
-        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-        async let fetchedIndexQuotes = stockService.fetchQuotes(symbols: indexSymbols)
-        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-        self.quotes = await fetchedQuotes
-        self.indexQuotes = await fetchedIndexQuotes
-        self.yahooMarketState = await fetchedMarketState
-
-        return Set(allSymbols)
-    }
-
-    private func fetchExtendedHours() async -> Set<String> {
-        let allSymbols = ensureClosedMarketSymbol(in: config.watchlist)
-        let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
-
-        async let fetchedQuotes = stockService.fetchQuotes(symbols: allSymbols)
-        async let fetchedAlwaysOpen = stockService.fetchQuotes(symbols: alwaysOpenSymbols)
-        async let fetchedMarketState = stockService.fetchMarketState(symbol: "SPY")
-
-        self.quotes = await fetchedQuotes
-        self.indexQuotes = await fetchedAlwaysOpen
-        self.yahooMarketState = await fetchedMarketState
-
-        return Set(allSymbols)
     }
 
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
@@ -497,12 +366,10 @@ class MenuBarController: NSObject, ObservableObject {
         let separatorAttrs: [NSAttributedString.Key: Any] = [.font: MenuItemFactory.monoFont]
 
         for (index, indexSymbol) in symbols.enumerated() {
-            // Add separator between indexes
             if index > 0 {
                 result.append(NSAttributedString(string: MarqueeConfig.separator, attributes: separatorAttrs))
             }
 
-            // Get quote and determine color
             let quote = indexQuotes[indexSymbol.symbol]
             let color: NSColor
             if let validQuote = quote, !validQuote.isPlaceholder {
@@ -511,7 +378,6 @@ class MenuBarController: NSObject, ObservableObject {
                 color = .secondaryLabelColor
             }
 
-            // Build text for this index: bold name, regular weight values
             let nameAttrs: [NSAttributedString.Key: Any] = [
                 .font: MenuItemFactory.monoFontMedium,
                 .foregroundColor: color
@@ -556,7 +422,6 @@ class MenuBarController: NSObject, ObservableObject {
             return
         }
 
-        // Update each headline slot
         for (index, menuItem) in headlineItems.enumerated() {
             if index < newsItems.count {
                 let newsItem = newsItems[index]
@@ -651,42 +516,27 @@ class MenuBarController: NSObject, ObservableObject {
             return
         }
 
-        let state = currentMarketState
+        let symbol: String
+        let showExtendedHours: Bool
 
-        switch state {
+        switch currentMarketState {
         case .preMarket, .afterHours:
-            // Show selected closed market asset with extended hours data if available
-            let symbol = config.menuBarAssetWhenClosed.symbol
-            button.attributedTitle = makeMenuBarAttributedTitle(for: symbol, showExtendedHours: true)
+            symbol = config.menuBarAssetWhenClosed.symbol
+            showExtendedHours = true
         case .closed:
-            // Market truly closed - show selected asset without extended hours
-            let symbol = config.menuBarAssetWhenClosed.symbol
-            button.attributedTitle = makeMenuBarAttributedTitle(for: symbol)
+            symbol = config.menuBarAssetWhenClosed.symbol
+            showExtendedHours = false
         case .open:
-            // Cycle through watchlist during regular hours
-            let symbol = config.watchlist[currentIndex]
-            button.attributedTitle = makeMenuBarAttributedTitle(for: symbol)
+            symbol = config.watchlist[currentIndex]
+            showExtendedHours = false
         }
-    }
 
-    private func makeMenuBarAttributedTitle(for symbol: String, showExtendedHours: Bool = false) -> NSAttributedString {
         guard let quote = quotes[symbol], !quote.isPlaceholder else {
-            return .styled("\(symbol) --", font: MenuItemFactory.monoFontMedium)
+            button.attributedTitle = .styled("\(symbol) --", font: MenuItemFactory.monoFontMedium)
+            return
         }
 
-        let result = NSMutableAttributedString()
-        result.append("\(quote.symbol) ", font: MenuItemFactory.monoFontMedium)
-
-        if showExtendedHours, let extPercent = quote.formattedExtendedHoursChangePercent {
-            // Show extended hours change (pre-market or after-hours)
-            let color = quote.extendedHoursIsPositive ? NSColor.systemGreen : NSColor.systemRed
-            result.append(extPercent, font: MenuItemFactory.monoFontMedium, color: color)
-            result.append(" (\(quote.extendedHoursLabel))", font: MenuItemFactory.monoFontMedium, color: .white)
-        } else {
-            result.append(quote.formattedChangePercent, font: MenuItemFactory.monoFontMedium, color: quote.displayColor)
-        }
-
-        return result
+        button.attributedTitle = TickerDisplayBuilder.menuBarTitle(for: quote, showExtendedHours: showExtendedHours)
     }
 
     // MARK: - Menu Item Management
@@ -758,71 +608,7 @@ class MenuBarController: NSObject, ObservableObject {
             persistentHighlightColor: persistentColor,
             persistentHighlightOpacity: persistentOpacity
         )
-        menuItem.attributedTitle = buildTickerAttributedTitle(quote: quote, highlight: highlight)
-    }
-
-    private func buildTickerAttributedTitle(quote: StockQuote, highlight: HighlightConfig) -> NSAttributedString {
-        let result = NSMutableAttributedString()
-
-        // Main price line
-        let symbolStr = quote.symbol.padding(toLength: Layout.tickerSymbolWidth, withPad: " ", startingAt: 0)
-        let priceStr = quote.formattedPrice.padding(toLength: Layout.tickerPriceWidth, withPad: " ", startingAt: 0)
-        let marketCapStr = quote.formattedMarketCap.padding(toLength: Layout.tickerMarketCapWidth, withPad: " ", startingAt: 0)
-        let percentStr = quote.formattedChangePercent.padding(
-            toLength: Layout.tickerPercentWidth, withPad: " ", startingAt: 0
-        )
-
-        let mainHighlight = quote.isInExtendedHoursPeriod
-            ? highlight.withPingDisabled()
-            : highlight
-        let (mainColor, mainBgColor) = mainHighlight.resolve(defaultColor: quote.displayColor)
-
-        result.append(.styled("\(symbolStr) \(priceStr) \(marketCapStr) \(percentStr)",
-                              font: MenuItemFactory.monoFont, color: mainColor, backgroundColor: mainBgColor))
-
-        // YTD display
-        appendYTDSection(to: result, quote: quote, highlight: highlight)
-
-        // Extended hours display
-        appendExtendedHoursSection(to: result, quote: quote, highlight: highlight)
-
-        return result
-    }
-
-    private func appendYTDSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
-        guard let ytdPercent = quote.formattedYTDChangePercent else { return }
-        let ytdContent = "YTD: \(ytdPercent)"
-        let paddedContent = ytdContent.count >= Layout.tickerYTDWidth
-            ? ytdContent
-            : ytdContent.padding(toLength: Layout.tickerYTDWidth, withPad: " ", startingAt: 0)
-        let (ytdColor, ytdBgColor) = highlight.resolve(defaultColor: quote.ytdColor)
-        result.append(.styled("  \(paddedContent)",
-                              font: MenuItemFactory.monoFont, color: ytdColor, backgroundColor: ytdBgColor))
-    }
-
-    private func appendExtendedHoursSection(
-        to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig
-    ) {
-        guard quote.isInExtendedHoursPeriod, let periodLabel = quote.extendedHoursPeriodLabel else { return }
-
-        if quote.formattedYTDChangePercent == nil {
-            let emptyPadding = String(repeating: " ", count: Layout.tickerYTDWidth + 2)
-            result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
-        }
-
-        if quote.shouldShowExtendedHours, let extPercent = quote.formattedExtendedHoursChangePercent {
-            let extPingBgColor = quote.extendedHoursHighlightColor.withAlphaComponent(
-                highlight.pingBackgroundColor?.alphaComponent ?? 0
-            )
-            let extHighlight = highlight.withPingBackground(extPingBgColor)
-            let (extColor, extBgColor) = extHighlight.resolve(defaultColor: quote.extendedHoursColor)
-            result.append(.styled("  \(periodLabel): \(extPercent)",
-                                  font: MenuItemFactory.monoFont, color: extColor, backgroundColor: extBgColor))
-        } else {
-            let (extColor, extBgColor) = highlight.withPingDisabled().resolve(defaultColor: .secondaryLabelColor)
-            result.append(.styled("  \(periodLabel): --",
-                                  font: MenuItemFactory.monoFont, color: extColor, backgroundColor: extBgColor))
-        }
+        menuItem.attributedTitle = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
     }
 
     // MARK: - Actions

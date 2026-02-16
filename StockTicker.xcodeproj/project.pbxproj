@@ -48,6 +48,15 @@ K1000003232C5A0000000001 /* ColorMappingTests.swift in Sources */ = {isa = PBXBu
 L1000001232C5A0000000001 /* TimerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000002232C5A0000000001 /* TimerManager.swift */; };
 L1000003232C5A0000000001 /* TimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000004232C5A0000000001 /* TimerManagerTests.swift */; };
 L1000005232C5A0000000001 /* RequestLoggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = L1000006232C5A0000000001 /* RequestLoggerTests.swift */; };
+M1000001232C5A0000000001 /* DebugViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M1000002232C5A0000000001 /* DebugViewModelTests.swift */; };
+N1000001232C5A0000000001 /* CacheStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000002232C5A0000000001 /* CacheStorage.swift */; };
+N1000003232C5A0000000001 /* CacheStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000004232C5A0000000001 /* CacheStorageTests.swift */; };
+O1000001232C5A0000000001 /* StockService+MarketCap.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000002232C5A0000000001 /* StockService+MarketCap.swift */; };
+O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000004232C5A0000000001 /* StockService+Historical.swift */; };
+P1000001232C5A0000000001 /* TickerDisplayBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */; };
+P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */; };
+Q1000001232C5A0000000001 /* QuoteFetchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */; };
+Q1000003232C5A0000000001 /* QuoteFetchCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -105,6 +114,15 @@ K1000004232C5A0000000001 /* ColorMappingTests.swift */ = {isa = PBXFileReference
 L1000002232C5A0000000001 /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
 L1000004232C5A0000000001 /* TimerManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManagerTests.swift; sourceTree = "<group>"; };
 L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RequestLoggerTests.swift; sourceTree = "<group>"; };
+M1000002232C5A0000000001 /* DebugViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugViewModelTests.swift; sourceTree = "<group>"; };
+N1000002232C5A0000000001 /* CacheStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorage.swift; sourceTree = "<group>"; };
+N1000004232C5A0000000001 /* CacheStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorageTests.swift; sourceTree = "<group>"; };
+O1000002232C5A0000000001 /* StockService+MarketCap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+MarketCap.swift"; sourceTree = "<group>"; };
+O1000004232C5A0000000001 /* StockService+Historical.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Historical.swift"; sourceTree = "<group>"; };
+P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilder.swift; sourceTree = "<group>"; };
+P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilderTests.swift; sourceTree = "<group>"; };
+Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteFetchCoordinator.swift; sourceTree = "<group>"; };
+Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteFetchCoordinatorTests.swift; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -142,6 +160,8 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				K1000002232C5A0000000001 /* MenuBarController+Cache.swift */,
 				A100001E232C5A0000000001 /* TickerEditorView.swift */,
 				A1000006232C5A0000000001 /* StockService.swift */,
+				O1000002232C5A0000000001 /* StockService+MarketCap.swift */,
+				O1000004232C5A0000000001 /* StockService+Historical.swift */,
 				A1000008232C5A0000000001 /* StockData.swift */,
 				C1000004232C5A0000000001 /* NewsService.swift */,
 				C1000002232C5A0000000001 /* NewsData.swift */,
@@ -157,6 +177,9 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				F1000004232C5A0000000001 /* MarqueeView.swift */,
 				F1000006232C5A0000000001 /* MenuItemFactory.swift */,
 				L1000002232C5A0000000001 /* TimerManager.swift */,
+				N1000002232C5A0000000001 /* CacheStorage.swift */,
+				P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */,
+				Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */,
 				A100000C232C5A0000000001 /* Assets.xcassets */,
 				A100000D232C5A0000000001 /* Info.plist */,
 			);
@@ -195,6 +218,10 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				K1000004232C5A0000000001 /* ColorMappingTests.swift */,
 				L1000004232C5A0000000001 /* TimerManagerTests.swift */,
 				L1000006232C5A0000000001 /* RequestLoggerTests.swift */,
+				M1000002232C5A0000000001 /* DebugViewModelTests.swift */,
+				N1000004232C5A0000000001 /* CacheStorageTests.swift */,
+				P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */,
+				Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -302,6 +329,8 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				A1000003232C5A0000000001 /* MenuBarView.swift in Sources */,
 				A100001D232C5A0000000001 /* TickerEditorView.swift in Sources */,
 				A1000005232C5A0000000001 /* StockService.swift in Sources */,
+				O1000001232C5A0000000001 /* StockService+MarketCap.swift in Sources */,
+				O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */,
 				A1000007232C5A0000000001 /* StockData.swift in Sources */,
 				A1000009232C5A0000000001 /* TickerConfig.swift in Sources */,
 				D1000001232C5A0000000001 /* LayoutConfig.swift in Sources */,
@@ -318,6 +347,9 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				F1000005232C5A0000000001 /* MenuItemFactory.swift in Sources */,
 				K1000001232C5A0000000001 /* MenuBarController+Cache.swift in Sources */,
 				L1000001232C5A0000000001 /* TimerManager.swift in Sources */,
+				N1000001232C5A0000000001 /* CacheStorage.swift in Sources */,
+				P1000001232C5A0000000001 /* TickerDisplayBuilder.swift in Sources */,
+				Q1000001232C5A0000000001 /* QuoteFetchCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -345,6 +377,10 @@ L1000006232C5A0000000001 /* RequestLoggerTests.swift */ = {isa = PBXFileReferenc
 				K1000003232C5A0000000001 /* ColorMappingTests.swift in Sources */,
 				L1000003232C5A0000000001 /* TimerManagerTests.swift in Sources */,
 				L1000005232C5A0000000001 /* RequestLoggerTests.swift in Sources */,
+				M1000001232C5A0000000001 /* DebugViewModelTests.swift in Sources */,
+				N1000003232C5A0000000001 /* CacheStorageTests.swift in Sources */,
+				P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */,
+				Q1000003232C5A0000000001 /* QuoteFetchCoordinatorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

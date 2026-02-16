@@ -17,9 +17,8 @@ struct YTDCacheData: Codable {
 // MARK: - YTD Cache Manager
 
 actor YTDCacheManager {
-    private let fileSystem: FileSystemProtocol
+    private let storage: CacheStorage<YTDCacheData>
     private let dateProvider: DateProvider
-    private let cacheURL: URL
     private var cache: YTDCacheData?
 
     init(
@@ -27,52 +26,25 @@ actor YTDCacheManager {
         dateProvider: DateProvider = SystemDateProvider(),
         cacheDirectory: URL? = nil
     ) {
-        self.fileSystem = fileSystem
         self.dateProvider = dateProvider
         let directory = cacheDirectory ?? fileSystem.homeDirectoryForCurrentUser
             .appendingPathComponent(".stockticker")
-        self.cacheURL = directory.appendingPathComponent("ytd-cache.json")
+        self.storage = CacheStorage(
+            fileSystem: fileSystem,
+            cacheURL: directory.appendingPathComponent("ytd-cache.json"),
+            label: "YTD"
+        )
     }
 
     // MARK: - Public Interface
 
     func load() {
-        guard fileSystem.fileExists(atPath: cacheURL.path),
-              let data = fileSystem.contentsOfFile(atPath: cacheURL.path) else {
-            cache = nil
-            return
-        }
-
-        do {
-            cache = try JSONDecoder().decode(YTDCacheData.self, from: data)
-        } catch {
-            print("Failed to decode YTD cache: \(error.localizedDescription)")
-            cache = nil
-        }
+        cache = storage.load()
     }
 
     func save() {
-        guard let cache = cache else { return }
-
-        let directory = cacheURL.deletingLastPathComponent()
-        if !fileSystem.fileExists(atPath: directory.path) {
-            do {
-                try fileSystem.createDirectoryAt(directory, withIntermediateDirectories: true)
-            } catch {
-                print("Failed to create YTD cache directory: \(error.localizedDescription)")
-                return
-            }
-        }
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(cache)
-            try fileSystem.writeData(data, to: cacheURL)
-        } catch {
-            print("Failed to save YTD cache: \(error.localizedDescription)")
-        }
+        guard let cache else { return }
+        storage.save(cache)
     }
 
     func getStartPrice(for symbol: String) -> Double? {

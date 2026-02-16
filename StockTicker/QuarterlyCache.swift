@@ -100,9 +100,8 @@ struct QuarterlyCacheData: Codable {
 // MARK: - Quarterly Cache Manager
 
 actor QuarterlyCacheManager {
-    private let fileSystem: FileSystemProtocol
+    private let storage: CacheStorage<QuarterlyCacheData>
     private let dateProvider: DateProvider
-    private let cacheURL: URL
     private var cache: QuarterlyCacheData?
 
     init(
@@ -110,52 +109,25 @@ actor QuarterlyCacheManager {
         dateProvider: DateProvider = SystemDateProvider(),
         cacheDirectory: URL? = nil
     ) {
-        self.fileSystem = fileSystem
         self.dateProvider = dateProvider
         let directory = cacheDirectory ?? fileSystem.homeDirectoryForCurrentUser
             .appendingPathComponent(".stockticker")
-        self.cacheURL = directory.appendingPathComponent("quarterly-cache.json")
+        self.storage = CacheStorage(
+            fileSystem: fileSystem,
+            cacheURL: directory.appendingPathComponent("quarterly-cache.json"),
+            label: "quarterly"
+        )
     }
 
     // MARK: - Public Interface
 
     func load() {
-        guard fileSystem.fileExists(atPath: cacheURL.path),
-              let data = fileSystem.contentsOfFile(atPath: cacheURL.path) else {
-            cache = nil
-            return
-        }
-
-        do {
-            cache = try JSONDecoder().decode(QuarterlyCacheData.self, from: data)
-        } catch {
-            print("Failed to decode quarterly cache: \(error.localizedDescription)")
-            cache = nil
-        }
+        cache = storage.load()
     }
 
     func save() {
-        guard let cache = cache else { return }
-
-        let directory = cacheURL.deletingLastPathComponent()
-        if !fileSystem.fileExists(atPath: directory.path) {
-            do {
-                try fileSystem.createDirectoryAt(directory, withIntermediateDirectories: true)
-            } catch {
-                print("Failed to create quarterly cache directory: \(error.localizedDescription)")
-                return
-            }
-        }
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
-        do {
-            let data = try encoder.encode(cache)
-            try fileSystem.writeData(data, to: cacheURL)
-        } catch {
-            print("Failed to save quarterly cache: \(error.localizedDescription)")
-        }
+        guard let cache else { return }
+        storage.save(cache)
     }
 
     func getPrice(symbol: String, quarter: String) -> Double? {

@@ -33,54 +33,63 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (20 files, ~5,028 lines)
+## Source Files (24 files, ~5,101 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (1003L) Main controller: menu bar UI, state, display styling
+MenuBarView.swift                (793L)  Main controller: menu bar UI, state management
 MenuBarController+Cache.swift    (97L)   Extension: YTD, quarterly, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (315L)  Yahoo Finance API client (actor), market cap via v7 quote API
-StockData.swift                  (446L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
+StockService.swift               (188L)  Yahoo Finance API client (actor), chart v8 methods
+StockService+MarketCap.swift     (64L)   Extension: market cap via v7 quote API with crumb auth
+StockService+Historical.swift    (81L)   Extension: historical price fetching (YTD, quarterly)
+StockData.swift                  (445L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7 response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (375L)  Config loading/saving, OpaqueContainerView, ColorMapping, protocols
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
 RequestLogger.swift              (258L)  API request logging (actor), LoggingHTTPClient with retry, error queries
-DebugWindow.swift                (276L)  Debug window with error indicator, copy buttons for URL/request/response
+DebugWindow.swift                (281L)  Debug window with error indicator, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
 NewsService.swift                (130L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
-YTDCache.swift                   (130L)  Year-to-date price cache manager (actor)
-QuarterlyCache.swift             (206L)  Quarter calculation helpers, quarterly price cache (actor)
+YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
+QuarterlyCache.swift             (178L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelView.swift         (402L)  Quarterly performance window: view model, SwiftUI view, controller
 LayoutConfig.swift               (77L)   Centralized layout constants
+CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD and quarterly caches)
+TickerDisplayBuilder.swift       (161L)  Ticker display formatting, color helpers, HighlightConfig
+QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
 ```
 
-## Test Files (20 files, ~5,789 lines)
+## Test Files (24 files, ~6,356 lines)
 
 ```
-StockDataTests.swift          (557L)  Quote calculations, session detection, formatting, market cap
-StockServiceTests.swift       (347L)  API mocking, fetch operations, extended hours, v7 response decoding
-MarketScheduleTests.swift     (271L)  Holiday calculations, market state, schedules
-TickerConfigTests.swift       (682L)  Config load/save, encoding, legacy backward compat
-TickerEditorStateTests.swift  (314L)  Editor state machine, validation
-TickerListOperationsTests.swift (212L) Pure watchlist function tests
-TickerValidatorTests.swift    (406L)  Symbol validation, HTTP mocking
-TickerAddErrorTests.swift     (95L)   Error enum and result type tests
-MenuBarViewTests.swift        (224L)  SortOption tests, sorting with quotes (market cap, YTD)
-MarqueeViewTests.swift        (106L)  Config constants, layer setup, scrolling, ping animation
-MenuItemFactoryTests.swift    (141L)  Font tests, disabled/action/submenu item creation
-YTDCacheTests.swift           (289L)  Cache load/save, year rollover, DateProvider injection
-QuarterlyCacheTests.swift     (446L)  Quarter calculations, cache operations, pruning
-QuarterlyPanelTests.swift     (459L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes
-ColorMappingTests.swift       (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
-NewsServiceTests.swift        (832L)  RSS parsing, deduplication, multi-source fetching
-LayoutConfigTests.swift       (98L)   Layout constant validation
-RequestLoggerTests.swift      (70L)   Error count/last error queries, clear reset
-TimerManagerTests.swift       (129L)  Timer lifecycle, delegate callbacks, start/stop
-TestUtilities.swift           (59L)   Shared test helpers (MockDateProvider, date creation)
+StockDataTests.swift             (557L)  Quote calculations, session detection, formatting, market cap
+StockServiceTests.swift          (383L)  API mocking, fetch operations, extended hours, v7 response decoding
+MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
+TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
+TickerEditorStateTests.swift     (314L)  Editor state machine, validation
+TickerListOperationsTests.swift  (212L)  Pure watchlist function tests
+TickerValidatorTests.swift       (406L)  Symbol validation, HTTP mocking
+TickerAddErrorTests.swift        (95L)   Error enum and result type tests
+MenuBarViewTests.swift           (224L)  SortOption tests, sorting with quotes (market cap, YTD)
+MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrolling, ping animation
+MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
+YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
+QuarterlyCacheTests.swift        (446L)  Quarter calculations, cache operations, pruning
+QuarterlyPanelTests.swift        (459L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes
+ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
+NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
+LayoutConfigTests.swift          (98L)   Layout constant validation
+RequestLoggerTests.swift         (70L)   Error count/last error queries, clear reset
+TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
+TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
+DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
+CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
+TickerDisplayBuilderTests.swift  (170L)  Menu bar title, ticker title, highlights, color helpers
+QuoteFetchCoordinatorTests.swift (193L)  Fetch modes, FetchResult correctness, MockStockService
 ```
 
 ## File Dependencies
@@ -104,11 +113,23 @@ MenuBarView.swift (MenuBarController)
 ├── QuarterlyCache.swift (QuarterlyCacheManager, QuarterCalculation, QuarterInfo)
 ├── QuarterlyPanelView.swift (QuarterlyPanelWindowController)
 ├── TickerEditorView.swift (WatchlistEditorWindowController)
-└── DebugWindow.swift (DebugWindowController)
+├── DebugWindow.swift (DebugWindowController)
+├── TickerDisplayBuilder.swift (TickerDisplayBuilder, HighlightConfig)
+└── QuoteFetchCoordinator.swift (QuoteFetchCoordinator, FetchResult)
 
 StockService.swift
+├── StockService+MarketCap.swift (market cap extension)
+├── StockService+Historical.swift (historical price extension)
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
+
+TickerDisplayBuilder.swift
+├── StockData.swift (StockQuote, TradingHours)
+├── MenuItemFactory.swift (MenuItemFactory)
+└── LayoutConfig.swift (LayoutConfig.Ticker)
+
+QuoteFetchCoordinator.swift
+└── StockService.swift (StockServiceProtocol)
 
 NewsService.swift
 ├── NewsData.swift (NewsItem, RSSParser)
@@ -129,7 +150,12 @@ QuarterlyPanelView.swift
 └── LayoutConfig.swift (LayoutConfig.QuarterlyWindow)
 
 QuarterlyCache.swift
-└── TickerConfig.swift (FileSystemProtocol, DateProvider)
+├── TickerConfig.swift (FileSystemProtocol, DateProvider)
+└── CacheStorage.swift (CacheStorage)
+
+YTDCache.swift
+├── TickerConfig.swift (FileSystemProtocol, DateProvider)
+└── CacheStorage.swift (CacheStorage)
 
 DebugWindow.swift
 └── RequestLogger.swift (RequestLogger, RequestLogEntry)
@@ -179,12 +205,17 @@ All magic numbers are extracted into namespaced enums:
 - Color helpers: `priceChangeColor()`, `ColorMapping.nsColor(from:)`, `ColorMapping.color(from:)`
 - Formatting: `Formatting.currency()`, `Formatting.signedCurrency()`, `Formatting.signedPercent()`, `Formatting.marketCap()`
 - `QuarterCalculation` — quarter date math, identifier/label generation
+- `TickerDisplayBuilder` — stateless enum with static display formatting methods
+- `QuoteFetchCoordinator` — stateless enum with static fetch orchestration methods
 
 ### Callback Cleanup
 `WatchlistEditorState` explicitly clears callbacks to prevent retain cycles. Called in `save()`, `cancel()`, and when window closes.
 
 ### HighlightConfig
-Batches 5 highlight parameters into a single struct with `resolve()`, `withPingBackground()`, `withPingDisabled()` helpers.
+Batches 5 highlight parameters into a single struct with `resolve()`, `withPingBackground()`, `withPingDisabled()` helpers. Defined in `TickerDisplayBuilder.swift`, used by both MenuBarView and QuarterlyPanelView.
+
+### Generic CacheStorage\<T\>
+Eliminates duplicate load/save file I/O in YTDCacheManager and QuarterlyCacheManager. Single `CacheStorage<T: Codable>` struct handles JSON encoding/decoding, directory creation, and error logging.
 
 ### Legacy Config Decoding
 `decodeLegacy()` extension on `KeyedDecodingContainer` handles backward-compatible field names (e.g. `tickers` → `watchlist`, `cycleInterval` → `menuBarRotationInterval`). Two overloads: required (throws) and optional (with default).
@@ -393,17 +424,17 @@ struct StockTickerApp: App {
 3. Wire up target/action
 
 ### Modify ticker display
-- Menu bar: `makeMenuBarAttributedTitle(for:)`
-- Dropdown: `buildTickerAttributedTitle(quote:highlight:)` with `HighlightConfig`
-- YTD section: `appendYTDSection()`
-- Extended hours: `appendExtendedHoursSection()`
+- Menu bar: `TickerDisplayBuilder.menuBarTitle(for:showExtendedHours:)`
+- Dropdown: `TickerDisplayBuilder.tickerTitle(quote:highlight:)` with `HighlightConfig`
+- YTD section: `TickerDisplayBuilder.appendYTDSection()`
+- Extended hours: `TickerDisplayBuilder.appendExtendedHoursSection()`
 
 ### Change API data source
 - Modify `StockService.fetchChartData()` and response models in `StockData.swift`
 
 ### Add a new display font
 - Add to `MenuItemFactory` as a static property
-- Reference from display methods in `MenuBarView.swift`
+- Reference from display methods in `TickerDisplayBuilder.swift`
 
 ## Opaque Window Pattern
 
@@ -413,11 +444,11 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 
 1. **Meaningful Names** — Names reveal intent without comments
 2. **Functions Do One Thing** — Small, focused, single-responsibility functions
-3. **DRY** — Single source of truth; `decodeLegacy`, `ensureClosedMarketSymbol`, `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants
-4. **Single Responsibility** — Extracted SortOption, MarqueeView, MenuItemFactory, MenuBarController+Cache, TimerManager, pure WatchlistOperations
+3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
+4. **Single Responsibility** — Extracted SortOption, MarqueeView, MenuItemFactory, MenuBarController+Cache, TimerManager, TickerDisplayBuilder, QuoteFetchCoordinator, StockService extensions, pure WatchlistOperations
 5. **Boy Scout Rule** — Leave code cleaner than found
 6. **Minimize Comments** — Comments explain *why* (intent, warnings), never *what*
 7. **No Side Effects** — Pure functions for sorting, formatting, operations
 8. **Fail Fast** — Guard clauses, early returns, error logging on file I/O
 9. **KISS/YAGNI** — No premature abstraction
-10. **Write Tests** — Protocol-based DI enables comprehensive testing; 18 test files with mock doubles
+10. **Write Tests** — Protocol-based DI enables comprehensive testing; 24 test files with mock doubles

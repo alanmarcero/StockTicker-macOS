@@ -383,8 +383,8 @@ enum Formatting {
         let million = 1_000_000.0
 
         if value >= trillion {
-            let v = value / trillion
-            return v >= 100 ? String(format: "$%.0fT", v) : String(format: "$%.1fT", v)
+            let scaled = value / trillion
+            return scaled >= 100 ? String(format: "$%.0fT", scaled) : String(format: "$%.1fT", scaled)
         }
         if value >= billion {
             return String(format: "$%.0fB", (value / billion).rounded())

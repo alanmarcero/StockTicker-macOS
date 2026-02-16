@@ -63,7 +63,7 @@ final class RSSParser: NSObject, XMLParserDelegate {
         items = []
         let parser = XMLParser(data: data)
         parser.delegate = self
-        parser.parse()
+        guard parser.parse() else { return [] }
         return items
     }
 
