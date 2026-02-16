@@ -424,6 +424,79 @@ final class StockServiceTests: XCTestCase {
         XCTAssertEqual(result?["Q1-2024"], 25.0)  // March → Q1
         XCTAssertEqual(result?["Q4-2024"], 29.0)  // December → Q4
     }
+
+    // MARK: - fetchSwingLevels tests
+
+    func testFetchSwingLevels_validResponse_returnsResult() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [100.0, 120.0, 150.0, 130.0, 125.0, 80.0, 90.0, 95.0]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchSwingLevels(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNotNil(result)
+    }
+
+    func testFetchSwingLevels_emptyCloses_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [null, null]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchSwingLevels(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNil(result)
+    }
+
+    func testFetchSwingLevels_networkError_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=100&period2=200&interval=1d")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchSwingLevels(symbol: "AAPL", period1: 100, period2: 200)
+
+        XCTAssertNil(result)
+    }
 }
 
 // MARK: - YahooQuoteResponse Decoding Tests

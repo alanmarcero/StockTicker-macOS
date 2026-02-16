@@ -12,6 +12,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var quarterEndPricesToReturn: [String: Double] = [:]
     var highestClosesToReturn: [String: Double] = [:]
     var forwardPERatiosToReturn: [String: [String: Double]] = [:]
+    var swingLevelsToReturn: [String: SwingAnalysis.SwingResult] = [:]
 
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
@@ -70,6 +71,14 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
             result[symbol] = forwardPERatiosToReturn[symbol] ?? [:]
         }
         return result
+    }
+
+    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingAnalysis.SwingResult? {
+        swingLevelsToReturn[symbol]
+    }
+
+    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingAnalysis.SwingResult] {
+        swingLevelsToReturn.filter { symbols.contains($0.key) }
     }
 }
 

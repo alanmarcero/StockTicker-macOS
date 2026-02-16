@@ -102,6 +102,8 @@ class MenuBarController: NSObject, ObservableObject {
     let forwardPECacheManager: ForwardPECacheManager
     var forwardPEData: [String: [String: Double]] = [:]
     var currentForwardPEs: [String: Double] = [:]
+    let swingLevelCacheManager: SwingLevelCacheManager
+    var swingLevelEntries: [String: SwingLevelCacheEntry] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -115,7 +117,8 @@ class MenuBarController: NSObject, ObservableObject {
         ytdCacheManager: YTDCacheManager = YTDCacheManager(),
         quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager(),
         highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager(),
-        forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager()
+        forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager(),
+        swingLevelCacheManager: SwingLevelCacheManager = SwingLevelCacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -126,6 +129,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.quarterlyCacheManager = quarterlyCacheManager
         self.highestCloseCacheManager = highestCloseCacheManager
         self.forwardPECacheManager = forwardPECacheManager
+        self.swingLevelCacheManager = swingLevelCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -141,6 +145,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadQuarterlyCache()
             await loadHighestCloseCache()
             await loadForwardPECache()
+            await loadSwingLevelCache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -190,7 +195,7 @@ class MenuBarController: NSObject, ObservableObject {
 
         menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
 
-        let quarterlyItem = MenuItemFactory.action(title: "Quarterly Performance...", action: #selector(showQuarterlyPanel), target: self, keyEquivalent: "q")
+        let quarterlyItem = MenuItemFactory.action(title: "Extra Stats...", action: #selector(showQuarterlyPanel), target: self, keyEquivalent: "q")
         quarterlyItem.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(quarterlyItem)
 
@@ -331,9 +336,10 @@ class MenuBarController: NSObject, ObservableObject {
         attachMarketCapsToQuotes()
         await refreshHighestClosesIfNeeded()
         attachHighestClosesToQuotes()
+        await refreshSwingLevelsIfNeeded()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -663,6 +669,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingQuarterlyPrices()
             await fetchMissingHighestCloses()
             await fetchMissingForwardPERatios()
+            await fetchMissingSwingLevels()
             await refreshAllQuotes()
         }
     }
@@ -726,7 +733,8 @@ class MenuBarController: NSObject, ObservableObject {
             highlightOpacity: config.highlightOpacity,
             highestClosePrices: highestClosePrices,
             forwardPEData: forwardPEData,
-            currentForwardPEs: currentForwardPEs
+            currentForwardPEs: currentForwardPEs,
+            swingLevelEntries: swingLevelEntries
         )
     }
 

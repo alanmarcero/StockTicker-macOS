@@ -62,6 +62,10 @@
 		R1000001232C5A0000000001 /* StockService+ForwardPE.swift in Sources */ = {isa = PBXBuildFile; fileRef = R1000002232C5A0000000001 /* StockService+ForwardPE.swift */; };
 		S1000001232C5A0000000001 /* ForwardPECache.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1000002232C5A0000000001 /* ForwardPECache.swift */; };
 		S1000003232C5A0000000001 /* ForwardPECacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1000004232C5A0000000001 /* ForwardPECacheTests.swift */; };
+		492F8130D7D6F36BDDF5A428 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7617310EDF068AF6DEDEE2F /* SwingAnalysis.swift */; };
+		7440B79A21A13F2BE1B5DE0B /* SwingLevelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861AE7343DEEE398A04F177D /* SwingLevelCache.swift */; };
+		31996A1742E7842AC37D33B9 /* SwingAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CAC8094CE0FD32414BA4C0 /* SwingAnalysisTests.swift */; };
+		7CEC2285F7EA4E076FEDA406 /* SwingLevelCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02F621783D2F0DD580F0AB7 /* SwingLevelCacheTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -133,6 +137,10 @@
 		R1000002232C5A0000000001 /* StockService+ForwardPE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+ForwardPE.swift"; sourceTree = "<group>"; };
 		S1000002232C5A0000000001 /* ForwardPECache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardPECache.swift; sourceTree = "<group>"; };
 		S1000004232C5A0000000001 /* ForwardPECacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardPECacheTests.swift; sourceTree = "<group>"; };
+		F7617310EDF068AF6DEDEE2F /* SwingAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingAnalysis.swift; sourceTree = "<group>"; };
+		861AE7343DEEE398A04F177D /* SwingLevelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingLevelCache.swift; sourceTree = "<group>"; };
+		D9CAC8094CE0FD32414BA4C0 /* SwingAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingAnalysisTests.swift; sourceTree = "<group>"; };
+		F02F621783D2F0DD580F0AB7 /* SwingLevelCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingLevelCacheTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +203,8 @@
 				A100000D232C5A0000000001 /* Info.plist */,
 				8C29186FAEA57A1B6F14F793 /* HighestCloseCache.swift */,
 				S1000002232C5A0000000001 /* ForwardPECache.swift */,
+				F7617310EDF068AF6DEDEE2F /* SwingAnalysis.swift */,
+				861AE7343DEEE398A04F177D /* SwingLevelCache.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -237,6 +247,8 @@
 				Q1000004232C5A0000000001 /* QuoteFetchCoordinatorTests.swift */,
 				B8E6A4B9EAD659CB2CC72C19 /* HighestCloseCacheTests.swift */,
 				S1000004232C5A0000000001 /* ForwardPECacheTests.swift */,
+				D9CAC8094CE0FD32414BA4C0 /* SwingAnalysisTests.swift */,
+				F02F621783D2F0DD580F0AB7 /* SwingLevelCacheTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -368,6 +380,8 @@
 				80968955CD736935C5EBE952 /* HighestCloseCache.swift in Sources */,
 				R1000001232C5A0000000001 /* StockService+ForwardPE.swift in Sources */,
 				S1000001232C5A0000000001 /* ForwardPECache.swift in Sources */,
+				492F8130D7D6F36BDDF5A428 /* SwingAnalysis.swift in Sources */,
+				7440B79A21A13F2BE1B5DE0B /* SwingLevelCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +415,8 @@
 				Q1000003232C5A0000000001 /* QuoteFetchCoordinatorTests.swift in Sources */,
 				69D8111D3DF339FAA362648B /* HighestCloseCacheTests.swift in Sources */,
 				S1000003232C5A0000000001 /* ForwardPECacheTests.swift in Sources */,
+				31996A1742E7842AC37D33B9 /* SwingAnalysisTests.swift in Sources */,
+				7CEC2285F7EA4E076FEDA406 /* SwingLevelCacheTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

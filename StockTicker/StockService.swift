@@ -15,15 +15,29 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
     func fetchForwardPERatios(symbol: String, period1: Int, period2: Int) async -> [String: Double]?
     func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]]
+    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingAnalysis.SwingResult?
+    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingAnalysis.SwingResult]
 }
 
 // MARK: - HTTP Client Protocol
 
 protocol HTTPClient: Sendable {
     func data(from url: URL) async throws -> (Data, URLResponse)
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
-extension URLSession: HTTPClient {}
+extension HTTPClient {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let url = request.url else { throw URLError(.badURL) }
+        return try await data(from: url)
+    }
+}
+
+extension URLSession: HTTPClient {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        try await data(for: request, delegate: nil)
+    }
+}
 
 extension URLResponse {
     var isSuccessfulHTTP: Bool {

@@ -198,6 +198,68 @@ extension MenuBarController {
         return "\(oldest.identifier):\(newest.identifier)"
     }
 
+    // MARK: - Swing Level Cache
+
+    func loadSwingLevelCache() async {
+        await swingLevelCacheManager.load()
+
+        let currentRange = swingLevelQuarterRange()
+        if await swingLevelCacheManager.needsInvalidation(currentRange: currentRange) {
+            await swingLevelCacheManager.clearForNewRange(currentRange)
+        }
+
+        if await swingLevelCacheManager.needsDailyRefresh() {
+            await swingLevelCacheManager.clearEntriesForDailyRefresh()
+        }
+
+        await fetchMissingSwingLevels()
+    }
+
+    func fetchMissingSwingLevels() async {
+        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
+        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allSymbols)
+
+        guard !missingSymbols.isEmpty else {
+            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+            return
+        }
+
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last else {
+            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+            return
+        }
+
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        let fetched = await stockService.batchFetchSwingLevels(
+            symbols: missingSymbols, period1: period1, period2: period2
+        )
+        for (symbol, result) in fetched {
+            let entry = SwingLevelCacheEntry(
+                breakoutPrice: result.breakoutPrice,
+                breakdownPrice: result.breakdownPrice
+            )
+            await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
+        }
+        await swingLevelCacheManager.save()
+
+        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+    }
+
+    func refreshSwingLevelsIfNeeded() async {
+        guard await swingLevelCacheManager.needsDailyRefresh() else { return }
+        await swingLevelCacheManager.clearEntriesForDailyRefresh()
+        await fetchMissingSwingLevels()
+    }
+
+    private func swingLevelQuarterRange() -> String {
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
+        return "\(oldest.identifier):\(newest.identifier)"
+    }
+
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {

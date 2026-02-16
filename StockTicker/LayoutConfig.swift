@@ -58,7 +58,7 @@ enum LayoutConfig {
         static let statusColumnWidth: CGFloat = 60
     }
 
-    // MARK: - Quarterly Performance Window
+    // MARK: - Extra Stats Window
 
     enum QuarterlyWindow {
         static let width: CGFloat = 1150

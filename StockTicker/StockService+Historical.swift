@@ -63,6 +63,49 @@ extension StockService {
         }
     }
 
+    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingAnalysis.SwingResult? {
+        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
+            return nil
+        }
+
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let closes = result.indicators?.quote?.first?.close else {
+                return nil
+            }
+
+            let validCloses = closes.compactMap { $0 }
+            guard !validCloses.isEmpty else { return nil }
+
+            return SwingAnalysis.analyze(closes: validCloses)
+        } catch {
+            print("Swing levels fetch failed for \(symbol): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingAnalysis.SwingResult] {
+        await withTaskGroup(of: (String, SwingAnalysis.SwingResult?).self) { group in
+            for symbol in symbols {
+                group.addTask {
+                    (symbol, await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2))
+                }
+            }
+
+            var results: [String: SwingAnalysis.SwingResult] = [:]
+            for await (symbol, result) in group {
+                if let result {
+                    results[symbol] = result
+                }
+            }
+            return results
+        }
+    }
+
     func fetchHistoricalClosePrice(symbol: String, period1: Int, period2: Int) async -> Double? {
         guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
             return nil
