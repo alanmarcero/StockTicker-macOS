@@ -100,13 +100,14 @@ final class SwingAnalysisTests: XCTestCase {
         XCTAssertNil(result.breakdownIndex)
     }
 
-    func testAnalyze_multipleSwingLows_returnsLowest() {
+    func testAnalyze_multipleSwingLows_returnsHighest() {
         // First trough 80 → rises to 90 (12.5% rise) — significant low at 80 (index 1)
         // Second trough 70 → rises to 80 (14.3% rise) — significant low at 70 (index 3)
+        // Highest significant low is 80 (strongest support level)
         let closes = [100.0, 80.0, 90.0, 70.0, 80.0]
         let result = SwingAnalysis.analyze(closes: closes)
-        XCTAssertEqual(result.breakdownPrice, 70.0)
-        XCTAssertEqual(result.breakdownIndex, 3)
+        XCTAssertEqual(result.breakdownPrice, 80.0)
+        XCTAssertEqual(result.breakdownIndex, 1)
     }
 
     // MARK: - Combined Detection

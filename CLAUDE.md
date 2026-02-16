@@ -33,18 +33,18 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (30 files, ~6,314 lines)
+## Source Files (30 files, ~6,365 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (820L)  Main controller: menu bar UI, state management
+MenuBarView.swift                (856L)  Main controller: menu bar UI, state management
 MenuBarController+Cache.swift    (268L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (207L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (69L)   Extension: market cap + forward P/E via v7 quote API with crumb auth
 StockService+Historical.swift    (176L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates)
 StockService+ForwardPE.swift     (57L)   Extension: historical forward P/E ratios via timeseries API
-StockData.swift                  (517L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
+StockData.swift                  (524L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (375L)  Config loading/saving, OpaqueContainerView, ColorMapping, protocols
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
@@ -56,7 +56,7 @@ MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems
 NewsService.swift                (134L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
-QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
+QuarterlyCache.swift             (189L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelView.swift         (718L)  Extra Stats window: view model, SwiftUI view, controller (4 view modes)
 LayoutConfig.swift               (79L)   Centralized layout constants
 CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E, swing level caches)
@@ -68,10 +68,10 @@ SwingAnalysis.swift              (73L)   Pure swing analysis algorithm (breakout
 SwingLevelCache.swift            (116L)  Swing level cache manager (actor), daily refresh
 ```
 
-## Test Files (28 files, ~8,497 lines)
+## Test Files (28 files, ~8,534 lines)
 
 ```
-StockDataTests.swift             (686L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
+StockDataTests.swift             (724L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
 StockServiceTests.swift          (635L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E, swing levels with dates
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
@@ -396,7 +396,7 @@ Key methods: `loadForwardPECache()`, `fetchMissingForwardPERatios()`, `forwardPE
 
 ## Swing Level Tracking (Breakout/Breakdown)
 
-Detects significant swing highs and swing lows using the `SwingAnalysis` pure algorithm. A **significant high** is a peak followed by a decline of at least 10% (the threshold). A **significant low** is a trough followed by a rise of at least 10%. The breakout price is the highest such significant high; the breakdown price is the lowest such significant low.
+Detects significant swing highs and swing lows using the `SwingAnalysis` pure algorithm. A **significant high** is a peak followed by a decline of at least 10% (the threshold). A **significant low** is a trough followed by a rise of at least 10%. The breakout price is the highest such significant high; the breakdown price is the highest such significant low (strongest support level).
 
 Cached at `~/.stockticker/swing-level-cache.json`:
 
@@ -466,7 +466,7 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 - **Index marquee** — `MarqueeView` custom NSView scrolling at ~32px/sec with seamless looping. Bold index names, regular weight values. Ping animation on data refresh.
 - **News headlines** — Proportional font (headlineFont/headlineFontBold). Top-from-source uses highlight background.
 - **Ticker list** — Sorted by `defaultSort`, shows market cap/percent/YTD/highest close/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
-- **Submenus** — Edit Watchlist, Extra Stats, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
+- **Submenus** — Edit Watchlist, Extra Stats, Config (edit/reload/reset/clear cache), Closed Market Display, Sort By, Debug
 
 ### Color Helpers
 - `priceChangeColor(_:neutral:)` — green/red/neutral using `TradingHours.nearZeroThreshold`

@@ -337,13 +337,20 @@ struct StockQuote: Identifiable, Sendable {
 
     /// Determines the current trading session based on time (Eastern Time)
     /// Used as fallback when Yahoo API returns "CLOSED" but we're in extended hours
-    static func currentTimeBasedSession(date: Date = Date()) -> TradingSession {
+    static func currentTimeBasedSession(date: Date = Date(), marketSchedule: MarketSchedule = .shared) -> TradingSession {
         var calendar = Calendar.current
         guard let eastern = TimeZone(identifier: "America/New_York") else { return .closed }
         calendar.timeZone = eastern
 
         let weekday = calendar.component(.weekday, from: date)
         guard weekday != 1, weekday != 7 else { return .closed } // Weekend
+
+        // Check for full-day market holidays
+        let year = calendar.component(.year, from: date)
+        let holidays = marketSchedule.getHolidaysForYear(year)
+        if holidays.contains(where: { !$0.earlyClose && calendar.isDate($0.date, inSameDayAs: date) }) {
+            return .closed
+        }
 
         let minutes = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
 

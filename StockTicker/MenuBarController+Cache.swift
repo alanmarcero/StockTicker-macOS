@@ -145,7 +145,7 @@ extension MenuBarController {
         await fetchMissingHighestCloses()
     }
 
-    private func highestCloseQuarterRange() -> String {
+    func highestCloseQuarterRange() -> String {
         let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
         guard let oldest = quarters.last, let newest = quarters.first else { return "" }
         return "\(oldest.identifier):\(newest.identifier)"
@@ -192,7 +192,7 @@ extension MenuBarController {
         forwardPEData = await forwardPECacheManager.getAllData()
     }
 
-    private func forwardPEQuarterRange() -> String {
+    func forwardPEQuarterRange() -> String {
         let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
         guard let oldest = quarters.last, let newest = quarters.first else { return "" }
         return "\(oldest.identifier):\(newest.identifier)"
@@ -250,7 +250,7 @@ extension MenuBarController {
         await fetchMissingSwingLevels()
     }
 
-    private func swingLevelQuarterRange() -> String {
+    func swingLevelQuarterRange() -> String {
         let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
         guard let oldest = quarters.last, let newest = quarters.first else { return "" }
         return "\(oldest.identifier):\(newest.identifier)"

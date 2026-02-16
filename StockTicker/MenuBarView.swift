@@ -233,7 +233,8 @@ class MenuBarController: NSObject, ObservableObject {
         let items = [
             MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self),
             MenuItemFactory.action(title: "Reload Config", action: #selector(reloadConfig), target: self),
-            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self)
+            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self),
+            MenuItemFactory.action(title: "Clear Cache", action: #selector(clearAllCaches), target: self)
         ]
         return MenuItemFactory.submenu(title: "Config", items: items)
     }
@@ -684,6 +685,41 @@ class MenuBarController: NSObject, ObservableObject {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         _ = configManager.saveDefault()
         reloadConfig()
+    }
+
+    @objc private func clearAllCaches() {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Clear Cache"
+        alert.informativeText = "This will delete all cached price data and refetch from the API."
+        alert.addButton(withTitle: "Clear")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        ytdPrices = [:]
+        quarterlyPrices = [:]
+        highestClosePrices = [:]
+        forwardPEData = [:]
+        currentForwardPEs = [:]
+        swingLevelEntries = [:]
+
+        Task {
+            await ytdCacheManager.clearForNewYear()
+            await quarterlyCacheManager.clearAllQuarters()
+            await highestCloseCacheManager.clearForNewRange(highestCloseQuarterRange())
+            await forwardPECacheManager.clearForNewRange(forwardPEQuarterRange())
+            await swingLevelCacheManager.clearForNewRange(swingLevelQuarterRange())
+        }
+
+        hasCompletedInitialLoad = false
+        Task {
+            await fetchMissingYTDPrices()
+            await fetchMissingQuarterlyPrices()
+            await fetchMissingHighestCloses()
+            await fetchMissingForwardPERatios()
+            await fetchMissingSwingLevels()
+            await refreshAllQuotes()
+        }
     }
 
     @objc private func sortOptionSelected(_ sender: NSMenuItem) {

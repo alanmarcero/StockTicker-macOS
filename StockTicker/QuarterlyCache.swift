@@ -161,6 +161,10 @@ actor QuarterlyCacheManager {
         return symbols.filter { quarterData[$0] == nil }
     }
 
+    func clearAllQuarters() {
+        cache = QuarterlyCacheData(lastUpdated: "", quarters: [:])
+    }
+
     func pruneOldQuarters(keeping activeQuarters: [String]) {
         guard var currentCache = cache else { return }
         let activeSet = Set(activeQuarters)

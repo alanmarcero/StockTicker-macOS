@@ -507,6 +507,44 @@ final class StockQuoteTests: XCTestCase {
         }
     }
 
+    func testCurrentTimeBasedSession_holidayReturnsClosed() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        // Presidents' Day 2026 (3rd Monday of February) at 5 PM — would be after-hours on a normal day
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 2
+        components.day = 16
+        components.hour = 17
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let holiday = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: holiday)
+            XCTAssertEqual(session, .closed)
+        }
+    }
+
+    func testCurrentTimeBasedSession_earlyCloseHolidayAllowsExtendedHours() {
+        var calendar = Calendar.current
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+
+        // Day after Thanksgiving 2026 (early close) at 5 PM — should be after-hours
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 11
+        components.day = 27
+        components.hour = 17
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")!
+
+        if let earlyCloseDay = calendar.date(from: components) {
+            let session = StockQuote.currentTimeBasedSession(date: earlyCloseDay)
+            XCTAssertEqual(session, .afterHours)
+        }
+    }
+
     // MARK: - Extended hours period detection
 
     func testIsInExtendedHoursPeriod_dependsOnCurrentTime() {

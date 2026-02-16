@@ -68,6 +68,6 @@ enum SwingAnalysis {
             }
         }
 
-        return significantLows.min(by: { $0.price < $1.price })
+        return significantLows.max(by: { $0.price < $1.price })
     }
 }
