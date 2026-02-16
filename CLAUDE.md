@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (30 files, ~6,276 lines)
+## Source Files (30 files, ~6,314 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -57,7 +57,7 @@ NewsService.swift                (134L)  RSS feed fetcher for financial news (ac
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift         (680L)  Extra Stats window: view model, SwiftUI view, controller (4 view modes)
+QuarterlyPanelView.swift         (718L)  Extra Stats window: view model, SwiftUI view, controller (4 view modes)
 LayoutConfig.swift               (79L)   Centralized layout constants
 CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E, swing level caches)
 TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
@@ -447,7 +447,7 @@ Standalone window with four view modes (segmented picker): **Since Quarter** sho
 
 **Forward P/E mode:** Filters to equity symbols only (symbols with at least one non-empty P/E entry). Shows "Current" column (current forward P/E from v7 API, always secondary color) and quarter columns (historical P/E as of quarter end). Color: green when P/E decreased vs prior quarter, red when increased, secondary when no prior value.
 
-**Price Breaks mode:** Combined mode (`isPriceBreaksMode`) with two headed sub-tables — "Breakout" and "Breakdown" — sorted independently. No High column, no quarter columns. Columns: Symbol (sortable), Date (sortable, "M/d/yy" format), % (sortable). Symbols with both breakout and breakdown data appear in both tables with unique IDs (`symbol-breakout`, `symbol-breakdown`). Header shows "X breakout, Y breakdown" count.
+**Price Breaks mode:** Combined mode (`isPriceBreaksMode`) with side-by-side layout — "Breakout" table on the left, "Breakdown" table on the right, each independently scrollable with its own title and column headers. Sorted independently. No High column, no quarter columns. Columns: Symbol (sortable), Date (sortable, "M/d/yy" format), % (sortable). Symbols with both breakout and breakdown data appear in both tables with unique IDs (`symbol-breakout`, `symbol-breakdown`). Header shows "X breakout, Y breakdown" count.
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 
@@ -487,7 +487,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 
 | Field | Type | Default |
 |-------|------|---------|
-| `watchlist` | `[String]` (max 64) | 40+ symbols |
+| `watchlist` | `[String]` (max 128) | 40+ symbols |
 | `menuBarRotationInterval` | `Int` (seconds) | `5` |
 | `refreshInterval` | `Int` (seconds) | `15` |
 | `sortDirection` | `String` | `"percentDesc"` |

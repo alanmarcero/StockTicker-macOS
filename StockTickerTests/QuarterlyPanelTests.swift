@@ -704,7 +704,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertTrue(vm.breakdownRows.isEmpty)
     }
 
-    func testPriceBreaks_breakoutRows_negativePercent() {
+    func testPriceBreaks_breakoutRows_belowBreakout_filtered() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -717,8 +717,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
         vm.switchMode(.priceBreaks)
 
-        XCTAssertEqual(vm.breakoutRows.count, 1)
-        XCTAssertEqual(vm.breakoutRows[0].breakoutPercent!, -10.0, accuracy: 0.01)
+        XCTAssertTrue(vm.breakoutRows.isEmpty)
     }
 
     func testPriceBreaks_noSwingData_emptyRows() {
@@ -756,7 +755,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.breakdownRows[0].breakdownDate, "6/10/24")
     }
 
-    func testPriceBreaks_breakdownRows_positivePercent() {
+    func testPriceBreaks_breakdownRows_aboveBreakdown_filtered() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -769,8 +768,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
         vm.switchMode(.priceBreaks)
 
-        XCTAssertEqual(vm.breakdownRows.count, 1)
-        XCTAssertEqual(vm.breakdownRows[0].breakdownPercent!, 20.0, accuracy: 0.01)
+        XCTAssertTrue(vm.breakdownRows.isEmpty)
     }
 
     // MARK: - Price Breaks: Both Breakout and Breakdown
@@ -782,7 +780,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 100.0, breakdownDate: "6/10/24"),
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 250.0, breakdownDate: "6/10/24"),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)

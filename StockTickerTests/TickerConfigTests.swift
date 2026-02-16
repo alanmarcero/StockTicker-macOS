@@ -100,8 +100,8 @@ final class WatchlistConfigTests: XCTestCase {
         )
     }
 
-    func testMaxWatchlistSize_isSixtyFour() {
-        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 64)
+    func testMaxWatchlistSize_is128() {
+        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 128)
     }
 
     func testDefaultIndexSymbols_hasExpectedIndexes() {
@@ -584,7 +584,7 @@ final class WatchlistConfigManagerTests: XCTestCase {
 
     func testLoad_tooManyTickers_truncatesToMax() {
         let mockFS = MockFileSystem(homeDirectory: "/Users/test")
-        let manyTickers = (1...80).map { "T\($0)" }
+        let manyTickers = (1...150).map { "T\($0)" }
         let customConfig = WatchlistConfig(watchlist: manyTickers, menuBarRotationInterval: 5, sortDirection: "percentDesc")
         let jsonData = try! JSONEncoder().encode(customConfig)
         mockFS.files["/Users/test/.stockticker/config.json"] = jsonData

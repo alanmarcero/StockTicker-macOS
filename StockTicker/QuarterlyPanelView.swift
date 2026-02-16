@@ -205,11 +205,15 @@ class QuarterlyPanelViewModel: ObservableObject {
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
             if let breakoutPrice = entry.breakoutPrice, breakoutPrice > 0 {
                 let pct = ((quote.price - breakoutPrice) / breakoutPrice) * 100
-                outRows.append(QuarterlyRow(id: "\(symbol)-breakout", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: entry.breakoutDate, breakdownPercent: nil, breakdownDate: nil))
+                if pct > 0 {
+                    outRows.append(QuarterlyRow(id: "\(symbol)-breakout", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: entry.breakoutDate, breakdownPercent: nil, breakdownDate: nil))
+                }
             }
             if let breakdownPrice = entry.breakdownPrice, breakdownPrice > 0 {
                 let pct = ((quote.price - breakdownPrice) / breakdownPrice) * 100
-                bkdnRows.append(QuarterlyRow(id: "\(symbol)-breakdown", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: pct, breakdownDate: entry.breakdownDate))
+                if pct < 0 {
+                    bkdnRows.append(QuarterlyRow(id: "\(symbol)-breakdown", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: pct, breakdownDate: entry.breakdownDate))
+                }
             }
         }
         breakoutRows = outRows
@@ -366,23 +370,17 @@ struct QuarterlyPanelView: View {
         }
     }
 
+    @ViewBuilder
     private var scrollableContent: some View {
-        ScrollView([.horizontal, .vertical]) {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                if viewModel.isPriceBreaksMode {
-                    Section(header: pinnedColumnHeaders) {
-                        priceBreaksSectionHeader("Breakout")
-                        ForEach(viewModel.breakoutRows) { row in
-                            rowView(row)
-                            Divider().opacity(0.3)
-                        }
-                        priceBreaksSectionHeader("Breakdown")
-                        ForEach(viewModel.breakdownRows) { row in
-                            rowView(row)
-                            Divider().opacity(0.3)
-                        }
-                    }
-                } else {
+        if viewModel.isPriceBreaksMode {
+            HStack(alignment: .top, spacing: 0) {
+                priceBreaksTable("Breakout", rows: viewModel.breakoutRows, isBreakout: true)
+                Divider()
+                priceBreaksTable("Breakdown", rows: viewModel.breakdownRows, isBreakout: false)
+            }
+        } else {
+            ScrollView([.horizontal, .vertical]) {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                     Section(header: pinnedColumnHeaders) {
                         ForEach(viewModel.rows) { row in
                             rowView(row)
@@ -390,21 +388,73 @@ struct QuarterlyPanelView: View {
                         }
                     }
                 }
+                .padding(.horizontal, 8)
             }
-            .padding(.horizontal, 8)
         }
     }
 
-    private func priceBreaksSectionHeader(_ title: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.system(.caption, design: .monospaced))
-                .fontWeight(.bold)
-                .foregroundColor(.secondary)
-            Spacer()
+    private func priceBreaksTable(_ title: String, rows: [QuarterlyRow], isBreakout: Bool) -> some View {
+        ScrollView([.vertical]) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Section(header: priceBreaksPinnedHeaders(title, isBreakout: isBreakout)) {
+                    ForEach(rows) { row in
+                        priceBreaksRowView(row, isBreakout: isBreakout)
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func priceBreaksPinnedHeaders(_ title: String, isBreakout: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(.system(.caption, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.top, 4)
+            HStack(spacing: 0) {
+                sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+                sortableHeader("Date", column: .date, width: QuarterlyWindowSize.dateColumnWidth, alignment: .trailing)
+                sortableHeader("%", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            Divider()
+        }
+        .background(.background)
+    }
+
+    private func priceBreaksRowView(_ row: QuarterlyRow, isBreakout: Bool) -> some View {
+        HStack(spacing: 0) {
+            Text(row.symbol)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.medium)
+                .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+
+            dateCellView(isBreakout ? row.breakoutDate : row.breakdownDate)
+                .frame(width: QuarterlyWindowSize.dateColumnWidth, alignment: .trailing)
+            cellView(isBreakout ? row.breakoutPercent : row.breakdownPercent)
+                .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
-        .padding(.top, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(viewModel.highlightColor.opacity(
+                    viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
+                ))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.toggleHighlight(for: row.symbol)
+        }
     }
 
     private var pinnedColumnHeaders: some View {
@@ -419,10 +469,7 @@ struct QuarterlyPanelView: View {
         HStack(spacing: 0) {
             sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
 
-            if viewModel.isPriceBreaksMode {
-                sortableHeader("Date", column: .date, width: QuarterlyWindowSize.dateColumnWidth, alignment: .trailing)
-                sortableHeader("%", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
-            } else if viewModel.isForwardPEMode {
+            if viewModel.isForwardPEMode {
                 sortableHeader("Current", column: .currentPE, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
                 ForEach(viewModel.quarters, id: \.identifier) { qi in
                     sortableHeader(qi.displayLabel, column: .quarter(qi.identifier), width: QuarterlyWindowSize.quarterColumnWidth, alignment: .trailing)
@@ -470,12 +517,7 @@ struct QuarterlyPanelView: View {
                 .fontWeight(.medium)
                 .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
 
-            if viewModel.isPriceBreaksMode {
-                dateCellView(row.breakoutDate ?? row.breakdownDate)
-                    .frame(width: QuarterlyWindowSize.dateColumnWidth, alignment: .trailing)
-                cellView(row.breakoutPercent ?? row.breakdownPercent)
-                    .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
-            } else if viewModel.isForwardPEMode {
+            if viewModel.isForwardPEMode {
                 currentPECellView(row.currentForwardPE)
                     .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 

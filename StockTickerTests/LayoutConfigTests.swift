@@ -92,6 +92,6 @@ final class LayoutConfigTests: XCTestCase {
 
     func testWatchlist_maxSize_isReasonable() {
         XCTAssertGreaterThanOrEqual(LayoutConfig.Watchlist.maxSize, 1)
-        XCTAssertLessThanOrEqual(LayoutConfig.Watchlist.maxSize, 100)
+        XCTAssertLessThanOrEqual(LayoutConfig.Watchlist.maxSize, 200)
     }
 }
