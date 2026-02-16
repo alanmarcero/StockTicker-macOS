@@ -4,7 +4,9 @@ import Foundation
 
 struct SwingLevelCacheEntry: Codable {
     let breakoutPrice: Double?
+    let breakoutDate: String?
     let breakdownPrice: Double?
+    let breakdownDate: String?
 }
 
 struct SwingLevelCacheData: Codable {

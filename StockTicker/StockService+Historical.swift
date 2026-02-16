@@ -63,7 +63,7 @@ extension StockService {
         }
     }
 
-    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingAnalysis.SwingResult? {
+    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry? {
         guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
             return nil
         }
@@ -78,25 +78,49 @@ extension StockService {
                 return nil
             }
 
-            let validCloses = closes.compactMap { $0 }
-            guard !validCloses.isEmpty else { return nil }
+            let timestamps = result.timestamp ?? []
+            let paired = zip(timestamps, closes).compactMap { ts, close -> (Int, Double)? in
+                guard let close else { return nil }
+                return (ts, close)
+            }
+            guard !paired.isEmpty else { return nil }
 
-            return SwingAnalysis.analyze(closes: validCloses)
+            let validTimestamps = paired.map { $0.0 }
+            let validCloses = paired.map { $0.1 }
+
+            let swingResult = SwingAnalysis.analyze(closes: validCloses)
+
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "M/d/yy"
+
+            let breakoutDate: String? = swingResult.breakoutIndex.map { idx in
+                dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
+            }
+            let breakdownDate: String? = swingResult.breakdownIndex.map { idx in
+                dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
+            }
+
+            return SwingLevelCacheEntry(
+                breakoutPrice: swingResult.breakoutPrice,
+                breakoutDate: breakoutDate,
+                breakdownPrice: swingResult.breakdownPrice,
+                breakdownDate: breakdownDate
+            )
         } catch {
             print("Swing levels fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
         }
     }
 
-    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingAnalysis.SwingResult] {
-        await withTaskGroup(of: (String, SwingAnalysis.SwingResult?).self) { group in
+    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingLevelCacheEntry] {
+        await withTaskGroup(of: (String, SwingLevelCacheEntry?).self) { group in
             for symbol in symbols {
                 group.addTask {
                     (symbol, await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2))
                 }
             }
 
-            var results: [String: SwingAnalysis.SwingResult] = [:]
+            var results: [String: SwingLevelCacheEntry] = [:]
             for await (symbol, result) in group {
                 if let result {
                     results[symbol] = result

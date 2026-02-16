@@ -68,6 +68,7 @@ enum LayoutConfig {
         static let symbolColumnWidth: CGFloat = 80
         static let quarterColumnWidth: CGFloat = 85
         static let highColumnWidth: CGFloat = 85
+        static let dateColumnWidth: CGFloat = 75
     }
 
     // MARK: - Watchlist

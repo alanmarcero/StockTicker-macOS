@@ -427,8 +427,10 @@ final class StockServiceTests: XCTestCase {
 
     // MARK: - fetchSwingLevels tests
 
-    func testFetchSwingLevels_validResponse_returnsResult() async {
+    func testFetchSwingLevels_validResponse_returnsCacheEntry() async {
         let mockClient = MockHTTPClient()
+        // Peak at 150 (index 2) → drops to 80 (46.7% decline) — significant high at 150
+        // Trough at 80 (index 5) → rises to 95 (18.8% rise) — significant low at 80
         let json = """
         {
             "chart": {
@@ -438,6 +440,7 @@ final class StockServiceTests: XCTestCase {
                         "regularMarketPrice": 150.50,
                         "chartPreviousClose": 148.00
                     },
+                    "timestamp": [1704067200, 1704153600, 1704240000, 1704326400, 1704412800, 1704499200, 1704585600, 1704672000],
                     "indicators": {
                         "quote": [{
                             "close": [100.0, 120.0, 150.0, 130.0, 125.0, 80.0, 90.0, 95.0]
@@ -455,6 +458,10 @@ final class StockServiceTests: XCTestCase {
         let result = await service.fetchSwingLevels(symbol: "AAPL", period1: 100, period2: 200)
 
         XCTAssertNotNil(result)
+        XCTAssertEqual(result?.breakoutPrice, 150.0)
+        XCTAssertNotNil(result?.breakoutDate)
+        XCTAssertEqual(result?.breakdownPrice, 80.0)
+        XCTAssertNotNil(result?.breakdownDate)
     }
 
     func testFetchSwingLevels_emptyCloses_returnsNil() async {
@@ -468,6 +475,7 @@ final class StockServiceTests: XCTestCase {
                         "regularMarketPrice": 150.50,
                         "chartPreviousClose": 148.00
                     },
+                    "timestamp": [1704067200, 1704153600],
                     "indicators": {
                         "quote": [{
                             "close": [null, null]

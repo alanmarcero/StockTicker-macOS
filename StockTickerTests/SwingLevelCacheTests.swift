@@ -30,8 +30,8 @@ final class SwingLevelCacheTests: XCTestCase {
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: 120.0),
-                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakdownPrice: nil)
+                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 120.0, breakdownDate: "6/10/24"),
+                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakoutDate: "3/20/25", breakdownPrice: nil, breakdownDate: nil)
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -63,7 +63,7 @@ final class SwingLevelCacheTests: XCTestCase {
         )
 
         await cacheManager.clearForNewRange("Q1-2023:Q4-2025")
-        await cacheManager.setEntry(for: "AAPL", entry: SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: 120.0))
+        await cacheManager.setEntry(for: "AAPL", entry: SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 120.0, breakdownDate: "6/10/24"))
         await cacheManager.save()
 
         let cacheURL = URL(fileURLWithPath: testCacheFile)
@@ -98,7 +98,7 @@ final class SwingLevelCacheTests: XCTestCase {
         let cacheData = SwingLevelCacheData(
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: "2026-02-15T12:00:00Z",
-            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil)]
+            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -120,7 +120,7 @@ final class SwingLevelCacheTests: XCTestCase {
         let cacheData = SwingLevelCacheData(
             quarterRange: "Q1-2022:Q4-2024",
             lastUpdated: "2025-12-15T12:00:00Z",
-            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil)]
+            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -146,8 +146,8 @@ final class SwingLevelCacheTests: XCTestCase {
             quarterRange: "Q1-2022:Q4-2024",
             lastUpdated: "2025-12-15T12:00:00Z",
             entries: [
-                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: 120.0),
-                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakdownPrice: nil)
+                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 120.0, breakdownDate: "6/10/24"),
+                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakoutDate: "3/20/25", breakdownPrice: nil, breakdownDate: nil)
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -180,7 +180,7 @@ final class SwingLevelCacheTests: XCTestCase {
         let cacheData = SwingLevelCacheData(
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: "2026-02-15T12:00:00Z",
-            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil)]
+            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -218,8 +218,8 @@ final class SwingLevelCacheTests: XCTestCase {
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: 120.0),
-                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakdownPrice: nil)
+                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 120.0, breakdownDate: "6/10/24"),
+                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakoutDate: "3/20/25", breakdownPrice: nil, breakdownDate: nil)
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -261,7 +261,7 @@ final class SwingLevelCacheTests: XCTestCase {
         let cacheData = SwingLevelCacheData(
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: todayString,
-            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil)]
+            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -287,7 +287,7 @@ final class SwingLevelCacheTests: XCTestCase {
         let cacheData = SwingLevelCacheData(
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: yesterdayString,
-            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil)]
+            entries: ["AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -313,8 +313,8 @@ final class SwingLevelCacheTests: XCTestCase {
             quarterRange: "Q1-2023:Q4-2025",
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: 120.0),
-                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakdownPrice: nil)
+                "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 120.0, breakdownDate: "6/10/24"),
+                "SPY": SwingLevelCacheEntry(breakoutPrice: 500.0, breakoutDate: "3/20/25", breakdownPrice: nil, breakdownDate: nil)
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -357,7 +357,7 @@ final class SwingLevelCacheTests: XCTestCase {
         )
 
         await cacheManager.clearForNewRange("Q1-2023:Q4-2025")
-        await cacheManager.setEntry(for: "BTC-USD", entry: SwingLevelCacheEntry(breakoutPrice: nil, breakdownPrice: nil))
+        await cacheManager.setEntry(for: "BTC-USD", entry: SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: nil, breakdownDate: nil))
 
         let entry = await cacheManager.getEntry(for: "BTC-USD")
         XCTAssertNotNil(entry)

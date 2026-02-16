@@ -33,16 +33,16 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (30 files, ~6,183 lines)
+## Source Files (30 files, ~6,276 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
 MenuBarView.swift                (820L)  Main controller: menu bar UI, state management
-MenuBarController+Cache.swift    (272L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, and market cap cache coordination
+MenuBarController+Cache.swift    (268L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, and market cap cache coordination
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (207L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (69L)   Extension: market cap + forward P/E via v7 quote API with crumb auth
-StockService+Historical.swift    (152L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels)
+StockService+Historical.swift    (176L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates)
 StockService+ForwardPE.swift     (57L)   Extension: historical forward P/E ratios via timeseries API
 StockData.swift                  (517L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
@@ -57,22 +57,22 @@ NewsService.swift                (134L)  RSS feed fetcher for financial news (ac
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift         (623L)  Extra Stats window: view model, SwiftUI view, controller (5 view modes)
-LayoutConfig.swift               (78L)   Centralized layout constants
+QuarterlyPanelView.swift         (680L)  Extra Stats window: view model, SwiftUI view, controller (4 view modes)
+LayoutConfig.swift               (79L)   Centralized layout constants
 CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E, swing level caches)
 TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
 QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
 HighestCloseCache.swift          (109L)  Highest daily close cache manager (actor), daily refresh
 ForwardPECache.swift             (92L)   Forward P/E ratio cache manager (actor), permanent per-quarter cache
-SwingAnalysis.swift              (60L)   Pure swing analysis algorithm (breakout/breakdown detection)
-SwingLevelCache.swift            (114L)  Swing level cache manager (actor), daily refresh
+SwingAnalysis.swift              (73L)   Pure swing analysis algorithm (breakout/breakdown detection with indices)
+SwingLevelCache.swift            (116L)  Swing level cache manager (actor), daily refresh
 ```
 
-## Test Files (28 files, ~8,411 lines)
+## Test Files (28 files, ~8,497 lines)
 
 ```
 StockDataTests.swift             (686L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
-StockServiceTests.swift          (627L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E, swing levels
+StockServiceTests.swift          (635L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E, swing levels with dates
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -84,7 +84,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (874L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, breakout/breakdown
+QuarterlyPanelTests.swift        (934L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
@@ -97,7 +97,7 @@ TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlight
 QuoteFetchCoordinatorTests.swift (227L)  Fetch modes, FetchResult correctness, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
-SwingAnalysisTests.swift         (129L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings
+SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings, index tracking
 SwingLevelCacheTests.swift       (371L)  Swing level cache load/save, invalidation, daily refresh, missing symbols, nil values
 ```
 
@@ -239,7 +239,7 @@ All magic numbers are extracted into namespaced enums:
 - `QuarterCalculation` — quarter date math, identifier/label generation
 - `TickerDisplayBuilder` — stateless enum with static display formatting methods
 - `QuoteFetchCoordinator` — stateless enum with static fetch orchestration methods
-- `SwingAnalysis` — stateless enum with pure swing high/low detection algorithm
+- `SwingAnalysis` — stateless enum with pure swing high/low detection algorithm (returns prices + indices)
 
 ### Callback Cleanup
 `WatchlistEditorState` explicitly clears callbacks to prevent retain cycles. Called in `save()`, `cancel()`, and when window closes.
@@ -405,8 +405,8 @@ Cached at `~/.stockticker/swing-level-cache.json`:
   "quarterRange": "Q1-2023:Q4-2025",
   "lastUpdated": "2026-02-16T12:00:00Z",
   "entries": {
-    "AAPL": { "breakoutPrice": 254.23, "breakdownPrice": 120.50 },
-    "BTC-USD": { "breakoutPrice": null, "breakdownPrice": null }
+    "AAPL": { "breakoutPrice": 254.23, "breakoutDate": "7/16/24", "breakdownPrice": 120.50, "breakdownDate": "1/3/23" },
+    "BTC-USD": { "breakoutPrice": null, "breakoutDate": null, "breakdownPrice": null, "breakdownDate": null }
   }
 }
 ```
@@ -415,13 +415,13 @@ Cached at `~/.stockticker/swing-level-cache.json`:
 
 **Invalidation:** Same as highest close — `quarterRange` changes when a new quarter completes. Daily refresh clears entries so new daily closes are captured.
 
-**API:** Same chart v8 call as highest close (daily bars for full 3-year range). `SwingAnalysis.analyze(closes:)` processes the close prices to detect swing levels.
+**API:** Same chart v8 call as highest close (daily bars for full 3-year range). Timestamps and closes are zipped, null closes filtered. `SwingAnalysis.analyze(closes:)` returns prices and indices; indices map to timestamps for date formatting ("M/d/yy").
 
 Key methods: `loadSwingLevelCache()`, `fetchMissingSwingLevels()`, `refreshSwingLevelsIfNeeded()`
 
 ## Extra Stats (Cmd+Opt+Q)
 
-Standalone window with five view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end); **Forward P/E** shows historical forward P/E ratios per quarter end; **Breakout** shows percent above the highest significant high (swing analysis); **Breakdown** shows percent below the lowest significant low (swing analysis). Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
+Standalone window with four view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end); **Forward P/E** shows historical forward P/E ratios per quarter end; **Price Breaks** shows two headed sub-tables — Breakout (percent from highest significant high) and Breakdown (percent from lowest significant low) via swing analysis. Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
 
 ```json
 {
@@ -437,7 +437,7 @@ Standalone window with five view modes (segmented picker): **Since Quarter** sho
 
 **Fetching strategy:** Per-quarter sequential, per-symbol parallel via TaskGroup. Cache saved after each quarter (preserves progress if interrupted). First run ~832 API calls (64 symbols x 13 quarters); subsequent runs only fetch new symbols or newly completed quarters.
 
-**View modes:** `QuarterlyViewMode` enum — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.breakout` shows percent above breakout price (only positive values), `.breakdown` shows percent below breakdown price (only negative values). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`) so rows recompute when toggling modes via `switchMode()`.
+**View modes:** `QuarterlyViewMode` enum — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns. A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`) so rows recompute when toggling modes via `switchMode()`.
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
@@ -447,7 +447,7 @@ Standalone window with five view modes (segmented picker): **Since Quarter** sho
 
 **Forward P/E mode:** Filters to equity symbols only (symbols with at least one non-empty P/E entry). Shows "Current" column (current forward P/E from v7 API, always secondary color) and quarter columns (historical P/E as of quarter end). Color: green when P/E decreased vs prior quarter, red when increased, secondary when no prior value.
 
-**Breakout/Breakdown modes:** Single-value modes (`isSingleValueMode`) — no High column, no quarter columns. Only Symbol + percent value. Breakout shows only symbols currently above their breakout price (positive %); breakdown shows only symbols currently below their breakdown price (negative %).
+**Price Breaks mode:** Combined mode (`isPriceBreaksMode`) with two headed sub-tables — "Breakout" and "Breakdown" — sorted independently. No High column, no quarter columns. Columns: Symbol (sortable), Date (sortable, "M/d/yy" format), % (sortable). Symbols with both breakout and breakdown data appear in both tables with unique IDs (`symbol-breakout`, `symbol-breakdown`). Header shows "X breakout, Y breakdown" count.
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 

@@ -10,13 +10,17 @@ final class SwingAnalysisTests: XCTestCase {
     func testAnalyze_emptyCloses_returnsNils() {
         let result = SwingAnalysis.analyze(closes: [])
         XCTAssertNil(result.breakoutPrice)
+        XCTAssertNil(result.breakoutIndex)
         XCTAssertNil(result.breakdownPrice)
+        XCTAssertNil(result.breakdownIndex)
     }
 
     func testAnalyze_singleClose_returnsNils() {
         let result = SwingAnalysis.analyze(closes: [100.0])
         XCTAssertNil(result.breakoutPrice)
+        XCTAssertNil(result.breakoutIndex)
         XCTAssertNil(result.breakdownPrice)
+        XCTAssertNil(result.breakdownIndex)
     }
 
     // MARK: - Breakout Detection
@@ -26,6 +30,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 105.0, 110.0, 115.0, 120.0, 125.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertNil(result.breakoutPrice)
+        XCTAssertNil(result.breakoutIndex)
     }
 
     func testAnalyze_single10PercentDrop_detectsBreakout() {
@@ -33,6 +38,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 90.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakoutPrice, 100.0)
+        XCTAssertEqual(result.breakoutIndex, 0)
     }
 
     func testAnalyze_largerDrop_detectsBreakout() {
@@ -40,6 +46,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [150.0, 180.0, 200.0, 190.0, 170.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakoutPrice, 200.0)
+        XCTAssertEqual(result.breakoutIndex, 2)
     }
 
     func testAnalyze_lessThan10PercentDrop_noBreakout() {
@@ -47,14 +54,16 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 91.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertNil(result.breakoutPrice)
+        XCTAssertNil(result.breakoutIndex)
     }
 
     func testAnalyze_multipleSwingHighs_returnsHighest() {
-        // First peak 100 → drops to 89 (11% decline) — significant high at 100
-        // Second peak 150 → drops to 130 (13.3% decline) — significant high at 150
+        // First peak 100 → drops to 89 (11% decline) — significant high at 100 (index 0)
+        // Second peak 150 → drops to 130 (13.3% decline) — significant high at 150 (index 3)
         let closes = [100.0, 89.0, 120.0, 150.0, 130.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakoutPrice, 150.0)
+        XCTAssertEqual(result.breakoutIndex, 3)
     }
 
     // MARK: - Breakdown Detection
@@ -64,6 +73,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 95.0, 90.0, 85.0, 80.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertNil(result.breakdownPrice)
+        XCTAssertNil(result.breakdownIndex)
     }
 
     func testAnalyze_single10PercentRise_detectsBreakdown() {
@@ -71,6 +81,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 110.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakdownPrice, 100.0)
+        XCTAssertEqual(result.breakdownIndex, 0)
     }
 
     func testAnalyze_largerRise_detectsBreakdown() {
@@ -78,6 +89,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 90.0, 80.0, 88.0, 96.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakdownPrice, 80.0)
+        XCTAssertEqual(result.breakdownIndex, 2)
     }
 
     func testAnalyze_lessThan10PercentRise_noBreakdown() {
@@ -85,14 +97,16 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 109.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertNil(result.breakdownPrice)
+        XCTAssertNil(result.breakdownIndex)
     }
 
     func testAnalyze_multipleSwingLows_returnsLowest() {
-        // First trough 80 → rises to 90 (12.5% rise) — significant low at 80
-        // Second trough 70 → rises to 80 (14.3% rise) — significant low at 70
+        // First trough 80 → rises to 90 (12.5% rise) — significant low at 80 (index 1)
+        // Second trough 70 → rises to 80 (14.3% rise) — significant low at 70 (index 3)
         let closes = [100.0, 80.0, 90.0, 70.0, 80.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakdownPrice, 70.0)
+        XCTAssertEqual(result.breakdownIndex, 3)
     }
 
     // MARK: - Combined Detection
@@ -102,7 +116,9 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [150.0, 180.0, 200.0, 175.0, 170.0, 150.0, 165.0, 170.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertNotNil(result.breakoutPrice)
+        XCTAssertNotNil(result.breakoutIndex)
         XCTAssertNotNil(result.breakdownPrice)
+        XCTAssertNotNil(result.breakdownIndex)
     }
 
     // MARK: - Exact Threshold
@@ -112,6 +128,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 90.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakoutPrice, 100.0)
+        XCTAssertEqual(result.breakoutIndex, 0)
     }
 
     func testAnalyze_exact10PercentRise_isDetected() {
@@ -119,6 +136,7 @@ final class SwingAnalysisTests: XCTestCase {
         let closes = [100.0, 110.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakdownPrice, 100.0)
+        XCTAssertEqual(result.breakdownIndex, 0)
     }
 
     // MARK: - Threshold Constant

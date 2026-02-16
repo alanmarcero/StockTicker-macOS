@@ -15,8 +15,8 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double]
     func fetchForwardPERatios(symbol: String, period1: Int, period2: Int) async -> [String: Double]?
     func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]]
-    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingAnalysis.SwingResult?
-    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingAnalysis.SwingResult]
+    func fetchSwingLevels(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry?
+    func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingLevelCacheEntry]
 }
 
 // MARK: - HTTP Client Protocol

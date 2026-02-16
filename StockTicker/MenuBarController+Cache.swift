@@ -236,11 +236,7 @@ extension MenuBarController {
         let fetched = await stockService.batchFetchSwingLevels(
             symbols: missingSymbols, period1: period1, period2: period2
         )
-        for (symbol, result) in fetched {
-            let entry = SwingLevelCacheEntry(
-                breakoutPrice: result.breakoutPrice,
-                breakdownPrice: result.breakdownPrice
-            )
+        for (symbol, entry) in fetched {
             await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
         }
         await swingLevelCacheManager.save()

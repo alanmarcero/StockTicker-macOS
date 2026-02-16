@@ -683,43 +683,45 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(restoredQ4!, 11.11, accuracy: 0.01)
     }
 
-    // MARK: - Breakout Mode
+    // MARK: - Price Breaks Mode (Breakout)
 
-    func testBuildBreakoutRows_positivePercent_showsValue() {
+    func testPriceBreaks_breakoutRows_positivePercent() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil),
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakout)
+        vm.switchMode(.priceBreaks)
 
-        XCTAssertEqual(vm.rows.count, 1)
-        XCTAssertEqual(vm.rows[0].breakoutPercent!, 10.0, accuracy: 0.01)
+        XCTAssertEqual(vm.breakoutRows.count, 1)
+        XCTAssertEqual(vm.breakoutRows[0].breakoutPercent!, 10.0, accuracy: 0.01)
+        XCTAssertEqual(vm.breakoutRows[0].breakoutDate, "1/15/25")
+        XCTAssertTrue(vm.breakdownRows.isEmpty)
     }
 
-    func testBuildBreakoutRows_negativePercent_showsNil() {
+    func testPriceBreaks_breakoutRows_negativePercent() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 180.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil),
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakout)
+        vm.switchMode(.priceBreaks)
 
-        // Price is below breakout, so row should be filtered out
-        XCTAssertTrue(vm.rows.isEmpty)
+        XCTAssertEqual(vm.breakoutRows.count, 1)
+        XCTAssertEqual(vm.breakoutRows[0].breakoutPercent!, -10.0, accuracy: 0.01)
     }
 
-    func testBuildBreakoutRows_noSwingData_showsNil() {
+    func testPriceBreaks_noSwingData_emptyRows() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -727,50 +729,77 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
-        vm.switchMode(.breakout)
+        vm.switchMode(.priceBreaks)
 
-        XCTAssertTrue(vm.rows.isEmpty)
+        XCTAssertTrue(vm.breakoutRows.isEmpty)
+        XCTAssertTrue(vm.breakdownRows.isEmpty)
     }
 
-    // MARK: - Breakdown Mode
+    // MARK: - Price Breaks Mode (Breakdown)
 
-    func testBuildBreakdownRows_negativePercent_showsValue() {
+    func testPriceBreaks_breakdownRows_negativePercent() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 90.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakdownPrice: 100.0),
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakdown)
+        vm.switchMode(.priceBreaks)
 
-        XCTAssertEqual(vm.rows.count, 1)
-        XCTAssertEqual(vm.rows[0].breakdownPercent!, -10.0, accuracy: 0.01)
+        XCTAssertTrue(vm.breakoutRows.isEmpty)
+        XCTAssertEqual(vm.breakdownRows.count, 1)
+        XCTAssertEqual(vm.breakdownRows[0].breakdownPercent!, -10.0, accuracy: 0.01)
+        XCTAssertEqual(vm.breakdownRows[0].breakdownDate, "6/10/24")
     }
 
-    func testBuildBreakdownRows_positivePercent_showsNil() {
+    func testPriceBreaks_breakdownRows_positivePercent() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 120.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakdownPrice: 100.0),
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakdown)
+        vm.switchMode(.priceBreaks)
 
-        // Price is above breakdown, so row should be filtered out
-        XCTAssertTrue(vm.rows.isEmpty)
+        XCTAssertEqual(vm.breakdownRows.count, 1)
+        XCTAssertEqual(vm.breakdownRows[0].breakdownPercent!, 20.0, accuracy: 0.01)
     }
 
-    // MARK: - Sorting Breakout/Breakdown
+    // MARK: - Price Breaks: Both Breakout and Breakdown
 
-    func testSort_byBreakout() {
+    func testPriceBreaks_symbolWithBoth_appearsInBothArrays() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 100.0, breakdownDate: "6/10/24"),
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.switchMode(.priceBreaks)
+
+        XCTAssertEqual(vm.breakoutRows.count, 1)
+        XCTAssertEqual(vm.breakdownRows.count, 1)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.breakdownRows[0].symbol, "AAPL")
+        // Unique IDs
+        XCTAssertEqual(vm.breakoutRows[0].id, "AAPL-breakout")
+        XCTAssertEqual(vm.breakdownRows[0].id, "AAPL-breakdown")
+    }
+
+    // MARK: - Sorting Price Breaks
+
+    func testSort_byPriceBreakPercent_breakoutRows() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -778,25 +807,25 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": makeQuote(symbol: "MSFT", price: 360.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakdownPrice: nil),  // +10%
-            "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakdownPrice: nil),  // +20%
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),  // +10%
+            "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakoutDate: "2/20/25", breakdownPrice: nil, breakdownDate: nil),  // +20%
         ]
 
         vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakout)
-        vm.sort(by: .breakout)
+        vm.switchMode(.priceBreaks)
+        vm.sort(by: .priceBreakPercent)
 
         // Ascending: AAPL (10%) < MSFT (20%)
-        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
-        XCTAssertEqual(vm.rows[1].symbol, "MSFT")
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "MSFT")
 
         // Toggle descending
-        vm.sort(by: .breakout)
-        XCTAssertEqual(vm.rows[0].symbol, "MSFT")
-        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+        vm.sort(by: .priceBreakPercent)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "MSFT")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "AAPL")
     }
 
-    func testSort_byBreakdown() {
+    func testSort_byPriceBreakPercent_breakdownRows() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -804,51 +833,70 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": makeQuote(symbol: "MSFT", price: 80.0),
         ]
         let swingEntries: [String: SwingLevelCacheEntry] = [
-            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakdownPrice: 100.0),  // -10%
-            "MSFT": SwingLevelCacheEntry(breakoutPrice: nil, breakdownPrice: 100.0),  // -20%
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),  // -10%
+            "MSFT": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),  // -20%
         ]
 
         vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
-        vm.switchMode(.breakdown)
-        vm.sort(by: .breakdown)
+        vm.switchMode(.priceBreaks)
+        vm.sort(by: .priceBreakPercent)
 
         // Ascending: MSFT (-20%) < AAPL (-10%)
-        XCTAssertEqual(vm.rows[0].symbol, "MSFT")
-        XCTAssertEqual(vm.rows[1].symbol, "AAPL")
+        XCTAssertEqual(vm.breakdownRows[0].symbol, "MSFT")
+        XCTAssertEqual(vm.breakdownRows[1].symbol, "AAPL")
 
         // Toggle descending
-        vm.sort(by: .breakdown)
-        XCTAssertEqual(vm.rows[0].symbol, "AAPL")
-        XCTAssertEqual(vm.rows[1].symbol, "MSFT")
+        vm.sort(by: .priceBreakPercent)
+        XCTAssertEqual(vm.breakdownRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.breakdownRows[1].symbol, "MSFT")
     }
 
-    // MARK: - isSingleValueMode
+    func testSort_byDate_ordersCorrectly() {
+        let vm = QuarterlyPanelViewModel()
 
-    func testIsSingleValueMode_breakout_true() {
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+            "MSFT": makeQuote(symbol: "MSFT", price: 360.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
+            "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakoutDate: "6/20/24", breakdownPrice: nil, breakdownDate: nil),
+        ]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.switchMode(.priceBreaks)
+        vm.sort(by: .date)
+
+        // Ascending: MSFT (6/20/24) < AAPL (1/15/25)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "MSFT")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "AAPL")
+
+        // Toggle descending
+        vm.sort(by: .date)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "MSFT")
+    }
+
+    // MARK: - isPriceBreaksMode
+
+    func testIsPriceBreaksMode_priceBreaks_true() {
         let vm = QuarterlyPanelViewModel()
         vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
-        vm.switchMode(.breakout)
-        XCTAssertTrue(vm.isSingleValueMode)
+        vm.switchMode(.priceBreaks)
+        XCTAssertTrue(vm.isPriceBreaksMode)
     }
 
-    func testIsSingleValueMode_breakdown_true() {
+    func testIsPriceBreaksMode_sinceQuarter_false() {
         let vm = QuarterlyPanelViewModel()
         vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
-        vm.switchMode(.breakdown)
-        XCTAssertTrue(vm.isSingleValueMode)
+        XCTAssertFalse(vm.isPriceBreaksMode)
     }
 
-    func testIsSingleValueMode_sinceQuarter_false() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
-        XCTAssertFalse(vm.isSingleValueMode)
-    }
-
-    func testIsSingleValueMode_forwardPE_false() {
+    func testIsPriceBreaksMode_forwardPE_false() {
         let vm = QuarterlyPanelViewModel()
         vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
         vm.switchMode(.forwardPE)
-        XCTAssertFalse(vm.isSingleValueMode)
+        XCTAssertFalse(vm.isPriceBreaksMode)
     }
 }
 
@@ -870,5 +918,17 @@ final class QuarterlySortColumnTests: XCTestCase {
 
     func testInequality_symbolVsQuarter() {
         XCTAssertNotEqual(QuarterlySortColumn.symbol, QuarterlySortColumn.quarter("Q4-2025"))
+    }
+
+    func testEquality_date() {
+        XCTAssertEqual(QuarterlySortColumn.date, QuarterlySortColumn.date)
+    }
+
+    func testEquality_priceBreakPercent() {
+        XCTAssertEqual(QuarterlySortColumn.priceBreakPercent, QuarterlySortColumn.priceBreakPercent)
+    }
+
+    func testInequality_dateVsPriceBreakPercent() {
+        XCTAssertNotEqual(QuarterlySortColumn.date, QuarterlySortColumn.priceBreakPercent)
     }
 }
