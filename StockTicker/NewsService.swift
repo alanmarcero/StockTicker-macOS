@@ -14,6 +14,7 @@ actor NewsService: NewsServiceProtocol {
     private enum Constants {
         static let itemsPerSource = LayoutConfig.Headlines.itemsPerSource
         static let similarityThreshold = 0.6
+        static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)"
     }
 
     init(httpClient: HTTPClient = LoggingHTTPClient()) {
@@ -49,8 +50,11 @@ actor NewsService: NewsServiceProtocol {
     private func fetchFromSource(_ source: NewsSource) async -> [NewsItem] {
         guard let url = cacheBustedURL(source.feedURL) else { return [] }
 
+        var request = URLRequest(url: url)
+        request.setValue(Constants.userAgent, forHTTPHeaderField: "User-Agent")
+
         do {
-            let (data, response) = try await httpClient.data(from: url)
+            let (data, response) = try await httpClient.data(for: request)
             guard response.isSuccessfulHTTP else { return [] }
 
             let parser = RSSParser(source: source.displayName)

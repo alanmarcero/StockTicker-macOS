@@ -193,16 +193,31 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
     }
 
     func data(from url: URL) async throws -> (Data, URLResponse) {
+        try await performRequest(url: url) { try await self.wrapped.data(from: url) }
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let url = request.url else { throw URLError(.badURL) }
+        return try await performRequest(url: url, requestHeaders: request.allHTTPHeaderFields ?? [:]) {
+            try await self.wrapped.data(for: request)
+        }
+    }
+
+    private func performRequest(
+        url: URL,
+        requestHeaders: [String: String] = [:],
+        fetch: @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
         var lastError: Error?
 
         for attempt in 1...RetryConfig.maxAttempts {
             let startTime = Date()
 
             do {
-                let (data, response) = try await wrapped.data(from: url)
+                let (data, response) = try await fetch()
                 let duration = Date().timeIntervalSince(startTime)
 
-                let entry = buildSuccessEntry(url: url, data: data, response: response, duration: duration)
+                let entry = buildSuccessEntry(url: url, data: data, response: response, duration: duration, requestHeaders: requestHeaders)
                 await logger.log(entry)
 
                 if let code = entry.statusCode, !(200..<300).contains(code),
@@ -215,7 +230,7 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
 
             } catch {
                 let duration = Date().timeIntervalSince(startTime)
-                await logger.log(RequestLogEntry(url: url, duration: duration, error: error.localizedDescription))
+                await logger.log(RequestLogEntry(url: url, duration: duration, error: error.localizedDescription, requestHeaders: requestHeaders))
 
                 lastError = error
 
@@ -229,7 +244,7 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
         throw lastError ?? URLError(.unknown)
     }
 
-    private func buildSuccessEntry(url: URL, data: Data, response: URLResponse, duration: TimeInterval) -> RequestLogEntry {
+    private func buildSuccessEntry(url: URL, data: Data, response: URLResponse, duration: TimeInterval, requestHeaders: [String: String] = [:]) -> RequestLogEntry {
         let httpResponse = response as? HTTPURLResponse
 
         var responseHeaders: [String: String] = [:]
@@ -251,6 +266,7 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
             statusCode: httpResponse?.statusCode,
             responseSize: data.count,
             duration: duration,
+            requestHeaders: requestHeaders,
             responseHeaders: responseHeaders,
             responseBody: bodyString
         )
