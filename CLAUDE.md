@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (28 files, ~5,784 lines)
+## Source Files (28 files, ~5,782 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -58,9 +58,9 @@ NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource e
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (185L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelView.swift         (543L)  Quarterly performance window: view model, SwiftUI view, controller
-LayoutConfig.swift               (79L)   Centralized layout constants
+LayoutConfig.swift               (78L)   Centralized layout constants
 CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E caches)
-TickerDisplayBuilder.swift       (182L)  Ticker display formatting, color helpers, HighlightConfig
+TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
 QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
 HighestCloseCache.swift          (109L)  Highest daily close cache manager (actor), daily refresh
 ForwardPECache.swift             (92L)   Forward P/E ratio cache manager (actor), permanent per-quarter cache
@@ -85,7 +85,7 @@ QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations,
 QuarterlyPanelTests.swift        (706L)  Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
-LayoutConfigTests.swift          (98L)   Layout constant validation
+LayoutConfigTests.swift          (97L)   Layout constant validation
 RequestLoggerTests.swift         (70L)   Error count/last error queries, clear reset
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
@@ -423,7 +423,7 @@ Rotates through watchlist symbols at `menuBarRotationInterval` during regular ho
 - **Countdown** — Shows last refresh time and seconds until next: `"Last: 10:32 AM · Next in 12s"`
 - **Index marquee** — `MarqueeView` custom NSView scrolling at ~32px/sec with seamless looping. Bold index names, regular weight values. Ping animation on data refresh.
 - **News headlines** — Proportional font (headlineFont/headlineFontBold). Top-from-source uses highlight background.
-- **Ticker list** — Sorted by `defaultSort`, shows price/market cap/percent/YTD/highest close/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
+- **Ticker list** — Sorted by `defaultSort`, shows market cap/percent/YTD/highest close/extended hours. Uses `HighlightConfig` for ping and persistent highlight styling.
 - **Submenus** — Edit Watchlist, Quarterly Performance, Config (edit/reload/reset), Closed Market Display, Sort By, Debug
 
 ### Color Helpers

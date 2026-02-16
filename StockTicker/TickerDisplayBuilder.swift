@@ -108,7 +108,6 @@ enum TickerDisplayBuilder {
         let result = NSMutableAttributedString()
 
         let symbolStr = quote.symbol.padding(toLength: LayoutConfig.Ticker.symbolWidth, withPad: " ", startingAt: 0)
-        let priceStr = quote.formattedPrice.padding(toLength: LayoutConfig.Ticker.priceWidth, withPad: " ", startingAt: 0)
         let marketCapStr = quote.formattedMarketCap.padding(toLength: LayoutConfig.Ticker.marketCapWidth, withPad: " ", startingAt: 0)
         let percentStr = quote.formattedChangePercent.padding(
             toLength: LayoutConfig.Ticker.percentWidth, withPad: " ", startingAt: 0
@@ -119,7 +118,7 @@ enum TickerDisplayBuilder {
             : highlight
         let (mainColor, mainBgColor) = mainHighlight.resolve(defaultColor: quote.displayColor)
 
-        result.append(.styled("\(symbolStr) \(priceStr) \(marketCapStr) \(percentStr)",
+        result.append(.styled("\(symbolStr) \(marketCapStr) \(percentStr)",
                               font: MenuItemFactory.monoFont, color: mainColor, backgroundColor: mainBgColor))
 
         appendYTDSection(to: result, quote: quote, highlight: highlight)

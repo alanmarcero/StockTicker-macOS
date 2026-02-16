@@ -9,7 +9,6 @@ enum LayoutConfig {
 
     enum Ticker {
         static let symbolWidth = 6
-        static let priceWidth = 9
         static let marketCapWidth = 7  // "$3.8T", "$131B"
         static let percentWidth = 7
         static let ytdWidth = 13  // "YTD: +12.34%"

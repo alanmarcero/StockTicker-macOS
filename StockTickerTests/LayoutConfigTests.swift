@@ -9,7 +9,6 @@ final class LayoutConfigTests: XCTestCase {
 
     func testTicker_allWidths_arePositive() {
         XCTAssertGreaterThan(LayoutConfig.Ticker.symbolWidth, 0)
-        XCTAssertGreaterThan(LayoutConfig.Ticker.priceWidth, 0)
         XCTAssertGreaterThan(LayoutConfig.Ticker.marketCapWidth, 0)
         XCTAssertGreaterThan(LayoutConfig.Ticker.percentWidth, 0)
         XCTAssertGreaterThan(LayoutConfig.Ticker.ytdWidth, 0)

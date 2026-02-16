@@ -42,7 +42,7 @@ final class TickerDisplayBuilderTests: XCTestCase {
 
         let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
         XCTAssertTrue(result.string.contains("AAPL"))
-        XCTAssertTrue(result.string.contains(quote.formattedPrice))
+        XCTAssertTrue(result.string.contains(quote.formattedChangePercent))
     }
 
     func testTickerTitle_persistentHighlight() {
