@@ -896,6 +896,86 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.switchMode(.forwardPE)
         XCTAssertFalse(vm.isPriceBreaksMode)
     }
+
+    // MARK: - Price Breaks RSI Column
+
+    func testPriceBreaks_breakoutRows_includeRSI() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
+        ]
+        let rsiValues: [String: Double] = ["AAPL": 65.2]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.switchMode(.priceBreaks)
+
+        XCTAssertEqual(vm.breakoutRows.count, 1)
+        XCTAssertEqual(vm.breakoutRows[0].rsi, 65.2)
+    }
+
+    func testPriceBreaks_breakdownRows_includeRSI() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 90.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),
+        ]
+        let rsiValues: [String: Double] = ["AAPL": 28.5]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.switchMode(.priceBreaks)
+
+        XCTAssertEqual(vm.breakdownRows.count, 1)
+        XCTAssertEqual(vm.breakdownRows[0].rsi, 28.5)
+    }
+
+    func testPriceBreaks_noRSIData_rowHasNilRSI() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.switchMode(.priceBreaks)
+
+        XCTAssertEqual(vm.breakoutRows.count, 1)
+        XCTAssertNil(vm.breakoutRows[0].rsi)
+    }
+
+    func testSort_byRSI_breakoutRows() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+            "MSFT": makeQuote(symbol: "MSFT", price: 360.0),
+        ]
+        let swingEntries: [String: SwingLevelCacheEntry] = [
+            "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
+            "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakoutDate: "2/20/25", breakdownPrice: nil, breakdownDate: nil),
+        ]
+        let rsiValues: [String: Double] = ["AAPL": 72.0, "MSFT": 45.0]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.switchMode(.priceBreaks)
+
+        vm.sort(by: .rsi)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "MSFT")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "AAPL")
+
+        vm.sort(by: .rsi)
+        XCTAssertEqual(vm.breakoutRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.breakoutRows[1].symbol, "MSFT")
+    }
 }
 
 // MARK: - QuarterlySortColumn Equality Tests
@@ -928,5 +1008,9 @@ final class QuarterlySortColumnTests: XCTestCase {
 
     func testInequality_dateVsPriceBreakPercent() {
         XCTAssertNotEqual(QuarterlySortColumn.date, QuarterlySortColumn.priceBreakPercent)
+    }
+
+    func testEquality_rsi() {
+        XCTAssertEqual(QuarterlySortColumn.rsi, QuarterlySortColumn.rsi)
     }
 }

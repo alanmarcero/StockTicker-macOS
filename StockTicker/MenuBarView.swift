@@ -104,6 +104,8 @@ class MenuBarController: NSObject, ObservableObject {
     var currentForwardPEs: [String: Double] = [:]
     let swingLevelCacheManager: SwingLevelCacheManager
     var swingLevelEntries: [String: SwingLevelCacheEntry] = [:]
+    let rsiCacheManager: RSICacheManager
+    var rsiValues: [String: Double] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -118,7 +120,8 @@ class MenuBarController: NSObject, ObservableObject {
         quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager(),
         highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager(),
         forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager(),
-        swingLevelCacheManager: SwingLevelCacheManager = SwingLevelCacheManager()
+        swingLevelCacheManager: SwingLevelCacheManager = SwingLevelCacheManager(),
+        rsiCacheManager: RSICacheManager = RSICacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -130,6 +133,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.highestCloseCacheManager = highestCloseCacheManager
         self.forwardPECacheManager = forwardPECacheManager
         self.swingLevelCacheManager = swingLevelCacheManager
+        self.rsiCacheManager = rsiCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -146,6 +150,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadHighestCloseCache()
             await loadForwardPECache()
             await loadSwingLevelCache()
+            await loadRSICache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -338,9 +343,10 @@ class MenuBarController: NSObject, ObservableObject {
         await refreshHighestClosesIfNeeded()
         attachHighestClosesToQuotes()
         await refreshSwingLevelsIfNeeded()
+        await refreshRSIIfNeeded()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries)
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -671,6 +677,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingHighestCloses()
             await fetchMissingForwardPERatios()
             await fetchMissingSwingLevels()
+            await fetchMissingRSIValues()
             await refreshAllQuotes()
         }
     }
@@ -702,6 +709,7 @@ class MenuBarController: NSObject, ObservableObject {
         forwardPEData = [:]
         currentForwardPEs = [:]
         swingLevelEntries = [:]
+        rsiValues = [:]
 
         Task {
             await ytdCacheManager.clearForNewYear()
@@ -709,6 +717,7 @@ class MenuBarController: NSObject, ObservableObject {
             await highestCloseCacheManager.clearForNewRange(highestCloseQuarterRange())
             await forwardPECacheManager.clearForNewRange(forwardPEQuarterRange())
             await swingLevelCacheManager.clearForNewRange(swingLevelQuarterRange())
+            await rsiCacheManager.clearForDailyRefresh()
         }
 
         hasCompletedInitialLoad = false
@@ -718,6 +727,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingHighestCloses()
             await fetchMissingForwardPERatios()
             await fetchMissingSwingLevels()
+            await fetchMissingRSIValues()
             await refreshAllQuotes()
         }
     }
@@ -770,7 +780,8 @@ class MenuBarController: NSObject, ObservableObject {
             highestClosePrices: highestClosePrices,
             forwardPEData: forwardPEData,
             currentForwardPEs: currentForwardPEs,
-            swingLevelEntries: swingLevelEntries
+            swingLevelEntries: swingLevelEntries,
+            rsiValues: rsiValues
         )
     }
 

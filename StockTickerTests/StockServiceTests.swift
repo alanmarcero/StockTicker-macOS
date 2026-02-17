@@ -632,4 +632,84 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         let response = URLResponse(url: testURL, mimeType: nil, expectedContentLength: 0, textEncodingName: nil)
         XCTAssertFalse(response.isSuccessfulHTTP)
     }
+
+    // MARK: - fetchRSI tests
+
+    func testFetchRSI_validResponse_returnsValue() async {
+        let mockClient = MockHTTPClient()
+        // 20 closes: steady rise with some dips
+        var closes: [Double] = []
+        for i in 0..<20 {
+            closes.append(100.0 + Double(i) * 2.0)
+        }
+        let closesJSON = closes.map { String($0) }.joined(separator: ", ")
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [\(closesJSON)]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1y&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let rsi = await service.fetchRSI(symbol: "AAPL")
+
+        XCTAssertNotNil(rsi)
+        XCTAssertEqual(rsi!, 100.0)
+    }
+
+    func testFetchRSI_error_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1y&interval=1d")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let rsi = await service.fetchRSI(symbol: "AAPL")
+
+        XCTAssertNil(rsi)
+    }
+
+    func testFetchRSI_insufficientCloses_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [100.0, 101.0, 102.0]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1y&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let rsi = await service.fetchRSI(symbol: "AAPL")
+
+        XCTAssertNil(rsi)
+    }
 }

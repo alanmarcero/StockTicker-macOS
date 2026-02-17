@@ -256,6 +256,42 @@ extension MenuBarController {
         return "\(oldest.identifier):\(newest.identifier)"
     }
 
+    // MARK: - RSI Cache
+
+    func loadRSICache() async {
+        await rsiCacheManager.load()
+
+        if await rsiCacheManager.needsDailyRefresh() {
+            await rsiCacheManager.clearForDailyRefresh()
+        }
+
+        await fetchMissingRSIValues()
+    }
+
+    func fetchMissingRSIValues() async {
+        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
+        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allSymbols)
+
+        guard !missingSymbols.isEmpty else {
+            rsiValues = await rsiCacheManager.getAllValues()
+            return
+        }
+
+        let fetched = await stockService.batchFetchRSIValues(symbols: missingSymbols)
+        for (symbol, value) in fetched {
+            await rsiCacheManager.setRSI(for: symbol, value: value)
+        }
+        await rsiCacheManager.save()
+
+        rsiValues = await rsiCacheManager.getAllValues()
+    }
+
+    func refreshRSIIfNeeded() async {
+        guard await rsiCacheManager.needsDailyRefresh() else { return }
+        await rsiCacheManager.clearForDailyRefresh()
+        await fetchMissingRSIValues()
+    }
+
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {
