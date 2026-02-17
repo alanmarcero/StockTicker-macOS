@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (32 files, ~6,676 lines)
+## Source Files (32 files, ~6,710 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -57,7 +57,7 @@ NewsService.swift                (134L)  RSS feed fetcher for financial news (ac
 NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (102L)  Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (189L)  Quarter calculation helpers, quarterly price cache (actor)
-QuarterlyPanelView.swift         (826L)  Extra Stats window: view model, SwiftUI view, controller (5 view modes)
+QuarterlyPanelView.swift         (860L)  Extra Stats window: view model, SwiftUI view, controller (5 view modes)
 LayoutConfig.swift               (81L)   Centralized layout constants
 CacheStorage.swift               (40L)   Generic cache file I/O helper (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
 TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
@@ -70,7 +70,7 @@ RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothi
 RSICache.swift                   (93L)   RSI cache manager (actor), daily refresh
 ```
 
-## Test Files (30 files, ~9,184 lines)
+## Test Files (30 files, ~9,341 lines)
 
 ```
 StockDataTests.swift             (724L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
@@ -86,7 +86,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (1166L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, misc stats
+QuarterlyPanelTests.swift        (1323L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, misc stats
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation

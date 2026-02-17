@@ -257,6 +257,11 @@ class QuarterlyPanelViewModel: ObservableObject {
             MiscStat(id: "within5pctOfHigh", description: "% of watchlist within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist)),
             MiscStat(id: "indexesWithin5pctOfHigh", description: "% of indexes within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.indexSymbols.contains($0) })),
             MiscStat(id: "sectorsWithin5pctOfHigh", description: "% of sectors within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
+            MiscStat(id: "avgYTDChange", description: "Average YTD change %", value: averageYTDChange()),
+            MiscStat(id: "pctPositiveYTD", description: "% of watchlist positive YTD", value: percentPositiveYTD(symbols: storedWatchlist)),
+            MiscStat(id: "sectorsPositiveYTD", description: "% of sectors positive YTD", value: percentPositiveYTD(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
+            MiscStat(id: "avgForwardPE", description: "Average forward P/E (equities)", value: averageForwardPE()),
+            MiscStat(id: "medianForwardPE", description: "Median forward P/E (equities)", value: medianForwardPE()),
         ]
     }
 
@@ -272,6 +277,35 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
         guard total > 0 else { return QuarterlyFormatting.noData }
         return String(format: "%.0f%%", (Double(within) / Double(total)) * 100)
+    }
+
+    private func averageYTDChange() -> String {
+        let ytdPercents = storedWatchlist.compactMap { storedQuotes[$0]?.ytdChangePercent }
+        guard !ytdPercents.isEmpty else { return QuarterlyFormatting.noData }
+        let avg = ytdPercents.reduce(0, +) / Double(ytdPercents.count)
+        return Formatting.signedPercent(avg, isPositive: avg >= 0)
+    }
+
+    private func percentPositiveYTD(symbols: [String]) -> String {
+        let ytdPercents = symbols.compactMap { storedQuotes[$0]?.ytdChangePercent }
+        guard !ytdPercents.isEmpty else { return QuarterlyFormatting.noData }
+        let positive = ytdPercents.filter { $0 > 0 }.count
+        return String(format: "%.0f%%", (Double(positive) / Double(ytdPercents.count)) * 100)
+    }
+
+    private func averageForwardPE() -> String {
+        let pes = storedWatchlist.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }
+        guard !pes.isEmpty else { return QuarterlyFormatting.noData }
+        let avg = pes.reduce(0, +) / Double(pes.count)
+        return String(format: "%.1f", avg)
+    }
+
+    private func medianForwardPE() -> String {
+        let pes = storedWatchlist.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }.sorted()
+        guard !pes.isEmpty else { return QuarterlyFormatting.noData }
+        let mid = pes.count / 2
+        let median = pes.count.isMultiple(of: 2) ? (pes[mid - 1] + pes[mid]) / 2 : pes[mid]
+        return String(format: "%.1f", median)
     }
 
     func sort(by column: QuarterlySortColumn) {

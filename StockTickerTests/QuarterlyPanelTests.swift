@@ -967,7 +967,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
         vm.switchMode(.miscStats)
 
-        XCTAssertEqual(vm.miscStats.count, 3)
+        XCTAssertEqual(vm.miscStats.count, 8)
         XCTAssertEqual(vm.miscStats[0].id, "within5pctOfHigh")
         XCTAssertEqual(vm.miscStats[0].value, "100%")
         // SPY is an index, within 5%
@@ -1091,6 +1091,163 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.miscStats[2].id, "sectorsWithin5pctOfHigh")
         XCTAssertEqual(vm.miscStats[2].value, "--")
+    }
+
+    // MARK: - Misc Stats: YTD
+
+    func testMiscStats_averageYTDChange() {
+        let vm = QuarterlyPanelViewModel()
+
+        var q1 = makeQuote(symbol: "AAPL", price: 220.0)
+        q1 = q1.withYTDStartPrice(200.0)  // +10%
+        var q2 = makeQuote(symbol: "SPY", price: 450.0)
+        q2 = q2.withYTDStartPrice(500.0)  // -10%
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: ["AAPL": q1, "SPY": q2], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        // Average of +10% and -10% = 0%
+        XCTAssertEqual(vm.miscStats[3].id, "avgYTDChange")
+        XCTAssertEqual(vm.miscStats[3].value, "+0.00%")
+    }
+
+    func testMiscStats_averageYTDChange_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),  // no YTD start price
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[3].value, "--")
+    }
+
+    func testMiscStats_percentPositiveYTD() {
+        let vm = QuarterlyPanelViewModel()
+
+        var q1 = makeQuote(symbol: "AAPL", price: 220.0)
+        q1 = q1.withYTDStartPrice(200.0)  // +10%
+        var q2 = makeQuote(symbol: "SPY", price: 450.0)
+        q2 = q2.withYTDStartPrice(500.0)  // -10%
+        var q3 = makeQuote(symbol: "MSFT", price: 350.0)
+        q3 = q3.withYTDStartPrice(300.0)  // +16.7%
+
+        vm.update(watchlist: ["AAPL", "SPY", "MSFT"], quotes: ["AAPL": q1, "SPY": q2, "MSFT": q3], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        // 2 of 3 positive
+        XCTAssertEqual(vm.miscStats[4].id, "pctPositiveYTD")
+        XCTAssertEqual(vm.miscStats[4].value, "67%")
+    }
+
+    func testMiscStats_percentPositiveYTD_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[4].value, "--")
+    }
+
+    func testMiscStats_sectorsPositiveYTD() {
+        let vm = QuarterlyPanelViewModel()
+
+        var q1 = makeQuote(symbol: "XLK", price: 220.0)
+        q1 = q1.withYTDStartPrice(200.0)  // +10%
+        var q2 = makeQuote(symbol: "XLF", price: 90.0)
+        q2 = q2.withYTDStartPrice(100.0)  // -10%
+        var q3 = makeQuote(symbol: "XLV", price: 110.0)
+        q3 = q3.withYTDStartPrice(100.0)  // +10%
+
+        vm.update(watchlist: ["XLK", "XLF", "XLV"], quotes: ["XLK": q1, "XLF": q2, "XLV": q3], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        // 2 of 3 sectors positive
+        XCTAssertEqual(vm.miscStats[5].id, "sectorsPositiveYTD")
+        XCTAssertEqual(vm.miscStats[5].value, "67%")
+    }
+
+    func testMiscStats_sectorsPositiveYTD_noSectors() {
+        let vm = QuarterlyPanelViewModel()
+
+        var q1 = makeQuote(symbol: "AAPL", price: 220.0)
+        q1 = q1.withYTDStartPrice(200.0)
+
+        vm.update(watchlist: ["AAPL"], quotes: ["AAPL": q1], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[5].id, "sectorsPositiveYTD")
+        XCTAssertEqual(vm.miscStats[5].value, "--")
+    }
+
+    // MARK: - Misc Stats: Forward P/E
+
+    func testMiscStats_averageForwardPE() {
+        let vm = QuarterlyPanelViewModel()
+
+        let currentForwardPEs: [String: Double] = ["AAPL": 30.0, "MSFT": 40.0]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[6].id, "avgForwardPE")
+        XCTAssertEqual(vm.miscStats[6].value, "35.0")
+    }
+
+    func testMiscStats_averageForwardPE_excludesNegative() {
+        let vm = QuarterlyPanelViewModel()
+
+        let currentForwardPEs: [String: Double] = ["AAPL": 30.0, "MSFT": 40.0, "BAD": -500.0]
+
+        vm.update(watchlist: ["AAPL", "MSFT", "BAD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.miscStats)
+
+        // Negative P/E excluded, average of 30 and 40
+        XCTAssertEqual(vm.miscStats[6].value, "35.0")
+    }
+
+    func testMiscStats_averageForwardPE_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["BTC-USD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[7].value, "--")
+    }
+
+    func testMiscStats_medianForwardPE_oddCount() {
+        let vm = QuarterlyPanelViewModel()
+
+        let currentForwardPEs: [String: Double] = ["AAPL": 20.0, "MSFT": 40.0, "GOOGL": 30.0]
+
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[7].id, "medianForwardPE")
+        XCTAssertEqual(vm.miscStats[7].value, "30.0")
+    }
+
+    func testMiscStats_medianForwardPE_evenCount() {
+        let vm = QuarterlyPanelViewModel()
+
+        let currentForwardPEs: [String: Double] = ["AAPL": 20.0, "MSFT": 40.0, "GOOGL": 30.0, "META": 25.0]
+
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL", "META"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.switchMode(.miscStats)
+
+        // Sorted: 20, 25, 30, 40 → median = (25+30)/2 = 27.5
+        XCTAssertEqual(vm.miscStats[7].value, "27.5")
+    }
+
+    func testMiscStats_medianForwardPE_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["BTC-USD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[7].value, "--")
     }
 
     func testIsMiscStatsMode() {
