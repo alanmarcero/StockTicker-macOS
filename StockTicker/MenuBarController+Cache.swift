@@ -292,6 +292,42 @@ extension MenuBarController {
         await fetchMissingRSIValues()
     }
 
+    // MARK: - EMA Cache
+
+    func loadEMACache() async {
+        await emaCacheManager.load()
+
+        if await emaCacheManager.needsDailyRefresh() {
+            await emaCacheManager.clearForDailyRefresh()
+        }
+
+        await fetchMissingEMAValues()
+    }
+
+    func fetchMissingEMAValues() async {
+        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
+        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allSymbols)
+
+        guard !missingSymbols.isEmpty else {
+            emaEntries = await emaCacheManager.getAllEntries()
+            return
+        }
+
+        let fetched = await stockService.batchFetchEMAValues(symbols: missingSymbols)
+        for (symbol, entry) in fetched {
+            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        }
+        await emaCacheManager.save()
+
+        emaEntries = await emaCacheManager.getAllEntries()
+    }
+
+    func refreshEMAIfNeeded() async {
+        guard await emaCacheManager.needsDailyRefresh() else { return }
+        await emaCacheManager.clearForDailyRefresh()
+        await fetchMissingEMAValues()
+    }
+
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {

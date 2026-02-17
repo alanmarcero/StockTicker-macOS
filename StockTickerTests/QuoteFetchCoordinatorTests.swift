@@ -14,6 +14,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var forwardPERatiosToReturn: [String: [String: Double]] = [:]
     var swingLevelsToReturn: [String: SwingLevelCacheEntry] = [:]
     var rsiValuesToReturn: [String: Double] = [:]
+    var emaEntriesToReturn: [String: EMACacheEntry] = [:]
 
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
@@ -88,6 +89,22 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
 
     func batchFetchRSIValues(symbols: [String]) async -> [String: Double] {
         rsiValuesToReturn.filter { symbols.contains($0.key) }
+    }
+
+    func fetchDailyEMA(symbol: String) async -> Double? {
+        emaEntriesToReturn[symbol]?.day
+    }
+
+    func fetchWeeklyEMA(symbol: String) async -> Double? {
+        emaEntriesToReturn[symbol]?.week
+    }
+
+    func fetchMonthlyEMA(symbol: String) async -> Double? {
+        emaEntriesToReturn[symbol]?.month
+    }
+
+    func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
+        emaEntriesToReturn.filter { symbols.contains($0.key) }
     }
 }
 

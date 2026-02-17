@@ -106,6 +106,8 @@ class MenuBarController: NSObject, ObservableObject {
     var swingLevelEntries: [String: SwingLevelCacheEntry] = [:]
     let rsiCacheManager: RSICacheManager
     var rsiValues: [String: Double] = [:]
+    let emaCacheManager: EMACacheManager
+    var emaEntries: [String: EMACacheEntry] = [:]
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -121,7 +123,8 @@ class MenuBarController: NSObject, ObservableObject {
         highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager(),
         forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager(),
         swingLevelCacheManager: SwingLevelCacheManager = SwingLevelCacheManager(),
-        rsiCacheManager: RSICacheManager = RSICacheManager()
+        rsiCacheManager: RSICacheManager = RSICacheManager(),
+        emaCacheManager: EMACacheManager = EMACacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -134,6 +137,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.forwardPECacheManager = forwardPECacheManager
         self.swingLevelCacheManager = swingLevelCacheManager
         self.rsiCacheManager = rsiCacheManager
+        self.emaCacheManager = emaCacheManager
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -151,6 +155,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadForwardPECache()
             await loadSwingLevelCache()
             await loadRSICache()
+            await loadEMACache()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -344,9 +349,10 @@ class MenuBarController: NSObject, ObservableObject {
         attachHighestClosesToQuotes()
         await refreshSwingLevelsIfNeeded()
         await refreshRSIIfNeeded()
+        await refreshEMAIfNeeded()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues)
+        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -678,6 +684,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingForwardPERatios()
             await fetchMissingSwingLevels()
             await fetchMissingRSIValues()
+            await fetchMissingEMAValues()
             await refreshAllQuotes()
         }
     }
@@ -710,6 +717,7 @@ class MenuBarController: NSObject, ObservableObject {
         currentForwardPEs = [:]
         swingLevelEntries = [:]
         rsiValues = [:]
+        emaEntries = [:]
 
         Task {
             await ytdCacheManager.clearForNewYear()
@@ -718,6 +726,7 @@ class MenuBarController: NSObject, ObservableObject {
             await forwardPECacheManager.clearForNewRange(forwardPEQuarterRange())
             await swingLevelCacheManager.clearForNewRange(swingLevelQuarterRange())
             await rsiCacheManager.clearForDailyRefresh()
+            await emaCacheManager.clearForDailyRefresh()
         }
 
         hasCompletedInitialLoad = false
@@ -728,6 +737,7 @@ class MenuBarController: NSObject, ObservableObject {
             await fetchMissingForwardPERatios()
             await fetchMissingSwingLevels()
             await fetchMissingRSIValues()
+            await fetchMissingEMAValues()
             await refreshAllQuotes()
         }
     }
@@ -781,7 +791,8 @@ class MenuBarController: NSObject, ObservableObject {
             forwardPEData: forwardPEData,
             currentForwardPEs: currentForwardPEs,
             swingLevelEntries: swingLevelEntries,
-            rsiValues: rsiValues
+            rsiValues: rsiValues,
+            emaEntries: emaEntries
         )
     }
 

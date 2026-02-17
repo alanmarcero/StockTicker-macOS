@@ -26,6 +26,7 @@ enum QuarterlyViewMode: String, CaseIterable {
     case duringQuarter = "During Quarter"
     case forwardPE = "Forward P/E"
     case priceBreaks = "Price Breaks"
+    case emas = "5 EMAs"
     case miscStats = "Misc Stats"
 }
 
@@ -83,8 +84,14 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     @Published var miscStats: [MiscStat] = []
 
+    @Published var emaDayRows: [QuarterlyRow] = []
+    @Published var emaWeekRows: [QuarterlyRow] = []
+    @Published var emaMonthRows: [QuarterlyRow] = []
+    @Published var emaAllRows: [QuarterlyRow] = []
+
     var isForwardPEMode: Bool { viewMode == .forwardPE }
     var isPriceBreaksMode: Bool { viewMode == .priceBreaks }
+    var isEMAsMode: Bool { viewMode == .emas }
     var isMiscStatsMode: Bool { viewMode == .miscStats }
 
     private var storedWatchlist: [String] = []
@@ -95,6 +102,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     private var storedCurrentForwardPEs: [String: Double] = [:]
     private var storedSwingLevelEntries: [String: SwingLevelCacheEntry] = [:]
     private var storedRSIValues: [String: Double] = [:]
+    private var storedEMAEntries: [String: EMACacheEntry] = [:]
 
     func setupHighlights(symbols: Set<String>, color: String, opacity: Double) {
         configSymbols = symbols
@@ -112,7 +120,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:]) {
+    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:]) {
         self.quarters = quarterInfos
         self.storedWatchlist = watchlist
         self.storedQuotes = quotes
@@ -122,12 +130,13 @@ class QuarterlyPanelViewModel: ObservableObject {
         self.storedCurrentForwardPEs = currentForwardPEs
         self.storedSwingLevelEntries = swingLevelEntries
         self.storedRSIValues = rsiValues
+        self.storedEMAEntries = emaEntries
 
         rows = buildRows(for: viewMode)
         applySorting()
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:]) {
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:]) {
         guard !quarters.isEmpty else { return }
 
         self.storedQuotes = quotes
@@ -137,6 +146,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         self.storedCurrentForwardPEs = currentForwardPEs
         self.storedSwingLevelEntries = swingLevelEntries
         self.storedRSIValues = rsiValues
+        self.storedEMAEntries = emaEntries
 
         rows = buildRows(for: viewMode)
         applySorting()
@@ -158,6 +168,8 @@ class QuarterlyPanelViewModel: ObservableObject {
             return buildForwardPERows()
         case .priceBreaks:
             return buildPriceBreaksRows()
+        case .emas:
+            return buildEMAsRows()
         case .miscStats:
             buildMiscStats()
             return []
@@ -241,6 +253,42 @@ class QuarterlyPanelViewModel: ObservableObject {
         breakoutRows = outRows
         breakdownRows = bkdnRows
         return outRows + bkdnRows
+    }
+
+    private func buildEMAsRows() -> [QuarterlyRow] {
+        var dayRows: [QuarterlyRow] = []
+        var weekRows: [QuarterlyRow] = []
+        var monthRows: [QuarterlyRow] = []
+        for symbol in storedWatchlist {
+            guard let entry = storedEMAEntries[symbol],
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+            if let ema = entry.day, quote.price > ema, ema > 0 {
+                let pct = ((quote.price - ema) / ema) * 100
+                dayRows.append(QuarterlyRow(id: "\(symbol)-ema-day", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+            if let ema = entry.week, quote.price > ema, ema > 0 {
+                let pct = ((quote.price - ema) / ema) * 100
+                weekRows.append(QuarterlyRow(id: "\(symbol)-ema-week", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+            if let ema = entry.month, quote.price > ema, ema > 0 {
+                let pct = ((quote.price - ema) / ema) * 100
+                monthRows.append(QuarterlyRow(id: "\(symbol)-ema-month", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+        }
+        emaDayRows = dayRows
+        emaWeekRows = weekRows
+        emaMonthRows = monthRows
+
+        let daySymbols = Set(dayRows.map { $0.symbol })
+        let weekSymbols = Set(weekRows.map { $0.symbol })
+        let monthSymbols = Set(monthRows.map { $0.symbol })
+        let allSymbols = daySymbols.intersection(weekSymbols).intersection(monthSymbols)
+
+        emaAllRows = dayRows.filter { allSymbols.contains($0.symbol) }.map { row in
+            QuarterlyRow(id: "\(row.symbol)-ema-all", symbol: row.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: row.breakoutPercent, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
+        }
+
+        return dayRows + weekRows + monthRows + emaAllRows
     }
 
     private func highestClosePercent(for symbol: String) -> Double? {
@@ -396,6 +444,12 @@ class QuarterlyPanelViewModel: ObservableObject {
             breakoutRows.sort(by: comparator)
             breakdownRows.sort(by: comparator)
         }
+        if isEMAsMode {
+            emaDayRows.sort(by: comparator)
+            emaWeekRows.sort(by: comparator)
+            emaMonthRows.sort(by: comparator)
+            emaAllRows.sort(by: comparator)
+        }
         rows.sort(by: comparator)
     }
 }
@@ -411,7 +465,7 @@ struct QuarterlyPanelView: View {
             Divider()
             if viewModel.isMiscStatsMode {
                 miscStatsView
-            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.rows.isEmpty {
+            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaMonthRows.isEmpty && viewModel.emaAllRows.isEmpty) : viewModel.rows.isEmpty {
                 emptyState
             } else {
                 scrollableContent
@@ -462,7 +516,17 @@ struct QuarterlyPanelView: View {
 
     @ViewBuilder
     private var scrollableContent: some View {
-        if viewModel.isPriceBreaksMode {
+        if viewModel.isEMAsMode {
+            HStack(alignment: .top, spacing: 0) {
+                emaTable("5-Day", rows: viewModel.emaDayRows)
+                Divider()
+                emaTable("5-Week", rows: viewModel.emaWeekRows)
+                Divider()
+                emaTable("5-Month", rows: viewModel.emaMonthRows)
+                Divider()
+                emaTable("All Three", rows: viewModel.emaAllRows)
+            }
+        } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
                 priceBreaksTable("Breakout", rows: viewModel.breakoutRows, isBreakout: true)
                 Divider()
@@ -554,6 +618,67 @@ struct QuarterlyPanelView: View {
                 .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
             rsiCellView(row.rsi)
                 .frame(width: QuarterlyWindowSize.rsiColumnWidth, alignment: .trailing)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(viewModel.highlightColor.opacity(
+                    viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
+                ))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.toggleHighlight(for: row.symbol)
+        }
+    }
+
+    private func emaTable(_ title: String, rows: [QuarterlyRow]) -> some View {
+        ScrollView([.vertical]) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Section(header: emaPinnedHeaders(title)) {
+                    ForEach(rows) { row in
+                        emaRowView(row)
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func emaPinnedHeaders(_ title: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(.system(.caption, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.top, 4)
+            HStack(spacing: 0) {
+                sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+                sortableHeader("%", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            Divider()
+        }
+        .background(.background)
+    }
+
+    private func emaRowView(_ row: QuarterlyRow) -> some View {
+        HStack(spacing: 0) {
+            Text(row.symbol)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.medium)
+                .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+
+            cellView(row.breakoutPercent)
+                .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 
             Spacer(minLength: 0)
         }
@@ -714,6 +839,9 @@ struct QuarterlyPanelView: View {
         if viewModel.isMiscStatsMode {
             return "\(viewModel.miscStats.count) stats"
         }
+        if viewModel.isEMAsMode {
+            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaMonthRows.count) month, \(viewModel.emaAllRows.count) all"
+        }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"
         }
@@ -732,6 +860,8 @@ struct QuarterlyPanelView: View {
             return "Forward P/E ratio as of each quarter end"
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
+        case .emas:
+            return "Symbols whose current price is above the 5-period EMA. Percent shows how far above."
         case .miscStats:
             return "Aggregate statistics across the watchlist"
         }
@@ -741,7 +871,7 @@ struct QuarterlyPanelView: View {
         if viewModel.isForwardPEMode {
             return "Current: latest forward P/E from most recent quote"
         }
-        if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode {
+        if viewModel.isPriceBreaksMode || viewModel.isEMAsMode || viewModel.isMiscStatsMode {
             return ""
         }
         return "High: percent from highest daily close over trailing 3 years"
@@ -808,7 +938,8 @@ class QuarterlyPanelWindowController {
         forwardPEData: [String: [String: Double]] = [:],
         currentForwardPEs: [String: Double] = [:],
         swingLevelEntries: [String: SwingLevelCacheEntry] = [:],
-        rsiValues: [String: Double] = [:]
+        rsiValues: [String: Double] = [:],
+        emaEntries: [String: EMACacheEntry] = [:]
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -818,7 +949,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues)
+        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)
@@ -853,8 +984,8 @@ class QuarterlyPanelWindowController {
         window = newWindow
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:]) {
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:]) {
         guard let window = window, window.isVisible else { return }
-        viewModel?.refresh(quotes: quotes, quarterPrices: quarterPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues)
+        viewModel?.refresh(quotes: quotes, quarterPrices: quarterPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
     }
 }

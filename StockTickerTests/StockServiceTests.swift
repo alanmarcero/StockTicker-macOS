@@ -712,4 +712,79 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
         XCTAssertNil(rsi)
     }
+
+    // MARK: - EMA Fetch Tests
+
+    func testFetchDailyEMA_validResponse_returnsValue() async {
+        let mockClient = MockHTTPClient()
+        let closes = [100.0, 102.0, 104.0, 106.0, 108.0, 110.0]
+        let closesJSON = closes.map { String($0) }.joined(separator: ", ")
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [\(closesJSON)]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1mo&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let ema = await service.fetchDailyEMA(symbol: "AAPL")
+
+        XCTAssertNotNil(ema)
+    }
+
+    func testFetchWeeklyEMA_error_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let ema = await service.fetchWeeklyEMA(symbol: "AAPL")
+
+        XCTAssertNil(ema)
+    }
+
+    func testFetchMonthlyEMA_insufficientCloses_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "indicators": {
+                        "quote": [{
+                            "close": [100.0, 101.0]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=2y&interval=1mo")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let ema = await service.fetchMonthlyEMA(symbol: "AAPL")
+
+        XCTAssertNil(ema)
+    }
 }
