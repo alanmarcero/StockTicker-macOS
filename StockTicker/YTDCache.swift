@@ -75,8 +75,7 @@ actor YTDCacheManager {
     func clearForNewYear() {
         let now = dateProvider.now()
         let currentYear = Calendar.current.component(.year, from: now)
-        let dateString = ISO8601DateFormatter().string(from: now)
-        cache = YTDCacheData(year: currentYear, lastUpdated: dateString, prices: [:])
+        cache = YTDCacheData(year: currentYear, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:])
     }
 
     // MARK: - Private
@@ -86,16 +85,14 @@ actor YTDCacheManager {
 
         let now = dateProvider.now()
         let currentYear = Calendar.current.component(.year, from: now)
-        let dateString = ISO8601DateFormatter().string(from: now)
-        cache = YTDCacheData(year: currentYear, lastUpdated: dateString, prices: [:])
+        cache = YTDCacheData(year: currentYear, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
         cache = YTDCacheData(
             year: currentCache.year,
-            lastUpdated: dateString,
+            lastUpdated: CacheTimestamp.current(dateProvider: dateProvider),
             prices: currentCache.prices
         )
     }

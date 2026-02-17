@@ -4,6 +4,18 @@ import Foundation
 
 extension MenuBarController {
 
+    // MARK: - Shared Helpers
+
+    private var allWatchlistSymbols: [String] {
+        config.watchlist + config.indexSymbols.map { $0.symbol }
+    }
+
+    func cacheQuarterRange() -> String {
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
+        return "\(oldest.identifier):\(newest.identifier)"
+    }
+
     // MARK: - YTD Cache
 
     func loadYTDCache() async {
@@ -17,8 +29,7 @@ extension MenuBarController {
     }
 
     func fetchMissingYTDPrices() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await ytdCacheManager.getMissingSymbols(from: allSymbols)
+        let missingSymbols = await ytdCacheManager.getMissingSymbols(from: allWatchlistSymbols)
 
         guard !missingSymbols.isEmpty else {
             ytdPrices = await ytdCacheManager.getAllPrices()
@@ -90,7 +101,7 @@ extension MenuBarController {
     func loadHighestCloseCache() async {
         await highestCloseCacheManager.load()
 
-        let currentRange = highestCloseQuarterRange()
+        let currentRange = cacheQuarterRange()
         if await highestCloseCacheManager.needsInvalidation(currentRange: currentRange) {
             await highestCloseCacheManager.clearForNewRange(currentRange)
         }
@@ -103,8 +114,7 @@ extension MenuBarController {
     }
 
     func fetchMissingHighestCloses() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allSymbols)
+        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allWatchlistSymbols)
 
         guard !missingSymbols.isEmpty else {
             highestClosePrices = await highestCloseCacheManager.getAllPrices()
@@ -145,18 +155,12 @@ extension MenuBarController {
         await fetchMissingHighestCloses()
     }
 
-    func highestCloseQuarterRange() -> String {
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
-        return "\(oldest.identifier):\(newest.identifier)"
-    }
-
     // MARK: - Forward P/E Cache
 
     func loadForwardPECache() async {
         await forwardPECacheManager.load()
 
-        let currentRange = forwardPEQuarterRange()
+        let currentRange = cacheQuarterRange()
         if await forwardPECacheManager.needsInvalidation(currentRange: currentRange) {
             await forwardPECacheManager.clearForNewRange(currentRange)
         }
@@ -192,18 +196,12 @@ extension MenuBarController {
         forwardPEData = await forwardPECacheManager.getAllData()
     }
 
-    func forwardPEQuarterRange() -> String {
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
-        return "\(oldest.identifier):\(newest.identifier)"
-    }
-
     // MARK: - Swing Level Cache
 
     func loadSwingLevelCache() async {
         await swingLevelCacheManager.load()
 
-        let currentRange = swingLevelQuarterRange()
+        let currentRange = cacheQuarterRange()
         if await swingLevelCacheManager.needsInvalidation(currentRange: currentRange) {
             await swingLevelCacheManager.clearForNewRange(currentRange)
         }
@@ -216,8 +214,7 @@ extension MenuBarController {
     }
 
     func fetchMissingSwingLevels() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allSymbols)
+        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allWatchlistSymbols)
 
         guard !missingSymbols.isEmpty else {
             swingLevelEntries = await swingLevelCacheManager.getAllEntries()
@@ -250,12 +247,6 @@ extension MenuBarController {
         await fetchMissingSwingLevels()
     }
 
-    func swingLevelQuarterRange() -> String {
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        guard let oldest = quarters.last, let newest = quarters.first else { return "" }
-        return "\(oldest.identifier):\(newest.identifier)"
-    }
-
     // MARK: - RSI Cache
 
     func loadRSICache() async {
@@ -269,8 +260,7 @@ extension MenuBarController {
     }
 
     func fetchMissingRSIValues() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allSymbols)
+        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allWatchlistSymbols)
 
         guard !missingSymbols.isEmpty else {
             rsiValues = await rsiCacheManager.getAllValues()
@@ -305,8 +295,7 @@ extension MenuBarController {
     }
 
     func fetchMissingEMAValues() async {
-        let allSymbols = config.watchlist + config.indexSymbols.map { $0.symbol }
-        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allSymbols)
+        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allWatchlistSymbols)
 
         guard !missingSymbols.isEmpty else {
             emaEntries = await emaCacheManager.getAllEntries()

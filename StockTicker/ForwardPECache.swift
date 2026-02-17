@@ -68,24 +68,21 @@ actor ForwardPECacheManager {
     }
 
     func clearForNewRange(_ range: String) {
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = ForwardPECacheData(quarterRange: range, lastUpdated: dateString, symbols: [:])
+        cache = ForwardPECacheData(quarterRange: range, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), symbols: [:])
     }
 
     // MARK: - Private
 
     private func ensureCacheExists(quarterRange: String) {
         guard cache == nil else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = ForwardPECacheData(quarterRange: quarterRange, lastUpdated: dateString, symbols: [:])
+        cache = ForwardPECacheData(quarterRange: quarterRange, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), symbols: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
         cache = ForwardPECacheData(
             quarterRange: currentCache.quarterRange,
-            lastUpdated: dateString,
+            lastUpdated: CacheTimestamp.current(dateProvider: dateProvider),
             symbols: currentCache.symbols
         )
     }

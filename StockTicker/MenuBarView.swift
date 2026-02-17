@@ -722,9 +722,9 @@ class MenuBarController: NSObject, ObservableObject {
         Task {
             await ytdCacheManager.clearForNewYear()
             await quarterlyCacheManager.clearAllQuarters()
-            await highestCloseCacheManager.clearForNewRange(highestCloseQuarterRange())
-            await forwardPECacheManager.clearForNewRange(forwardPEQuarterRange())
-            await swingLevelCacheManager.clearForNewRange(swingLevelQuarterRange())
+            await highestCloseCacheManager.clearForNewRange(cacheQuarterRange())
+            await forwardPECacheManager.clearForNewRange(cacheQuarterRange())
+            await swingLevelCacheManager.clearForNewRange(cacheQuarterRange())
             await rsiCacheManager.clearForDailyRefresh()
             await emaCacheManager.clearForDailyRefresh()
         }

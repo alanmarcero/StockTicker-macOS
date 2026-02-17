@@ -66,10 +66,7 @@ actor RSICacheManager {
 
     func needsDailyRefresh() -> Bool {
         guard let cache = cache else { return true }
-        let formatter = ISO8601DateFormatter()
-        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return true }
-        let calendar = Calendar.current
-        return !calendar.isDate(lastDate, inSameDayAs: dateProvider.now())
+        return CacheTimestamp.needsDailyRefresh(lastUpdated: cache.lastUpdated, dateProvider: dateProvider)
     }
 
     func clearForDailyRefresh() {
@@ -80,13 +77,11 @@ actor RSICacheManager {
 
     private func ensureCacheExists() {
         guard cache == nil else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = RSICacheData(lastUpdated: dateString, values: [:])
+        cache = RSICacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), values: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = RSICacheData(lastUpdated: dateString, values: currentCache.values)
+        cache = RSICacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), values: currentCache.values)
     }
 }

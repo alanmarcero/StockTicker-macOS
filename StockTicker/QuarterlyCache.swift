@@ -177,13 +177,11 @@ actor QuarterlyCacheManager {
 
     private func ensureCacheExists() {
         guard cache == nil else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = QuarterlyCacheData(lastUpdated: dateString, quarters: [:])
+        cache = QuarterlyCacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), quarters: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = QuarterlyCacheData(lastUpdated: dateString, quarters: currentCache.quarters)
+        cache = QuarterlyCacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), quarters: currentCache.quarters)
     }
 }

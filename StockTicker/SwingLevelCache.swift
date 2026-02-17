@@ -79,16 +79,12 @@ actor SwingLevelCacheManager {
     }
 
     func clearForNewRange(_ range: String) {
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = SwingLevelCacheData(quarterRange: range, lastUpdated: dateString, entries: [:])
+        cache = SwingLevelCacheData(quarterRange: range, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), entries: [:])
     }
 
     func needsDailyRefresh() -> Bool {
         guard let cache = cache else { return true }
-        let formatter = ISO8601DateFormatter()
-        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return true }
-        let calendar = Calendar.current
-        return !calendar.isDate(lastDate, inSameDayAs: dateProvider.now())
+        return CacheTimestamp.needsDailyRefresh(lastUpdated: cache.lastUpdated, dateProvider: dateProvider)
     }
 
     func clearEntriesForDailyRefresh() {
@@ -100,16 +96,14 @@ actor SwingLevelCacheManager {
 
     private func ensureCacheExists(quarterRange: String) {
         guard cache == nil else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = SwingLevelCacheData(quarterRange: quarterRange, lastUpdated: dateString, entries: [:])
+        cache = SwingLevelCacheData(quarterRange: quarterRange, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), entries: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
         cache = SwingLevelCacheData(
             quarterRange: currentCache.quarterRange,
-            lastUpdated: dateString,
+            lastUpdated: CacheTimestamp.current(dateProvider: dateProvider),
             entries: currentCache.entries
         )
     }

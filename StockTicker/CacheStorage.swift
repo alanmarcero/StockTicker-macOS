@@ -1,5 +1,21 @@
 import Foundation
 
+// MARK: - Cache Timestamp Utilities
+
+enum CacheTimestamp {
+    static func current(dateProvider: DateProvider) -> String {
+        ISO8601DateFormatter().string(from: dateProvider.now())
+    }
+
+    static func needsDailyRefresh(lastUpdated: String, dateProvider: DateProvider) -> Bool {
+        let formatter = ISO8601DateFormatter()
+        guard let lastDate = formatter.date(from: lastUpdated) else { return true }
+        return !Calendar.current.isDate(lastDate, inSameDayAs: dateProvider.now())
+    }
+}
+
+// MARK: - Generic Cache Storage
+
 struct CacheStorage<T: Codable> {
     let fileSystem: FileSystemProtocol
     let cacheURL: URL

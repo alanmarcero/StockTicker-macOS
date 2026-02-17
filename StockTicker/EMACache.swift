@@ -74,10 +74,7 @@ actor EMACacheManager {
 
     func needsDailyRefresh() -> Bool {
         guard let cache = cache else { return true }
-        let formatter = ISO8601DateFormatter()
-        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return true }
-        let calendar = Calendar.current
-        return !calendar.isDate(lastDate, inSameDayAs: dateProvider.now())
+        return CacheTimestamp.needsDailyRefresh(lastUpdated: cache.lastUpdated, dateProvider: dateProvider)
     }
 
     func clearForDailyRefresh() {
@@ -88,13 +85,11 @@ actor EMACacheManager {
 
     private func ensureCacheExists() {
         guard cache == nil else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = EMACacheData(lastUpdated: dateString, entries: [:])
+        cache = EMACacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), entries: [:])
     }
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        let dateString = ISO8601DateFormatter().string(from: dateProvider.now())
-        cache = EMACacheData(lastUpdated: dateString, entries: currentCache.entries)
+        cache = EMACacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), entries: currentCache.entries)
     }
 }
