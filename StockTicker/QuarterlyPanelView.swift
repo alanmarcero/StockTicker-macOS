@@ -249,31 +249,29 @@ class QuarterlyPanelViewModel: ObservableObject {
         return ((quote.price - highest) / highest) * 100
     }
 
-    func buildMiscStats() {
-        var stats: [MiscStat] = []
+    static let indexSymbols: Set<String> = ["SPY", "QQQ", "DIA", "IWM"]
+    static let sectorSymbols: Set<String> = ["XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY", "SMH"]
 
-        var totalWithHighData = 0
-        var withinFivePercent = 0
-        for symbol in storedWatchlist {
+    func buildMiscStats() {
+        miscStats = [
+            MiscStat(id: "within5pctOfHigh", description: "% of watchlist within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist)),
+            MiscStat(id: "indexesWithin5pctOfHigh", description: "% of indexes within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.indexSymbols.contains($0) })),
+            MiscStat(id: "sectorsWithin5pctOfHigh", description: "% of sectors within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
+        ]
+    }
+
+    private func percentWithin5OfHigh(symbols: [String]) -> String {
+        var total = 0
+        var within = 0
+        for symbol in symbols {
             guard let highest = storedHighestClosePrices[symbol], highest > 0,
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            totalWithHighData += 1
+            total += 1
             let pct = ((quote.price - highest) / highest) * 100
-            if pct >= -5.0 {
-                withinFivePercent += 1
-            }
+            if pct >= -5.0 { within += 1 }
         }
-
-        let value: String
-        if totalWithHighData == 0 {
-            value = QuarterlyFormatting.noData
-        } else {
-            let pct = (Double(withinFivePercent) / Double(totalWithHighData)) * 100
-            value = String(format: "%.0f%%", pct)
-        }
-        stats.append(MiscStat(id: "within5pctOfHigh", description: "% of watchlist within 5% of High", value: value))
-
-        miscStats = stats
+        guard total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(within) / Double(total)) * 100)
     }
 
     func sort(by column: QuarterlySortColumn) {

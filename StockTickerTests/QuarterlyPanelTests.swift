@@ -967,9 +967,12 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
         vm.switchMode(.miscStats)
 
-        XCTAssertEqual(vm.miscStats.count, 1)
+        XCTAssertEqual(vm.miscStats.count, 3)
         XCTAssertEqual(vm.miscStats[0].id, "within5pctOfHigh")
         XCTAssertEqual(vm.miscStats[0].value, "100%")
+        // SPY is an index, within 5%
+        XCTAssertEqual(vm.miscStats[1].id, "indexesWithin5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[1].value, "100%")
     }
 
     func testMiscStats_percentWithin5PercentOfHigh_noneWithin() {
@@ -1021,6 +1024,73 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         // Misc stats mode returns empty rows array
         XCTAssertTrue(vm.rows.isEmpty)
+    }
+
+    func testMiscStats_indexesWithin5Percent_partial() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "SPY": makeQuote(symbol: "SPY", price: 498.0),  // -0.4% from high
+            "QQQ": makeQuote(symbol: "QQQ", price: 300.0),  // -25% from high
+            "DIA": makeQuote(symbol: "DIA", price: 390.0),  // -2.5% from high
+            "IWM": makeQuote(symbol: "IWM", price: 150.0),  // -25% from high
+        ]
+        let highestClosePrices: [String: Double] = ["SPY": 500.0, "QQQ": 400.0, "DIA": 400.0, "IWM": 200.0]
+
+        vm.update(watchlist: ["SPY", "QQQ", "DIA", "IWM"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        // 2 of 4 indexes within 5%
+        XCTAssertEqual(vm.miscStats[1].id, "indexesWithin5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[1].value, "50%")
+    }
+
+    func testMiscStats_indexesWithin5Percent_noIndexesInWatchlist() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 198.0),
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[1].id, "indexesWithin5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[1].value, "--")
+    }
+
+    func testMiscStats_sectorsWithin5Percent_partial() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "XLK": makeQuote(symbol: "XLK", price: 198.0),  // -1% from high
+            "XLF": makeQuote(symbol: "XLF", price: 50.0),   // -50% from high
+            "SMH": makeQuote(symbol: "SMH", price: 290.0),  // -3.3% from high
+        ]
+        let highestClosePrices: [String: Double] = ["XLK": 200.0, "XLF": 100.0, "SMH": 300.0]
+
+        vm.update(watchlist: ["XLK", "XLF", "SMH"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        // 2 of 3 sectors within 5%
+        XCTAssertEqual(vm.miscStats[2].id, "sectorsWithin5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[2].value, "67%")
+    }
+
+    func testMiscStats_sectorsWithin5Percent_noSectorsInWatchlist() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 198.0),
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[2].id, "sectorsWithin5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[2].value, "--")
     }
 
     func testIsMiscStatsMode() {
