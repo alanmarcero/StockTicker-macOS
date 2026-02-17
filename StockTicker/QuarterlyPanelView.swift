@@ -26,6 +26,7 @@ enum QuarterlyViewMode: String, CaseIterable {
     case duringQuarter = "During Quarter"
     case forwardPE = "Forward P/E"
     case priceBreaks = "Price Breaks"
+    case miscStats = "Misc Stats"
 }
 
 // MARK: - Row Model
@@ -41,6 +42,14 @@ struct QuarterlyRow: Identifiable {
     let breakdownPercent: Double?
     let breakdownDate: String?
     let rsi: Double?
+}
+
+// MARK: - Misc Stat Model
+
+struct MiscStat: Identifiable {
+    let id: String
+    let description: String
+    let value: String
 }
 
 // MARK: - Sort Column
@@ -72,8 +81,11 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var breakoutRows: [QuarterlyRow] = []
     @Published var breakdownRows: [QuarterlyRow] = []
 
+    @Published var miscStats: [MiscStat] = []
+
     var isForwardPEMode: Bool { viewMode == .forwardPE }
     var isPriceBreaksMode: Bool { viewMode == .priceBreaks }
+    var isMiscStatsMode: Bool { viewMode == .miscStats }
 
     private var storedWatchlist: [String] = []
     private var storedQuotes: [String: StockQuote] = [:]
@@ -146,6 +158,9 @@ class QuarterlyPanelViewModel: ObservableObject {
             return buildForwardPERows()
         case .priceBreaks:
             return buildPriceBreaksRows()
+        case .miscStats:
+            buildMiscStats()
+            return []
         }
     }
 
@@ -232,6 +247,33 @@ class QuarterlyPanelViewModel: ObservableObject {
         guard let highest = storedHighestClosePrices[symbol], highest > 0,
               let quote = storedQuotes[symbol], !quote.isPlaceholder else { return nil }
         return ((quote.price - highest) / highest) * 100
+    }
+
+    func buildMiscStats() {
+        var stats: [MiscStat] = []
+
+        var totalWithHighData = 0
+        var withinFivePercent = 0
+        for symbol in storedWatchlist {
+            guard let highest = storedHighestClosePrices[symbol], highest > 0,
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+            totalWithHighData += 1
+            let pct = ((quote.price - highest) / highest) * 100
+            if pct >= -5.0 {
+                withinFivePercent += 1
+            }
+        }
+
+        let value: String
+        if totalWithHighData == 0 {
+            value = QuarterlyFormatting.noData
+        } else {
+            let pct = (Double(withinFivePercent) / Double(totalWithHighData)) * 100
+            value = String(format: "%.0f%%", pct)
+        }
+        stats.append(MiscStat(id: "within5pctOfHigh", description: "% of watchlist within 5% of High", value: value))
+
+        miscStats = stats
     }
 
     func sort(by column: QuarterlySortColumn) {
@@ -335,7 +377,9 @@ struct QuarterlyPanelView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.rows.isEmpty {
+            if viewModel.isMiscStatsMode {
+                miscStatsView
+            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.rows.isEmpty {
                 emptyState
             } else {
                 scrollableContent
@@ -403,6 +447,26 @@ struct QuarterlyPanelView: View {
                     }
                 }
                 .padding(.horizontal, 8)
+            }
+        }
+    }
+
+    private var miscStatsView: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(viewModel.miscStats) { stat in
+                    HStack {
+                        Text(stat.description)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(stat.value)
+                            .font(.system(.body, design: .monospaced))
+                            .fontWeight(.medium)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    Divider().opacity(0.3)
+                }
             }
         }
     }
@@ -615,6 +679,9 @@ struct QuarterlyPanelView: View {
     // MARK: - Header Helpers
 
     private var symbolCountText: String {
+        if viewModel.isMiscStatsMode {
+            return "\(viewModel.miscStats.count) stats"
+        }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"
         }
@@ -633,6 +700,8 @@ struct QuarterlyPanelView: View {
             return "Forward P/E ratio as of each quarter end"
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
+        case .miscStats:
+            return "Aggregate statistics across the watchlist"
         }
     }
 
@@ -640,7 +709,7 @@ struct QuarterlyPanelView: View {
         if viewModel.isForwardPEMode {
             return "Current: latest forward P/E from most recent quote"
         }
-        if viewModel.isPriceBreaksMode {
+        if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode {
             return ""
         }
         return "High: percent from highest daily close over trailing 3 years"

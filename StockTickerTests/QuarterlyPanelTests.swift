@@ -952,6 +952,86 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertNil(vm.breakoutRows[0].rsi)
     }
 
+    // MARK: - Misc Stats Mode
+
+    func testMiscStats_percentWithin5PercentOfHigh_allWithin() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 198.0),
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        // AAPL: (198-200)/200 = -1%, SPY: (500-500)/500 = 0% — both within 5%
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats.count, 1)
+        XCTAssertEqual(vm.miscStats[0].id, "within5pctOfHigh")
+        XCTAssertEqual(vm.miscStats[0].value, "100%")
+    }
+
+    func testMiscStats_percentWithin5PercentOfHigh_noneWithin() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 100.0),
+            "SPY": makeQuote(symbol: "SPY", price: 300.0),
+        ]
+        // AAPL: (100-200)/200 = -50%, SPY: (300-500)/500 = -40%
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[0].value, "0%")
+    }
+
+    func testMiscStats_percentWithin5PercentOfHigh_partial() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 198.0),  // -1% from high
+            "SPY": makeQuote(symbol: "SPY", price: 300.0),    // -40% from high
+        ]
+        let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
+
+        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.switchMode(.miscStats)
+
+        // 1 out of 2 = 50%
+        XCTAssertEqual(vm.miscStats[0].value, "50%")
+    }
+
+    func testMiscStats_percentWithin5PercentOfHigh_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[0].value, "--")
+    }
+
+    func testMiscStats_rowsAreEmpty() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        // Misc stats mode returns empty rows array
+        XCTAssertTrue(vm.rows.isEmpty)
+    }
+
+    func testIsMiscStatsMode() {
+        let vm = QuarterlyPanelViewModel()
+        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+
+        XCTAssertFalse(vm.isMiscStatsMode)
+        vm.switchMode(.miscStats)
+        XCTAssertTrue(vm.isMiscStatsMode)
+    }
+
     func testSort_byRSI_breakoutRows() {
         let vm = QuarterlyPanelViewModel()
 
