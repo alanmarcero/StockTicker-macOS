@@ -221,7 +221,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         let allSymbols = daySymbols.intersection(weekSymbols).intersection(monthSymbols)
 
         emaAllRows = dayRows.filter { allSymbols.contains($0.symbol) }.map { row in
-            QuarterlyRow(id: "\(row.symbol)-ema-all", symbol: row.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: row.breakoutPercent, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
+            QuarterlyRow(id: "\(row.symbol)-ema-all", symbol: row.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: storedCurrentForwardPEs[row.symbol], breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
         }
 
         var crossRows: [QuarterlyRow] = []

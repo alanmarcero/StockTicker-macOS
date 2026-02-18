@@ -1498,7 +1498,25 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertTrue(vm.emaAllRows.isEmpty)
     }
 
-    func testEMAs_allRows_useDailyPercent() {
+    func testEMAs_allRows_showForwardPE() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, month: 215.0, weekCrossoverWeeksBelow: nil),
+        ]
+        let currentForwardPEs: [String: Double] = ["AAPL": 28.5]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs, emaEntries: emaEntries)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaAllRows[0].currentForwardPE, 28.5)
+        XCTAssertNil(vm.emaAllRows[0].breakoutPercent)
+    }
+
+    func testEMAs_allRows_noForwardPE_showsNil() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
@@ -1511,8 +1529,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
         vm.switchMode(.emas)
 
-        // All row should use the daily EMA percent: (220-200)/200 * 100 = 10%
-        XCTAssertEqual(vm.emaAllRows[0].breakoutPercent!, 10.0, accuracy: 0.01)
+        XCTAssertNil(vm.emaAllRows[0].currentForwardPE)
     }
 
     // MARK: - 5W Cross (Weekly Crossover)
