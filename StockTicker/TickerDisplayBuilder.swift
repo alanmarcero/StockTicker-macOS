@@ -104,7 +104,7 @@ enum TickerDisplayBuilder {
         return result
     }
 
-    static func tickerTitle(quote: StockQuote, highlight: HighlightConfig) -> NSAttributedString {
+    static func tickerTitle(quote: StockQuote, highlight: HighlightConfig, date: Date = Date()) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
         let symbolStr = quote.symbol.padding(toLength: LayoutConfig.Ticker.symbolWidth, withPad: " ", startingAt: 0)
@@ -113,7 +113,7 @@ enum TickerDisplayBuilder {
             toLength: LayoutConfig.Ticker.percentWidth, withPad: " ", startingAt: 0
         )
 
-        let mainHighlight = quote.isInExtendedHoursPeriod
+        let mainHighlight = quote.isInExtendedHoursPeriod(at: date)
             ? highlight.withPingDisabled()
             : highlight
         let (mainColor, mainBgColor) = mainHighlight.resolve(defaultColor: quote.displayColor)
@@ -123,7 +123,7 @@ enum TickerDisplayBuilder {
 
         appendYTDSection(to: result, quote: quote, highlight: highlight)
         appendHighestCloseSection(to: result, quote: quote, highlight: highlight)
-        appendExtendedHoursSection(to: result, quote: quote, highlight: highlight)
+        appendExtendedHoursSection(to: result, quote: quote, highlight: highlight, date: date)
 
         return result
     }
@@ -151,9 +151,9 @@ enum TickerDisplayBuilder {
     }
 
     static func appendExtendedHoursSection(
-        to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig
+        to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig, date: Date = Date()
     ) {
-        guard quote.isInExtendedHoursPeriod, let periodLabel = quote.extendedHoursPeriodLabel else { return }
+        guard quote.isInExtendedHoursPeriod(at: date), let periodLabel = quote.extendedHoursPeriodLabel(at: date) else { return }
 
         if quote.formattedYTDChangePercent == nil {
             let emptyPadding = String(repeating: " ", count: LayoutConfig.Ticker.ytdWidth + 2)
@@ -164,7 +164,7 @@ enum TickerDisplayBuilder {
             result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
         }
 
-        if quote.shouldShowExtendedHours, let extPercent = quote.formattedExtendedHoursChangePercent {
+        if quote.shouldShowExtendedHours(at: date), let extPercent = quote.formattedExtendedHoursChangePercent {
             let extPingBgColor = quote.extendedHoursHighlightColor.withAlphaComponent(
                 highlight.pingBackgroundColor?.alphaComponent ?? 0
             )

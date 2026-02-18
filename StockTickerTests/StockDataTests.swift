@@ -547,48 +547,47 @@ final class StockQuoteTests: XCTestCase {
 
     // MARK: - Extended hours period detection
 
-    func testIsInExtendedHoursPeriod_dependsOnCurrentTime() {
-        // This property uses currentTimeBasedSession internally
-        // so results depend on when the test runs
-        let quote = StockQuote(
-            symbol: "AAPL",
-            price: 150.0,
-            previousClose: 148.0,
-            session: .regular
-        )
-        // Just verify it returns a bool and doesn't crash
-        _ = quote.isInExtendedHoursPeriod
+    func testIsInExtendedHoursPeriod_duringMarketHours_returnsFalse() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, session: .regular)
+        let marketHours = makeEasternDate(hour: 11, minute: 0) // 11:00 AM ET Wednesday
+        XCTAssertFalse(quote.isInExtendedHoursPeriod(at: marketHours))
     }
 
-    func testExtendedHoursPeriodLabel_dependsOnCurrentTime() {
-        // This property uses currentTimeBasedSession internally
-        let quote = StockQuote(
-            symbol: "AAPL",
-            price: 150.0,
-            previousClose: 148.0,
-            session: .regular
-        )
-        // Just verify it returns expected type and doesn't crash
-        let label = quote.extendedHoursPeriodLabel
-        if label != nil {
-            XCTAssertTrue(label == "Pre" || label == "AH")
-        }
+    func testIsInExtendedHoursPeriod_duringPreMarket_returnsTrue() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, session: .regular)
+        let preMarket = makeEasternDate(hour: 5, minute: 0) // 5:00 AM ET Wednesday
+        XCTAssertTrue(quote.isInExtendedHoursPeriod(at: preMarket))
+    }
+
+    func testExtendedHoursPeriodLabel_duringMarketHours_returnsNil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, session: .regular)
+        let marketHours = makeEasternDate(hour: 11, minute: 0)
+        XCTAssertNil(quote.extendedHoursPeriodLabel(at: marketHours))
+    }
+
+    func testExtendedHoursPeriodLabel_duringAfterHours_returnsAH() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, session: .regular)
+        let afterHours = makeEasternDate(hour: 17, minute: 0) // 5:00 PM ET Wednesday
+        XCTAssertEqual(quote.extendedHoursPeriodLabel(at: afterHours), "AH")
     }
 
     func testShouldShowExtendedHours_noDataDuringExtendedPeriod_returnsFalse() {
-        // Even if we're in extended hours period, shouldShowExtendedHours
-        // should return false when no extended hours data is available
-        let quote = StockQuote(
-            symbol: "AAPL",
-            price: 150.0,
-            previousClose: 148.0,
-            session: .closed  // No extended hours data
-        )
-        // shouldShowExtendedHours requires both:
-        // 1. Current time is in extended hours period
-        // 2. Extended hours data is available
-        // Without data, this should return false regardless of time
-        XCTAssertFalse(quote.shouldShowExtendedHours)
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, session: .closed)
+        let preMarket = makeEasternDate(hour: 5, minute: 0)
+        XCTAssertFalse(quote.shouldShowExtendedHours(at: preMarket))
+    }
+
+    // MARK: - Date Helpers
+
+    private func makeEasternDate(hour: Int, minute: Int) -> Date {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 2
+        components.day = 18 // Wednesday
+        components.hour = hour
+        components.minute = minute
+        components.timeZone = TimeZone(identifier: "America/New_York")
+        return Calendar.current.date(from: components)!
     }
 }
 

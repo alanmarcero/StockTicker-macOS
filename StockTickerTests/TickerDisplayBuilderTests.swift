@@ -3,6 +3,18 @@ import XCTest
 
 final class TickerDisplayBuilderTests: XCTestCase {
 
+    /// A date during regular market hours (Wednesday 11:00 AM ET) for deterministic tests
+    private var marketHoursDate: Date {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 2
+        components.day = 18
+        components.hour = 11
+        components.minute = 0
+        components.timeZone = TimeZone(identifier: "America/New_York")
+        return Calendar.current.date(from: components)!
+    }
+
     // MARK: - Menu Bar Title
 
     func testMenuBarTitle_regularQuote() {
@@ -67,7 +79,7 @@ final class TickerDisplayBuilderTests: XCTestCase {
             isPersistentHighlighted: false, persistentHighlightColor: .yellow, persistentHighlightOpacity: 0.25
         )
 
-        let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
+        let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight, date: marketHoursDate)
 
         var range = NSRange()
         let attrs = result.attributes(at: 0, effectiveRange: &range)
@@ -153,7 +165,7 @@ final class TickerDisplayBuilderTests: XCTestCase {
         )
 
         let result = NSMutableAttributedString()
-        TickerDisplayBuilder.appendExtendedHoursSection(to: result, quote: quote, highlight: highlight)
+        TickerDisplayBuilder.appendExtendedHoursSection(to: result, quote: quote, highlight: highlight, date: marketHoursDate)
 
         XCTAssertEqual(result.string, "")
     }

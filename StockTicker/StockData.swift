@@ -278,9 +278,8 @@ struct StockQuote: Identifiable, Sendable {
         }
     }
 
-    /// Returns true when we have extended hours data to display
-    var shouldShowExtendedHours: Bool {
-        let timeSession = StockQuote.currentTimeBasedSession()
+    func shouldShowExtendedHours(at date: Date = Date()) -> Bool {
+        let timeSession = StockQuote.currentTimeBasedSession(date: date)
         switch timeSession {
         case .preMarket: return preMarketChangePercent != nil
         case .afterHours: return postMarketChangePercent != nil
@@ -288,19 +287,16 @@ struct StockQuote: Identifiable, Sendable {
         }
     }
 
-    /// Returns true when current time is in pre-market or after-hours period
-    /// (regardless of whether we have data for that period)
-    var isInExtendedHoursPeriod: Bool {
-        let timeSession = StockQuote.currentTimeBasedSession()
+    func isInExtendedHoursPeriod(at date: Date = Date()) -> Bool {
+        let timeSession = StockQuote.currentTimeBasedSession(date: date)
         switch timeSession {
         case .preMarket, .afterHours: return true
         case .regular, .closed: return false
         }
     }
 
-    /// Returns the label for current extended hours period, or nil if not in extended hours
-    var extendedHoursPeriodLabel: String? {
-        let timeSession = StockQuote.currentTimeBasedSession()
+    func extendedHoursPeriodLabel(at date: Date = Date()) -> String? {
+        let timeSession = StockQuote.currentTimeBasedSession(date: date)
         switch timeSession {
         case .preMarket: return "Pre"
         case .afterHours: return "AH"
