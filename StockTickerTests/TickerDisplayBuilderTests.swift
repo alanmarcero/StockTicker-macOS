@@ -197,9 +197,14 @@ final class TickerDisplayBuilderTests: XCTestCase {
         XCTAssertEqual(bg, .systemGreen)
     }
 
-    func testHighestCloseColor_negative() {
+    func testHighestCloseColor_negative_beyondThreshold() {
         let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, highestClose: 200.0)
         XCTAssertEqual(quote.highestCloseColor, .systemRed)
+    }
+
+    func testHighestCloseColor_negative_withinThreshold() {
+        let quote = StockQuote(symbol: "AAPL", price: 192.0, previousClose: 190.0, highestClose: 200.0)
+        XCTAssertEqual(quote.highestCloseColor, .systemGreen)
     }
 
     func testHighestCloseColor_positive() {

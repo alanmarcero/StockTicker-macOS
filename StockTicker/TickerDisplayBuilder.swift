@@ -20,7 +20,7 @@ extension StockQuote {
     var highestCloseColor: NSColor {
         guard let pct = highestCloseChangePercent else { return .secondaryLabelColor }
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
-        return pct >= 0 ? .systemGreen : .systemRed
+        return pct >= -5.0 ? .systemGreen : .systemRed
     }
 }
 
