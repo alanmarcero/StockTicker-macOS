@@ -2,7 +2,8 @@ import Foundation
 
 enum ThrottledTaskGroup {
     private enum Limits {
-        static let maxConcurrency = 20
+        static let maxConcurrency = 5
+        static let delayNanoseconds: UInt64 = 100_000_000 // 100ms between launches
     }
 
     static func map<T: Sendable>(
@@ -22,6 +23,7 @@ enum ThrottledTaskGroup {
             for await (key, value) in group {
                 if let value { results[key] = value }
                 if let nextItem = iterator.next() {
+                    try? await Task.sleep(nanoseconds: Limits.delayNanoseconds)
                     group.addTask { (nextItem, await operation(nextItem)) }
                 }
             }
