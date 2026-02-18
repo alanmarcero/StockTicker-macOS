@@ -103,20 +103,8 @@ actor StockService: StockServiceProtocol {
     }
 
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote] {
-        await withTaskGroup(of: (String, StockQuote?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await self.fetchQuote(symbol: symbol))
-                }
-            }
-
-            var results: [String: StockQuote] = [:]
-            for await (symbol, quote) in group {
-                if let quote = quote {
-                    results[symbol] = quote
-                }
-            }
-            return results
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchQuote(symbol: symbol)
         }
     }
 

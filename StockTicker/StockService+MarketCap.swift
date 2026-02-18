@@ -4,18 +4,37 @@ import Foundation
 
 extension StockService {
 
+    private enum QuoteFieldsLimits {
+        static let batchSize = 50
+    }
+
     func fetchQuoteFields(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double]) {
         guard !symbols.isEmpty else { return ([:], [:]) }
 
         if crumb == nil { await refreshCrumb() }
 
-        if let result = await performQuoteFieldsFetch(symbols: symbols) {
-            return result
+        var allCaps: [String: Double] = [:]
+        var allPEs: [String: Double] = [:]
+
+        for batch in stride(from: 0, to: symbols.count, by: QuoteFieldsLimits.batchSize) {
+            let end = min(batch + QuoteFieldsLimits.batchSize, symbols.count)
+            let chunk = Array(symbols[batch..<end])
+
+            if let result = await performQuoteFieldsFetch(symbols: chunk) {
+                allCaps.merge(result.marketCaps) { _, new in new }
+                allPEs.merge(result.forwardPEs) { _, new in new }
+                continue
+            }
+
+            // Crumb may have expired, refresh and retry once
+            await refreshCrumb()
+            if let result = await performQuoteFieldsFetch(symbols: chunk) {
+                allCaps.merge(result.marketCaps) { _, new in new }
+                allPEs.merge(result.forwardPEs) { _, new in new }
+            }
         }
 
-        // Crumb may have expired, refresh and retry once
-        await refreshCrumb()
-        return await performQuoteFieldsFetch(symbols: symbols) ?? ([:], [:])
+        return (allCaps, allPEs)
     }
 
     func refreshCrumb() async {

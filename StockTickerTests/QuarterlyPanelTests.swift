@@ -1587,6 +1587,33 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.emaCrossRows.count, 1)
         XCTAssertEqual(vm.emaCrossRows[0].symbol, "AAPL")
     }
+
+    // MARK: - Universe Label Tests
+
+    func testMiscStats_watchlistLabel_whenUniverseInactive() {
+        let vm = QuarterlyPanelViewModel()
+        let quotes: [String: StockQuote] = [
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: ["SPY": 510.0])
+        vm.switchMode(.miscStats)
+
+        XCTAssertFalse(vm.isUniverseActive)
+        XCTAssertTrue(vm.miscStats[0].description.contains("watchlist"))
+    }
+
+    func testMiscStats_symbolsLabel_whenUniverseActive() {
+        let vm = QuarterlyPanelViewModel()
+        let quotes: [String: StockQuote] = [
+            "SPY": makeQuote(symbol: "SPY", price: 500.0),
+        ]
+        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: ["SPY": 510.0], isUniverseActive: true)
+        vm.switchMode(.miscStats)
+
+        XCTAssertTrue(vm.isUniverseActive)
+        XCTAssertTrue(vm.miscStats[0].description.contains("symbols"))
+        XCTAssertTrue(vm.miscStats[4].description.contains("symbols"))
+    }
 }
 
 // MARK: - QuarterlySortColumn Equality Tests

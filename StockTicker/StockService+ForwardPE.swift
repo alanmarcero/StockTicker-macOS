@@ -31,19 +31,15 @@ extension StockService {
     }
 
     func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]] {
-        await withTaskGroup(of: (String, [String: Double]?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await self.fetchForwardPERatios(symbol: symbol, period1: period1, period2: period2))
-                }
-            }
-
-            var results: [String: [String: Double]] = [:]
-            for await (symbol, peData) in group {
-                results[symbol] = peData ?? [:]
-            }
-            return results
+        let results = await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchForwardPERatios(symbol: symbol, period1: period1, period2: period2)
         }
+        // Symbols without P/E data stored as empty dict to avoid refetching
+        var complete: [String: [String: Double]] = [:]
+        for symbol in symbols {
+            complete[symbol] = results[symbol] ?? [:]
+        }
+        return complete
     }
 
     private func parseAsOfDateToQuarter(_ dateString: String) -> String? {

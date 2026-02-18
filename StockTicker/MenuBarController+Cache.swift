@@ -10,6 +10,15 @@ extension MenuBarController {
         config.watchlist + config.indexSymbols.map { $0.symbol }
     }
 
+    var allCacheSymbols: [String] {
+        let combined = Set(config.watchlist + config.universe + config.indexSymbols.map { $0.symbol })
+        return Array(combined)
+    }
+
+    var extraStatsSymbols: [String] {
+        config.universe.isEmpty ? config.watchlist : config.universe
+    }
+
     func cacheQuarterRange() -> String {
         let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
         guard let oldest = quarters.last, let newest = quarters.first else { return "" }
@@ -29,7 +38,7 @@ extension MenuBarController {
     }
 
     func fetchMissingYTDPrices() async {
-        let missingSymbols = await ytdCacheManager.getMissingSymbols(from: allWatchlistSymbols)
+        let missingSymbols = await ytdCacheManager.getMissingSymbols(from: allCacheSymbols)
 
         guard !missingSymbols.isEmpty else {
             ytdPrices = await ytdCacheManager.getAllPrices()
@@ -59,7 +68,7 @@ extension MenuBarController {
 
         for qi in fetchQuarters {
             let missingSymbols = await quarterlyCacheManager.getMissingSymbols(
-                for: qi.identifier, from: config.watchlist
+                for: qi.identifier, from: extraStatsSymbols
             )
             guard !missingSymbols.isEmpty else { continue }
 
@@ -94,6 +103,12 @@ extension MenuBarController {
                 indexQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
             }
         }
+
+        for (symbol, quote) in universeQuotes {
+            if let ytdPrice = ytdPrices[symbol] {
+                universeQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
+            }
+        }
     }
 
     // MARK: - Highest Close Cache
@@ -114,7 +129,7 @@ extension MenuBarController {
     }
 
     func fetchMissingHighestCloses() async {
-        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allWatchlistSymbols)
+        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allCacheSymbols)
 
         guard !missingSymbols.isEmpty else {
             highestClosePrices = await highestCloseCacheManager.getAllPrices()
@@ -147,6 +162,12 @@ extension MenuBarController {
                 quotes[symbol] = quote.withHighestClose(highest)
             }
         }
+
+        for (symbol, quote) in universeQuotes {
+            if let highest = highestClosePrices[symbol] {
+                universeQuotes[symbol] = quote.withHighestClose(highest)
+            }
+        }
     }
 
     func refreshHighestClosesIfNeeded() async {
@@ -169,7 +190,7 @@ extension MenuBarController {
     }
 
     func fetchMissingForwardPERatios() async {
-        let missingSymbols = await forwardPECacheManager.getMissingSymbols(from: config.watchlist)
+        let missingSymbols = await forwardPECacheManager.getMissingSymbols(from: extraStatsSymbols)
 
         guard !missingSymbols.isEmpty else {
             forwardPEData = await forwardPECacheManager.getAllData()
@@ -214,7 +235,7 @@ extension MenuBarController {
     }
 
     func fetchMissingSwingLevels() async {
-        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allWatchlistSymbols)
+        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allCacheSymbols)
 
         guard !missingSymbols.isEmpty else {
             swingLevelEntries = await swingLevelCacheManager.getAllEntries()
@@ -260,7 +281,7 @@ extension MenuBarController {
     }
 
     func fetchMissingRSIValues() async {
-        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allWatchlistSymbols)
+        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allCacheSymbols)
 
         guard !missingSymbols.isEmpty else {
             rsiValues = await rsiCacheManager.getAllValues()
@@ -295,7 +316,7 @@ extension MenuBarController {
     }
 
     func fetchMissingEMAValues() async {
-        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allWatchlistSymbols)
+        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allCacheSymbols)
 
         guard !missingSymbols.isEmpty else {
             emaEntries = await emaCacheManager.getAllEntries()
@@ -323,6 +344,12 @@ extension MenuBarController {
         for (symbol, quote) in quotes {
             if let cap = marketCaps[symbol] {
                 quotes[symbol] = quote.withMarketCap(cap)
+            }
+        }
+
+        for (symbol, quote) in universeQuotes {
+            if let cap = universeMarketCaps[symbol] {
+                universeQuotes[symbol] = quote.withMarketCap(cap)
             }
         }
     }

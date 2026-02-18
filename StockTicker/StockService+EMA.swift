@@ -56,18 +56,8 @@ extension StockService {
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
-        await withTaskGroup(of: (String, EMACacheEntry).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await self.fetchEMAEntry(symbol: symbol))
-                }
-            }
-
-            var results: [String: EMACacheEntry] = [:]
-            for await (symbol, entry) in group {
-                results[symbol] = entry
-            }
-            return results
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchEMAEntry(symbol: symbol)
         }
     }
 }

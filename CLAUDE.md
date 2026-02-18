@@ -33,21 +33,21 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (38 files, ~7,257 lines)
+## Source Files (39 files, ~7,358 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (878L)  Main controller: menu bar UI, state management
-MenuBarController+Cache.swift    (329L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, RSI, EMA, and market cap cache coordination with shared helpers
+MenuBarView.swift                (935L)  Main controller: menu bar UI, state management, two-tier universe fetching
+MenuBarController+Cache.swift    (356L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, RSI, EMA, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (213L)  Yahoo Finance API client (actor), chart v8 methods
-StockService+MarketCap.swift     (69L)   Extension: market cap + forward P/E via v7 quote API with crumb auth
-StockService+Historical.swift    (206L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates, RSI)
-StockService+ForwardPE.swift     (57L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (73L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
+StockService.swift               (201L)  Yahoo Finance API client (actor), chart v8 methods
+StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
+StockService+Historical.swift    (181L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates, RSI)
+StockService+ForwardPE.swift     (53L)   Extension: historical forward P/E ratios via timeseries API
+StockService+EMA.swift           (63L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
 StockData.swift                  (524L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
-TickerConfig.swift               (299L)  Config loading/saving, protocols, legacy backward compat
+TickerConfig.swift               (306L)  Config loading/saving, protocols, legacy backward compat, universe field
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
 RequestLogger.swift              (274L)  API request logging (actor), LoggingHTTPClient with retry, error queries
 DebugWindow.swift                (281L)  Debug window with error indicator, injected RequestLogger
@@ -59,8 +59,8 @@ NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource e
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
-QuarterlyPanelView.swift         (693L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (400L)  Extra Stats view model: row building, sorting, highlights, misc stats
+QuarterlyPanelView.swift         (698L)  Extra Stats window: SwiftUI view, controller
+QuarterlyPanelViewModel.swift     (405L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
 LayoutConfig.swift               (81L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
@@ -74,15 +74,16 @@ RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothi
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (47L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection
 EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 3 timeframes + crossover per symbol
+ThrottledTaskGroup.swift         (31L)   Bounded concurrency utility (max 20 concurrent tasks)
 ```
 
-## Test Files (32 files, ~10,195 lines)
+## Test Files (33 files, ~10,418 lines)
 
 ```
 StockDataTests.swift             (724L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
 StockServiceTests.swift          (790L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E, swing levels with dates, RSI, EMA
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
-TickerConfigTests.swift          (682L)  Config load/save, encoding, legacy backward compat
+TickerConfigTests.swift          (775L)  Config load/save, encoding, legacy backward compat, universe field
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
 TickerListOperationsTests.swift  (212L)  Pure watchlist function tests
 TickerValidatorTests.swift       (406L)  Symbol validation, HTTP mocking
@@ -92,7 +93,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (1627L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats
+QuarterlyPanelTests.swift        (1654L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats, universe labels
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
@@ -111,6 +112,7 @@ RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
 EMAAnalysisTests.swift           (140L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection
 EMACacheTests.swift              (313L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
+ThrottledTaskGroupTests.swift    (103L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item
 ```
 
 ## File Dependencies
@@ -148,6 +150,7 @@ StockService.swift
 ├── StockService+Historical.swift (historical price + swing level extension)
 ├── StockService+ForwardPE.swift (forward P/E timeseries extension)
 ├── StockService+EMA.swift (5-day/week/month EMA extension)
+├── ThrottledTaskGroup.swift (bounded concurrency for batch methods)
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
 
@@ -249,8 +252,15 @@ All major components use protocols for testability:
 - `DateProvider` — injectable time (used by MarketSchedule, YTDCacheManager, QuarterlyCacheManager, HighestCloseCacheManager, ForwardPECacheManager, SwingLevelCacheManager, RSICacheManager, EMACacheManager)
 - `URLOpener` / `WindowProvider` — UI abstraction
 
+### Bounded Concurrency (ThrottledTaskGroup)
+`ThrottledTaskGroup.map()` limits concurrent API calls to 20 (configurable). Seeds N tasks, then adds one as each completes — standard index-advancing pattern. Used by all `StockService` batch methods (`fetchQuotes`, `batchFetchHistoricalClosePrices`, `batchFetchSwingLevels`, `batchFetchForwardPERatios`, `batchFetchEMAValues`). Critical for universe-scale fetching (~500 symbols).
+
+### Two-Tier Symbol Sets
+- `allCacheSymbols` — deduplicated union of watchlist + universe + index symbols. Used by YTD, highest close, swing, RSI, EMA cache fetchers.
+- `extraStatsSymbols` — universe if populated, otherwise watchlist. Used by quarterly and forward P/E cache fetchers, and as the symbol list passed to Extra Stats.
+
 ### Actors for Thread Safety
-- `StockService` — concurrent quote fetching via TaskGroup
+- `StockService` — concurrent quote fetching via ThrottledTaskGroup
 - `NewsService` — concurrent RSS fetching via TaskGroup
 - `RequestLogger` — thread-safe request log storage
 - `YTDCacheManager` — thread-safe YTD price cache
@@ -321,14 +331,14 @@ Requires crumb/cookie authentication. StockService manages this internally:
 2. `GET https://query2.finance.yahoo.com/v1/test/getcrumb` → returns crumb string
 3. Use crumb + cookies for v7 quote requests. Crumb auto-refreshes on 401.
 
-Batch request for all watchlist symbols. Returns `marketCap` and `forwardPE` per symbol via `fetchQuoteFields()`. Fetched each refresh cycle alongside chart data. Response: `YahooQuoteResponse` → `QuoteResponseData` → `[QuoteResult]`.
+Batch request for symbols via `fetchQuoteFields()`. Symbols chunked into batches of 50 to avoid URL length rejection (important for universe-scale ~500 symbols). Fetched each refresh cycle alongside chart data. Response: `YahooQuoteResponse` → `QuoteResponseData` → `[QuoteResult]`.
 
 ### Yahoo Finance Fundamentals Timeseries API — Historical Forward P/E
 ```
 https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/{SYMBOL}?type=quarterlyForwardPeRatio&period1={P1}&period2={P2}
 ```
 
-No authentication required. One call per symbol. Returns quarterly forward P/E ratios with `asOfDate` (e.g. "2024-12-31") mapped to quarter identifiers (e.g. "Q4-2024"). Response: `YahooTimeseriesResponse` → `TimeseriesResult` → `[TimeseriesData]` → `[ForwardPeEntry]`.
+No authentication required. One call per symbol (throttled to 20 concurrent via `ThrottledTaskGroup`). Returns quarterly forward P/E ratios with `asOfDate` (e.g. "2024-12-31") mapped to quarter identifiers (e.g. "Q4-2024"). Response: `YahooTimeseriesResponse` → `TimeseriesResult` → `[TimeseriesData]` → `[ForwardPeEntry]`.
 
 ### HTTP Client Architecture
 ```
@@ -351,26 +361,28 @@ Individual request retry — if fetching AAPL, MSFT, GOOGL and MSFT fails, only 
 
 ### Smart Fetching (Market Hours Aware)
 
-| Market State | Watchlist | Index Marquee | Menu Bar |
-|--------------|-----------|---------------|----------|
-| Closed | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
-| Pre-Market | Fetch | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
-| Open | Fetch | `indexSymbols` | Cycle through watchlist |
-| After-Hours | Fetch | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
+| Market State | Watchlist | Universe | Index Marquee | Menu Bar |
+|--------------|-----------|----------|---------------|----------|
+| Closed | Skip | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
+| Pre-Market | Fetch | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
+| Open | Fetch (15s) | Fetch (~60s) | `indexSymbols` | Cycle through watchlist |
+| After-Hours | Fetch | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
+
+Universe refresh only runs while Extra Stats window is visible, every 4th refresh cycle (~60s).
 
 ### Initial Load vs Subsequent Refreshes
 
 Two-phase strategy controlled by `hasCompletedInitialLoad`:
 
-1. **Initial load** — Fetches ALL symbols regardless of market state. Ensures users see data on weekends.
-2. **Subsequent refreshes** — Smart fetching based on market state. Only crypto refreshes when closed.
+1. **Initial load** — Fetches ALL symbols (watchlist + universe) regardless of market state. Ensures users see data on weekends. Universe quotes fetched via `ThrottledTaskGroup` (max 20 concurrent).
+2. **Subsequent refreshes** — Smart fetching based on market state. Watchlist every 15s, universe every ~60s (4th cycle) while Extra Stats is open and market is open. Only crypto refreshes when closed.
 
 Weekend handling:
 - Yahoo API may return "POST" on weekends (from Friday's after-hours)
 - App forces `yahooMarketState = "CLOSED"` on weekends
 - Extended hours labels (Pre/AH) not shown on weekends
 
-Config reload resets `hasCompletedInitialLoad = false` and calls `fetchMissingYTDPrices()`, `fetchMissingQuarterlyPrices()`, `fetchMissingForwardPERatios()`, `fetchMissingSwingLevels()`, `fetchMissingRSIValues()`, and `fetchMissingEMAValues()`.
+Config reload resets `hasCompletedInitialLoad = false`, clears universe state (`universeQuotes`, `universeMarketCaps`, `universeForwardPEs`), and calls `fetchMissingYTDPrices()`, `fetchMissingQuarterlyPrices()`, `fetchMissingForwardPERatios()`, `fetchMissingSwingLevels()`, `fetchMissingRSIValues()`, and `fetchMissingEMAValues()`.
 
 ### Extended Hours Calculation
 
@@ -441,7 +453,7 @@ Historical forward P/E ratios per quarter end, fetched from Yahoo Finance Fundam
 
 **Permanent cache:** Quarter-end P/E values are immutable historical facts. No daily refresh. Only fetches on startup for missing symbols or when quarter range changes (new quarter completes). Symbols with no P/E data stored as empty `{}` to avoid refetching.
 
-**API:** One timeseries call per symbol for the full 3-year range. Batch fetch via TaskGroup.
+**API:** One timeseries call per symbol for the full 3-year range. Batch fetch via ThrottledTaskGroup (max 20 concurrent).
 
 Key methods: `loadForwardPECache()`, `fetchMissingForwardPERatios()`, `forwardPEQuarterRange()`
 
@@ -516,7 +528,7 @@ Cached at `~/.stockticker/ema-cache.json`:
 - Weekly: `range=6mo&interval=1wk` (~26 bars)
 - Monthly: `range=2y&interval=1mo` (~24 bars)
 
-All three fetched concurrently via `async let`. Batch fetch via `TaskGroup` over symbols.
+All three fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` over symbols (max 20 concurrent).
 
 **Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil.
 
@@ -538,9 +550,11 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **Rolling window:** `QuarterCalculation.lastNCompletedQuarters(from:count:12)` always produces the 12 most recent completed quarters. New quarters are fetched automatically; old quarters pruned from cache.
 
-**Fetching strategy:** Per-quarter sequential, per-symbol parallel via TaskGroup. Cache saved after each quarter (preserves progress if interrupted). First run ~832 API calls (64 symbols x 13 quarters); subsequent runs only fetch new symbols or newly completed quarters.
+**Fetching strategy:** Per-quarter sequential, per-symbol parallel via ThrottledTaskGroup (max 20 concurrent). Cache saved after each quarter (preserves progress if interrupted). First run scales with symbol count (~500 symbols x 13 quarters for full universe); subsequent runs only fetch new symbols or newly completed quarters.
 
-**View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows three independently sorted tables (emaDayRows, emaWeekRows, emaMonthRows) with Symbol and % columns, `.miscStats` shows non-sortable aggregate statistics (e.g., % of watchlist within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
+**Universe support:** When `config.universe` is populated, Extra Stats displays `extraStatsSymbols` (universe) instead of just the watchlist. Quotes are merged from both `quotes` (watchlist) and `universeQuotes` (universe-only symbols), with watchlist taking precedence for overlapping symbols. Misc Stats labels adapt: "% of symbols" when universe active, "% of watchlist" otherwise.
+
+**View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows three independently sorted tables (emaDayRows, emaWeekRows, emaMonthRows) with Symbol and % columns, `.miscStats` shows non-sortable aggregate statistics (e.g., % of symbols within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
@@ -602,6 +616,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 | `highlightedSymbols` | `[String]` | `["SPY"]` |
 | `highlightColor` | `String` | `"yellow"` |
 | `highlightOpacity` | `Double` | `0.25` |
+| `universe` | `[String]` | `[]` |
 | `showNewsHeadlines` | `Bool` | `true` |
 | `newsRefreshInterval` | `Int` (seconds) | `300` |
 
@@ -664,11 +679,11 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 
 1. **Meaningful Names** — Names reveal intent without comments
 2. **Functions Do One Thing** — Small, focused, single-responsibility functions
-3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
+3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `ThrottledTaskGroup`, `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
 4. **Single Responsibility** — Extracted SortOption, MarqueeView, MenuItemFactory, MenuBarController+Cache, TimerManager, TickerDisplayBuilder, QuoteFetchCoordinator, StockService extensions, pure WatchlistOperations
 5. **Boy Scout Rule** — Leave code cleaner than found
 6. **Minimize Comments** — Comments explain *why* (intent, warnings), never *what*
 7. **No Side Effects** — Pure functions for sorting, formatting, operations
 8. **Fail Fast** — Guard clauses, early returns, error logging on file I/O
 9. **KISS/YAGNI** — No premature abstraction
-10. **Write Tests** — Protocol-based DI enables comprehensive testing; 30 test files with mock doubles
+10. **Write Tests** — Protocol-based DI enables comprehensive testing; 33 test files with mock doubles

@@ -67,6 +67,7 @@ struct WatchlistConfig: Codable, Equatable {
     var highlightOpacity: Double
     var showNewsHeadlines: Bool
     var newsRefreshInterval: Int
+    var universe: [String]
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -103,7 +104,8 @@ struct WatchlistConfig: Codable, Equatable {
         highlightColor: "yellow",
         highlightOpacity: 0.25,
         showNewsHeadlines: true,
-        newsRefreshInterval: 300
+        newsRefreshInterval: 300,
+        universe: []
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -116,6 +118,7 @@ struct WatchlistConfig: Codable, Equatable {
         case highlightedSymbols, highlightedTickers  // Support both
         case highlightColor, highlightOpacity
         case showNewsHeadlines, newsRefreshInterval
+        case universe
     }
 
     init(from decoder: Decoder) throws {
@@ -136,6 +139,7 @@ struct WatchlistConfig: Codable, Equatable {
         highlightOpacity = try container.decodeIfPresent(Double.self, forKey: .highlightOpacity) ?? 0.25
         showNewsHeadlines = try container.decodeIfPresent(Bool.self, forKey: .showNewsHeadlines) ?? true
         newsRefreshInterval = try container.decodeIfPresent(Int.self, forKey: .newsRefreshInterval) ?? 300
+        universe = try container.decodeIfPresent([String].self, forKey: .universe) ?? []
     }
 
     func encode(to encoder: Encoder) throws {
@@ -152,6 +156,7 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(highlightOpacity, forKey: .highlightOpacity)
         try container.encode(showNewsHeadlines, forKey: .showNewsHeadlines)
         try container.encode(newsRefreshInterval, forKey: .newsRefreshInterval)
+        try container.encode(universe, forKey: .universe)
     }
 
     init(
@@ -166,7 +171,8 @@ struct WatchlistConfig: Codable, Equatable {
         highlightColor: String = "yellow",
         highlightOpacity: Double = 0.25,
         showNewsHeadlines: Bool = true,
-        newsRefreshInterval: Int = 300
+        newsRefreshInterval: Int = 300,
+        universe: [String] = []
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -180,6 +186,7 @@ struct WatchlistConfig: Codable, Equatable {
         self.highlightOpacity = highlightOpacity
         self.showNewsHeadlines = showNewsHeadlines
         self.newsRefreshInterval = newsRefreshInterval
+        self.universe = universe
     }
 }
 

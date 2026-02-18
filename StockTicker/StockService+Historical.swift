@@ -113,20 +113,8 @@ extension StockService {
     }
 
     func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingLevelCacheEntry] {
-        await withTaskGroup(of: (String, SwingLevelCacheEntry?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2))
-                }
-            }
-
-            var results: [String: SwingLevelCacheEntry] = [:]
-            for await (symbol, result) in group {
-                if let result {
-                    results[symbol] = result
-                }
-            }
-            return results
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2)
         }
     }
 
@@ -186,20 +174,8 @@ extension StockService {
         symbols: [String],
         fetcher: @escaping @Sendable (String) async -> Double?
     ) async -> [String: Double] {
-        await withTaskGroup(of: (String, Double?).self) { group in
-            for symbol in symbols {
-                group.addTask {
-                    (symbol, await fetcher(symbol))
-                }
-            }
-
-            var results: [String: Double] = [:]
-            for await (symbol, price) in group {
-                if let price = price {
-                    results[symbol] = price
-                }
-            }
-            return results
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await fetcher(symbol)
         }
     }
 }

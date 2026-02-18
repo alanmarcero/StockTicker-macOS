@@ -35,6 +35,7 @@ private enum Timing {
     static let highlightFadeStep: CGFloat = 0.03
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
+    static let universeRefreshCadence = 4  // Every 4th refresh cycle (~60s at 15s interval)
 }
 
 // MARK: - Menu Bar Controller
@@ -108,6 +109,10 @@ class MenuBarController: NSObject, ObservableObject {
     var rsiValues: [String: Double] = [:]
     let emaCacheManager: EMACacheManager
     var emaEntries: [String: EMACacheEntry] = [:]
+    var universeQuotes: [String: StockQuote] = [:]
+    var universeMarketCaps: [String: Double] = [:]
+    var universeForwardPEs: [String: Double] = [:]
+    private var refreshCycleCount = 0
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -337,6 +342,7 @@ class MenuBarController: NSObject, ObservableObject {
         if result.isInitialLoadComplete { hasCompletedInitialLoad = true }
 
         self.lastRefreshTime = Date()
+        refreshCycleCount += 1
         attachYTDPricesToQuotes()
 
         if isInitialLoad || scheduleInfo.state == .open {
@@ -352,7 +358,10 @@ class MenuBarController: NSObject, ObservableObject {
         await refreshEMAIfNeeded()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        quarterlyWindowController?.refresh(quotes: quotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
+        await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad, marketOpen: scheduleInfo.state == .open)
+
+        let combinedQuotes = mergedQuotes()
+        quarterlyWindowController?.refresh(quotes: combinedQuotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: mergedForwardPEs(), swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -366,6 +375,47 @@ class MenuBarController: NSObject, ObservableObject {
         config.watchlist.filter { fetchedSymbols.contains($0) }
             .forEach { highlightIntensity[$0] = 1.0 }
         marqueeView?.triggerPing()
+    }
+
+    // MARK: - Universe Quote Fetching
+
+    private var universeOnlySymbols: [String] {
+        let watchlistSet = Set(config.watchlist)
+        return config.universe.filter { !watchlistSet.contains($0) }
+    }
+
+    private var isExtraStatsVisible: Bool {
+        quarterlyWindowController?.isWindowVisible ?? false
+    }
+
+    private func refreshUniverseQuotesIfNeeded(isInitialLoad: Bool, marketOpen: Bool) async {
+        guard !config.universe.isEmpty else { return }
+        let symbols = universeOnlySymbols
+        guard !symbols.isEmpty else { return }
+
+        let shouldFetch = isInitialLoad
+            || (marketOpen && isExtraStatsVisible && refreshCycleCount % Timing.universeRefreshCadence == 0)
+
+        guard shouldFetch else { return }
+
+        let fetched = await stockService.fetchQuotes(symbols: symbols)
+        universeQuotes.merge(fetched) { _, new in new }
+
+        let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: symbols)
+        universeMarketCaps.merge(fetchedCaps) { _, new in new }
+        universeForwardPEs.merge(fetchedPEs) { _, new in new }
+    }
+
+    func mergedQuotes() -> [String: StockQuote] {
+        var combined = quotes
+        combined.merge(universeQuotes) { existing, _ in existing }
+        return combined
+    }
+
+    private func mergedForwardPEs() -> [String: Double] {
+        var combined = currentForwardPEs
+        combined.merge(universeForwardPEs) { existing, _ in existing }
+        return combined
     }
 
     private func cycleToNextTicker() {
@@ -675,6 +725,9 @@ class MenuBarController: NSObject, ObservableObject {
         currentSortOption = SortOption.from(configString: config.sortDirection)
         currentIndex = 0
         hasCompletedInitialLoad = false  // Reset so next refresh fetches all symbols
+        universeQuotes = [:]
+        universeMarketCaps = [:]
+        universeForwardPEs = [:]
         stopTimers()
         startTimers()
         Task {
@@ -718,6 +771,9 @@ class MenuBarController: NSObject, ObservableObject {
         swingLevelEntries = [:]
         rsiValues = [:]
         emaEntries = [:]
+        universeQuotes = [:]
+        universeMarketCaps = [:]
+        universeForwardPEs = [:]
 
         Task {
             await ytdCacheManager.clearForNewYear()
@@ -780,8 +836,8 @@ class MenuBarController: NSObject, ObservableObject {
             quarterlyWindowController = QuarterlyPanelWindowController()
         }
         quarterlyWindowController?.showWindow(
-            watchlist: config.watchlist,
-            quotes: quotes,
+            watchlist: extraStatsSymbols,
+            quotes: mergedQuotes(),
             quarterPrices: quarterlyPrices,
             quarterInfos: quarterInfos,
             highlightedSymbols: Set(config.highlightedSymbols),
@@ -789,10 +845,11 @@ class MenuBarController: NSObject, ObservableObject {
             highlightOpacity: config.highlightOpacity,
             highestClosePrices: highestClosePrices,
             forwardPEData: forwardPEData,
-            currentForwardPEs: currentForwardPEs,
+            currentForwardPEs: mergedForwardPEs(),
             swingLevelEntries: swingLevelEntries,
             rsiValues: rsiValues,
-            emaEntries: emaEntries
+            emaEntries: emaEntries,
+            isUniverseActive: !config.universe.isEmpty
         )
     }
 

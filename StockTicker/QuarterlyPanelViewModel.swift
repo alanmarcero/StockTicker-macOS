@@ -30,6 +30,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     var isEMAsMode: Bool { viewMode == .emas }
     var isMiscStatsMode: Bool { viewMode == .miscStats }
 
+    private(set) var isUniverseActive = false
     private var storedWatchlist: [String] = []
     private var storedQuotes: [String: StockQuote] = [:]
     private var storedQuarterPrices: [String: [String: Double]] = [:]
@@ -56,8 +57,9 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:]) {
+    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:], isUniverseActive: Bool = false) {
         self.quarters = quarterInfos
+        self.isUniverseActive = isUniverseActive
         self.storedWatchlist = watchlist
         self.storedQuotes = quotes
         self.storedQuarterPrices = quarterPrices
@@ -244,13 +246,16 @@ class QuarterlyPanelViewModel: ObservableObject {
     static let indexSymbols: Set<String> = ["SPY", "QQQ", "DIA", "IWM"]
     static let sectorSymbols: Set<String> = ["XLB", "XLC", "XLE", "XLF", "XLI", "XLK", "XLP", "XLRE", "XLU", "XLV", "XLY", "SMH"]
 
+    private var symbolSetLabel: String { isUniverseActive ? "symbols" : "watchlist" }
+
     func buildMiscStats() {
+        let label = symbolSetLabel
         miscStats = [
-            MiscStat(id: "within5pctOfHigh", description: "% of watchlist within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist)),
+            MiscStat(id: "within5pctOfHigh", description: "% of \(label) within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist)),
             MiscStat(id: "indexesWithin5pctOfHigh", description: "% of indexes within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.indexSymbols.contains($0) })),
             MiscStat(id: "sectorsWithin5pctOfHigh", description: "% of sectors within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
             MiscStat(id: "avgYTDChange", description: "Average YTD change %", value: averageYTDChange()),
-            MiscStat(id: "pctPositiveYTD", description: "% of watchlist positive YTD", value: percentPositiveYTD(symbols: storedWatchlist)),
+            MiscStat(id: "pctPositiveYTD", description: "% of \(label) positive YTD", value: percentPositiveYTD(symbols: storedWatchlist)),
             MiscStat(id: "sectorsPositiveYTD", description: "% of sectors positive YTD", value: percentPositiveYTD(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
             MiscStat(id: "avgForwardPE", description: "Average forward P/E (equities)", value: averageForwardPE()),
             MiscStat(id: "medianForwardPE", description: "Median forward P/E (equities)", value: medianForwardPE()),

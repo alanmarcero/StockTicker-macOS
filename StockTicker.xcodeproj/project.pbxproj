@@ -78,6 +78,8 @@
 		T1000003232C5A0000000001 /* RSICache.swift in Sources */ = {isa = PBXBuildFile; fileRef = T1000004232C5A0000000001 /* RSICache.swift */; };
 		T1000005232C5A0000000001 /* RSIAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T1000006232C5A0000000001 /* RSIAnalysisTests.swift */; };
 		T1000007232C5A0000000001 /* RSICacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = T1000008232C5A0000000001 /* RSICacheTests.swift */; };
+		U1000001232C5A0000000001 /* ThrottledTaskGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1000002232C5A0000000001 /* ThrottledTaskGroup.swift */; };
+		U1000003232C5A0000000001 /* ThrottledTaskGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -165,6 +167,8 @@
 		T1000004232C5A0000000001 /* RSICache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSICache.swift; sourceTree = "<group>"; };
 		T1000006232C5A0000000001 /* RSIAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSIAnalysisTests.swift; sourceTree = "<group>"; };
 		T1000008232C5A0000000001 /* RSICacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RSICacheTests.swift; sourceTree = "<group>"; };
+		U1000002232C5A0000000001 /* ThrottledTaskGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrottledTaskGroup.swift; sourceTree = "<group>"; };
+		U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrottledTaskGroupTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -237,6 +241,7 @@
 				8D729CD03F3A4931C3B52D68 /* EMAAnalysis.swift */,
 				63FBB50A666BA159D154609A /* EMACache.swift */,
 				EDC0820F7BA53E2357E0003F /* StockService+EMA.swift */,
+				U1000002232C5A0000000001 /* ThrottledTaskGroup.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -285,6 +290,7 @@
 				T1000008232C5A0000000001 /* RSICacheTests.swift */,
 				96171F4FC380B1D2A9C00AD5 /* EMAAnalysisTests.swift */,
 				C6E346A73683177C4D8B25E9 /* EMACacheTests.swift */,
+				U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -426,6 +432,7 @@
 				0101010101010101A0000001 /* AppInfrastructure.swift in Sources */,
 				0101010101010101B0000001 /* QuarterlyPanelModels.swift in Sources */,
 				0101010101010101C0000001 /* QuarterlyPanelViewModel.swift in Sources */,
+				U1000001232C5A0000000001 /* ThrottledTaskGroup.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -465,6 +472,7 @@
 				T1000007232C5A0000000001 /* RSICacheTests.swift in Sources */,
 				7246E05122AC2A17F8C65610 /* EMAAnalysisTests.swift in Sources */,
 				056B9B647756EF91A0612D16 /* EMACacheTests.swift in Sources */,
+				U1000003232C5A0000000001 /* ThrottledTaskGroupTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

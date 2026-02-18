@@ -565,7 +565,7 @@ struct QuarterlyPanelView: View {
         case .emas:
             return "Symbols whose current price is above the 5-period EMA. 5W Cross: weekly close crossed above 5-week EMA."
         case .miscStats:
-            return "Aggregate statistics across the watchlist"
+            return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
         }
     }
 
@@ -628,6 +628,10 @@ class QuarterlyPanelWindowController {
     private var window: NSWindow?
     private var viewModel: QuarterlyPanelViewModel?
 
+    var isWindowVisible: Bool {
+        window?.isVisible ?? false
+    }
+
     func showWindow(
         watchlist: [String],
         quotes: [String: StockQuote],
@@ -641,7 +645,8 @@ class QuarterlyPanelWindowController {
         currentForwardPEs: [String: Double] = [:],
         swingLevelEntries: [String: SwingLevelCacheEntry] = [:],
         rsiValues: [String: Double] = [:],
-        emaEntries: [String: EMACacheEntry] = [:]
+        emaEntries: [String: EMACacheEntry] = [:],
+        isUniverseActive: Bool = false
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -651,7 +656,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
+        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries, isUniverseActive: isUniverseActive)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)

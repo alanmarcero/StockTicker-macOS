@@ -522,6 +522,99 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(decoded.showNewsHeadlines, original.showNewsHeadlines)
         XCTAssertEqual(decoded.newsRefreshInterval, original.newsRefreshInterval)
     }
+
+    // MARK: - Universe Config Tests
+
+    func testDecoder_missingUniverse_defaultsToEmpty() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.universe, [])
+    }
+
+    func testDecoder_universeWithSymbols_decodesCorrectly() throws {
+        let json = """
+        {
+            "watchlist": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc",
+            "universe": ["AAPL", "MSFT", "GOOGL"]
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.universe, ["AAPL", "MSFT", "GOOGL"])
+    }
+
+    func testEncoder_includesUniverseField() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            universe: ["AAPL", "MSFT"]
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["universe"] as? [String], ["AAPL", "MSFT"])
+    }
+
+    func testEncoder_emptyUniverse_encodesAsEmptyArray() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc"
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["universe"] as? [String], [])
+    }
+
+    func testRoundTrip_universeField_preserved() throws {
+        let original = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            universe: ["AAPL", "MSFT", "GOOGL"]
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.universe, original.universe)
+    }
+
+    func testDefaultConfig_hasEmptyUniverse() {
+        XCTAssertEqual(WatchlistConfig.defaultConfig.universe, [])
+    }
+
+    func testEquatable_differentUniverse_areNotEqual() {
+        let config1 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            universe: ["AAPL"]
+        )
+        let config2 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            universe: ["MSFT"]
+        )
+
+        XCTAssertNotEqual(config1, config2)
+    }
 }
 
 // MARK: - WatchlistConfigManager Tests
