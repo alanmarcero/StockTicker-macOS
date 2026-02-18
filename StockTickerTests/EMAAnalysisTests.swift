@@ -77,4 +77,64 @@ final class EMAAnalysisTests: XCTestCase {
     func testDefaultPeriod_is5() {
         XCTAssertEqual(EMAAnalysis.defaultPeriod, 5)
     }
+
+    // MARK: - Weekly Crossover Detection
+
+    func testDetectWeeklyCrossover_noData_returnsNil() {
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: [])
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossover_insufficientData_returnsNil() {
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: [100.0, 101.0, 102.0, 103.0, 104.0])
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossover_noCrossover_allAbove_returnsNil() {
+        // All closes above their EMA — no crossover
+        let closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossover_noCrossover_allBelow_returnsNil() {
+        // All closes below their EMA — downtrend, no crossover
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossover_crossover_oneWeekBelow() {
+        // Build: above EMA for a while, then one week below, then cross back above
+        // Period=5, SMA seed from first 5
+        // First 5: [50, 52, 54, 56, 58] → SMA = 54.0
+        // idx5: close=56, EMA = (56-54)*0.3333+54 = 54.667 → 56 > 54.667 (above)
+        // idx6: close=53, EMA = (53-54.667)*0.3333+54.667 = 54.111 → 53 < 54.111 (below)
+        // idx7: close=56, EMA = (56-54.111)*0.3333+54.111 = 54.740 → 56 > 54.740 (above — crossover!)
+        let closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 53.0, 56.0]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertEqual(result, 1)
+    }
+
+    func testDetectWeeklyCrossover_crossover_threeWeeksBelow() {
+        // Uptrend, then three weeks below EMA, then cross above
+        // First 5: [100, 102, 104, 106, 108] → SMA = 104.0
+        // idx5: close=100, EMA=102.667 → below
+        // idx6: close=101, EMA=102.111 → below
+        // idx7: close=101, EMA=101.741 → below
+        // idx8: close=106, EMA=103.160 → above — crossover!
+        let closes = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0, 101.0, 106.0]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertEqual(result, 3)
+    }
+
+    func testDetectWeeklyCrossover_crossover_atBoundary() {
+        // Minimum data: period+1 = 6 closes, crossover at last bar
+        // First 5: [50, 48, 46, 44, 42] → SMA = 46.0
+        // idx5: close=48, EMA = (48-46)*0.3333+46 = 46.667 → 48 > 46.667 (above)
+        // Need previous close at or below EMA. idx4 = 42, EMA at that point = SMA = 46.0, 42 <= 46 (below)
+        let closes = [50.0, 48.0, 46.0, 44.0, 42.0, 48.0]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertEqual(result, 1)
+    }
 }

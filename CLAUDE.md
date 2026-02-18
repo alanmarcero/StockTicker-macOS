@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (38 files, ~7,056 lines)
+## Source Files (38 files, ~7,187 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -44,7 +44,7 @@ StockService.swift               (213L)  Yahoo Finance API client (actor), chart
 StockService+MarketCap.swift     (69L)   Extension: market cap + forward P/E via v7 quote API with crumb auth
 StockService+Historical.swift    (206L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates, RSI)
 StockService+ForwardPE.swift     (57L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (64L)   Extension: 5-day/week/month EMA fetch via chart v8 API
+StockService+EMA.swift           (73L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
 StockData.swift                  (524L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (299L)  Config loading/saving, protocols, legacy backward compat
@@ -59,8 +59,8 @@ NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource e
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
-QuarterlyPanelView.swift         (538L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (390L)  Extra Stats view model: row building, sorting, highlights, misc stats
+QuarterlyPanelView.swift         (623L)  Extra Stats window: SwiftUI view, controller
+QuarterlyPanelViewModel.swift     (400L)  Extra Stats view model: row building, sorting, highlights, misc stats
 LayoutConfig.swift               (81L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
@@ -72,11 +72,11 @@ SwingAnalysis.swift              (73L)   Pure swing analysis algorithm (breakout
 SwingLevelCache.swift            (110L)  Swing level cache manager (actor), daily refresh
 RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothing method)
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
-EMAAnalysis.swift                (21L)   Pure 5-period EMA algorithm (SMA seed + iterative)
-EMACache.swift                   (95L)   EMA cache manager (actor), daily refresh, 3 timeframes per symbol
+EMAAnalysis.swift                (47L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection
+EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 3 timeframes + crossover per symbol
 ```
 
-## Test Files (32 files, ~10,008 lines)
+## Test Files (32 files, ~10,178 lines)
 
 ```
 StockDataTests.swift             (724L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
@@ -92,7 +92,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (1554L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, misc stats
+QuarterlyPanelTests.swift        (1610L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
@@ -109,8 +109,8 @@ SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady
 SwingLevelCacheTests.swift       (371L)  Swing level cache load/save, invalidation, daily refresh, missing symbols, nil values
 RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all gains/losses, alternating, trends, custom period
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
-EMAAnalysisTests.swift           (80L)   EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends
-EMACacheTests.swift              (264L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values
+EMAAnalysisTests.swift           (140L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection
+EMACacheTests.swift              (313L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
 ```
 
 ## File Dependencies
@@ -290,7 +290,7 @@ All magic numbers are extracted into namespaced enums:
 - `QuoteFetchCoordinator` — stateless enum with static fetch orchestration methods
 - `SwingAnalysis` — stateless enum with pure swing high/low detection algorithm (returns prices + indices)
 - `RSIAnalysis` — stateless enum with pure RSI-14 calculation (Wilder's smoothing)
-- `EMAAnalysis` — stateless enum with pure 5-period EMA calculation (SMA seed)
+- `EMAAnalysis` — stateless enum with pure 5-period EMA calculation (SMA seed) and weekly crossover detection
 
 ### Callback Cleanup
 `WatchlistEditorState` explicitly clears callbacks to prevent retain cycles. Called in `save()`, `cancel()`, and when window closes.
@@ -501,8 +501,8 @@ Cached at `~/.stockticker/ema-cache.json`:
 {
   "lastUpdated": "2026-02-17T12:00:00Z",
   "entries": {
-    "AAPL": { "day": 150.2, "week": 148.5, "month": 145.0 },
-    "BTC-USD": { "day": null, "week": null, "month": null }
+    "AAPL": { "day": 150.2, "week": 148.5, "month": 145.0, "weekCrossoverWeeksBelow": 3 },
+    "BTC-USD": { "day": null, "week": null, "month": null, "weekCrossoverWeeksBelow": null }
   }
 }
 ```
@@ -518,7 +518,7 @@ Cached at `~/.stockticker/ema-cache.json`:
 
 All three fetched concurrently via `async let`. Batch fetch via `TaskGroup` over symbols.
 
-**Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5.
+**Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil.
 
 Key methods: `loadEMACache()`, `fetchMissingEMAValues()`, `refreshEMAIfNeeded()`
 
@@ -552,7 +552,7 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **Price Breaks mode:** Combined mode (`isPriceBreaksMode`) with side-by-side layout — "Breakout" table on the left, "Breakdown" table on the right, each independently scrollable with its own title and column headers. Sorted independently. No High column, no quarter columns. Columns: Symbol (sortable), Date (sortable, "M/d/yy" format), % (sortable), RSI (sortable, daily RSI-14 color-coded >70 red / <30 green). Symbols with both breakout and breakdown data appear in both tables with unique IDs (`symbol-breakout`, `symbol-breakdown`). Header shows "X breakout, Y breakdown" count.
 
-**5 EMAs mode:** Four-column layout (`isEMAsMode`) — "5-Day", "5-Week", "5-Month", and "All Three" tables side by side. Each table shows symbols whose current price is above the respective 5-period EMA. "All Three" shows only symbols appearing in all three timeframe tables. Columns: Symbol (sortable), % (sortable, percent above EMA). Sorted independently. Header shows "X day, Y week, Z month, N all" count. Unique IDs use `symbol-ema-day`, `symbol-ema-week`, `symbol-ema-month`, `symbol-ema-all`.
+**5 EMAs mode:** Five-column layout (`isEMAsMode`) — "5-Day", "5-Week", "5-Month", "All Three", and "5W Cross" tables side by side. First four tables show symbols whose current price is above the respective 5-period EMA. "All Three" shows only symbols appearing in all three timeframe tables. "5W Cross" shows symbols whose most recent weekly close crossed above the 5-week EMA after one or more weeks below; "Wks" column shows weeks-below count (green for 2+, secondary for 1). Columns: Symbol (sortable), % or Wks (sortable). Sorted independently. Header shows "X day, Y week, Z month, N all, M cross" count. Unique IDs use `symbol-ema-day`, `symbol-ema-week`, `symbol-ema-month`, `symbol-ema-all`, `symbol-ema-cross`.
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 

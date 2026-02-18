@@ -29,8 +29,8 @@ final class EMACacheTests: XCTestCase {
         let cacheData = EMACacheData(
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0),
-                "SPY": EMACacheEntry(day: 500.0, week: nil, month: 490.0),
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil),
+                "SPY": EMACacheEntry(day: 500.0, week: nil, month: 490.0, weekCrossoverWeeksBelow: nil),
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -63,7 +63,7 @@ final class EMACacheTests: XCTestCase {
             cacheDirectory: testCacheDirectory
         )
 
-        await cacheManager.setEntry(for: "AAPL", entry: EMACacheEntry(day: 150.0, week: 148.0, month: 145.0))
+        await cacheManager.setEntry(for: "AAPL", entry: EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil))
         await cacheManager.save()
 
         let cacheURL = URL(fileURLWithPath: testCacheFile)
@@ -84,7 +84,7 @@ final class EMACacheTests: XCTestCase {
 
         let cacheData = EMACacheData(
             lastUpdated: "2026-02-15T12:00:00Z",
-            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0)]
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -121,8 +121,8 @@ final class EMACacheTests: XCTestCase {
         let cacheData = EMACacheData(
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0),
-                "SPY": EMACacheEntry(day: 500.0, week: 495.0, month: 490.0),
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil),
+                "SPY": EMACacheEntry(day: 500.0, week: 495.0, month: 490.0, weekCrossoverWeeksBelow: nil),
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -163,7 +163,7 @@ final class EMACacheTests: XCTestCase {
         let todayString = ISO8601DateFormatter().string(from: mockDateProvider.now())
         let cacheData = EMACacheData(
             lastUpdated: todayString,
-            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0)]
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -188,7 +188,7 @@ final class EMACacheTests: XCTestCase {
         let yesterdayString = ISO8601DateFormatter().string(from: yesterdayProvider.now())
         let cacheData = EMACacheData(
             lastUpdated: yesterdayString,
-            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0)]
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil)]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -213,8 +213,8 @@ final class EMACacheTests: XCTestCase {
         let cacheData = EMACacheData(
             lastUpdated: "2026-02-15T12:00:00Z",
             entries: [
-                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0),
-                "SPY": EMACacheEntry(day: 500.0, week: 495.0, month: 490.0),
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: nil),
+                "SPY": EMACacheEntry(day: 500.0, week: 495.0, month: 490.0, weekCrossoverWeeksBelow: nil),
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -252,7 +252,7 @@ final class EMACacheTests: XCTestCase {
             cacheDirectory: testCacheDirectory
         )
 
-        await cacheManager.setEntry(for: "BTC-USD", entry: EMACacheEntry(day: nil, week: nil, month: nil))
+        await cacheManager.setEntry(for: "BTC-USD", entry: EMACacheEntry(day: nil, week: nil, month: nil, weekCrossoverWeeksBelow: nil))
         await cacheManager.save()
 
         let entry = await cacheManager.getEntry(for: "BTC-USD")
@@ -260,5 +260,54 @@ final class EMACacheTests: XCTestCase {
         XCTAssertNil(entry?.day)
         XCTAssertNil(entry?.week)
         XCTAssertNil(entry?.month)
+        XCTAssertNil(entry?.weekCrossoverWeeksBelow)
+    }
+
+    // MARK: - Crossover Field Tests
+
+    func testSetEntry_withCrossover_storesCorrectly() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.setEntry(for: "AAPL", entry: EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: 3))
+        await cacheManager.save()
+
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        if let writtenData = mockFS.writtenFiles[cacheURL] {
+            let decoded = try! JSONDecoder().decode(EMACacheData.self, from: writtenData)
+            XCTAssertEqual(decoded.entries["AAPL"]?.weekCrossoverWeeksBelow, 3)
+        } else {
+            XCTFail("Cache was not written")
+        }
+    }
+
+    func testLoad_withCrossoverField_decodesCorrectly() async {
+        let mockFS = MockFileSystem()
+
+        let cacheData = EMACacheData(
+            lastUpdated: "2026-02-18T12:00:00Z",
+            entries: [
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, month: 145.0, weekCrossoverWeeksBelow: 2),
+                "SPY": EMACacheEntry(day: 500.0, week: 495.0, month: 490.0, weekCrossoverWeeksBelow: nil),
+            ]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.load()
+
+        let aaplEntry = await cacheManager.getEntry(for: "AAPL")
+        let spyEntry = await cacheManager.getEntry(for: "SPY")
+
+        XCTAssertEqual(aaplEntry?.weekCrossoverWeeksBelow, 2)
+        XCTAssertNil(spyEntry?.weekCrossoverWeeksBelow)
     }
 }

@@ -4,7 +4,7 @@ import Foundation
 
 extension StockService {
 
-    private func fetchEMA(symbol: String, range: String, interval: String) async -> Double? {
+    private func fetchChartCloses(symbol: String, range: String, interval: String) async -> [Double]? {
         guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=\(range)&interval=\(interval)") else {
             return nil
         }
@@ -19,12 +19,16 @@ extension StockService {
                 return nil
             }
 
-            let validCloses = closes.compactMap { $0 }
-            return EMAAnalysis.calculate(closes: validCloses)
+            return closes.compactMap { $0 }
         } catch {
             print("EMA fetch failed for \(symbol) (\(range)/\(interval)): \(error.localizedDescription)")
             return nil
         }
+    }
+
+    private func fetchEMA(symbol: String, range: String, interval: String) async -> Double? {
+        guard let closes = await fetchChartCloses(symbol: symbol, range: range, interval: interval) else { return nil }
+        return EMAAnalysis.calculate(closes: closes)
     }
 
     func fetchDailyEMA(symbol: String) async -> Double? {
@@ -41,9 +45,14 @@ extension StockService {
 
     func fetchEMAEntry(symbol: String) async -> EMACacheEntry {
         async let day = fetchDailyEMA(symbol: symbol)
-        async let week = fetchWeeklyEMA(symbol: symbol)
+        async let weeklyCloses = fetchChartCloses(symbol: symbol, range: "6mo", interval: "1wk")
         async let month = fetchMonthlyEMA(symbol: symbol)
-        return await EMACacheEntry(day: day, week: week, month: month)
+
+        let closes = await weeklyCloses
+        let weekEMA = closes.flatMap { EMAAnalysis.calculate(closes: $0) }
+        let crossover = closes.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
+
+        return await EMACacheEntry(day: day, week: weekEMA, month: month, weekCrossoverWeeksBelow: crossover)
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {

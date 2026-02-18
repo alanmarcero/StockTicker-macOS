@@ -12,7 +12,7 @@ struct QuarterlyPanelView: View {
             Divider()
             if viewModel.isMiscStatsMode {
                 miscStatsView
-            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaMonthRows.isEmpty && viewModel.emaAllRows.isEmpty) : viewModel.rows.isEmpty {
+            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaMonthRows.isEmpty && viewModel.emaAllRows.isEmpty && viewModel.emaCrossRows.isEmpty) : viewModel.rows.isEmpty {
                 emptyState
             } else {
                 scrollableContent
@@ -72,6 +72,8 @@ struct QuarterlyPanelView: View {
                 emaTable("5-Month", rows: viewModel.emaMonthRows)
                 Divider()
                 emaTable("All Three", rows: viewModel.emaAllRows)
+                Divider()
+                emaCrossTable("5W Cross", rows: viewModel.emaCrossRows)
             }
         } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
@@ -242,6 +244,76 @@ struct QuarterlyPanelView: View {
         }
     }
 
+    private func emaCrossTable(_ title: String, rows: [QuarterlyRow]) -> some View {
+        ScrollView([.vertical]) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                Section(header: emaCrossPinnedHeaders(title)) {
+                    ForEach(rows) { row in
+                        emaCrossRowView(row)
+                        Divider().opacity(0.3)
+                    }
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func emaCrossPinnedHeaders(_ title: String) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(title)
+                    .font(.system(.caption, design: .monospaced))
+                    .fontWeight(.bold)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.top, 4)
+            HStack(spacing: 0) {
+                sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+                sortableHeader("Wks", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            Divider()
+        }
+        .background(.background)
+    }
+
+    private func emaCrossRowView(_ row: QuarterlyRow) -> some View {
+        HStack(spacing: 0) {
+            Text(row.symbol)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.medium)
+                .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+
+            Group {
+                if let weeks = row.breakoutPercent {
+                    Text("\(Int(weeks))w")
+                        .foregroundColor(Int(weeks) >= 2 ? .green : .secondary)
+                } else {
+                    Text(QuarterlyFormatting.noData)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .font(.system(.body, design: .monospaced))
+            .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(viewModel.highlightColor.opacity(
+                    viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
+                ))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.toggleHighlight(for: row.symbol)
+        }
+    }
+
     private var pinnedColumnHeaders: some View {
         VStack(spacing: 0) {
             columnHeaders
@@ -313,7 +385,7 @@ struct QuarterlyPanelView: View {
                         .frame(width: QuarterlyWindowSize.quarterColumnWidth, alignment: .trailing)
                 }
             } else {
-                cellView(row.highestCloseChangePercent)
+                highCellView(row.highestCloseChangePercent)
                     .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 
                 ForEach(viewModel.quarters, id: \.identifier) { qi in
@@ -355,6 +427,19 @@ struct QuarterlyPanelView: View {
         return pct > 0 ? .green : .red
     }
 
+    private func highCellView(_ change: Double?) -> some View {
+        Group {
+            if let pct = change {
+                Text(Formatting.signedPercent(pct, isPositive: pct >= 0))
+                    .foregroundColor(pct >= -5.0 ? .green : .red)
+            } else {
+                Text(QuarterlyFormatting.noData)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .font(.system(.body, design: .monospaced))
+    }
+
     private func dateCellView(_ date: String?) -> some View {
         Text(date ?? QuarterlyFormatting.noData)
             .font(.system(.body, design: .monospaced))
@@ -387,7 +472,7 @@ struct QuarterlyPanelView: View {
             return "\(viewModel.miscStats.count) stats"
         }
         if viewModel.isEMAsMode {
-            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaMonthRows.count) month, \(viewModel.emaAllRows.count) all"
+            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaMonthRows.count) month, \(viewModel.emaAllRows.count) all, \(viewModel.emaCrossRows.count) cross"
         }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"
@@ -408,7 +493,7 @@ struct QuarterlyPanelView: View {
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
-            return "Symbols whose current price is above the 5-period EMA. Percent shows how far above."
+            return "Symbols whose current price is above the 5-period EMA. 5W Cross: weekly close crossed above 5-week EMA."
         case .miscStats:
             return "Aggregate statistics across the watchlist"
         }
