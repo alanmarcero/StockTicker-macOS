@@ -23,6 +23,9 @@ protocol StockServiceProtocol: Sendable {
     func fetchWeeklyEMA(symbol: String) async -> Double?
     func fetchMonthlyEMA(symbol: String) async -> Double?
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry]
+    func fetchDailyAnalysis(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult?
+    func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult]
+    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry]
 }
 
 // MARK: - HTTP Client Protocol
@@ -98,7 +101,8 @@ actor StockService: StockServiceProtocol {
             preMarketChangePercent: extendedHoursData.preMarketChangePercent ?? meta.preMarketChangePercent,
             postMarketPrice: extendedHoursData.postMarketPrice ?? meta.postMarketPrice,
             postMarketChange: extendedHoursData.postMarketChange ?? meta.postMarketChange,
-            postMarketChangePercent: extendedHoursData.postMarketChangePercent ?? meta.postMarketChangePercent
+            postMarketChangePercent: extendedHoursData.postMarketChangePercent ?? meta.postMarketChangePercent,
+            yahooMarketState: meta.marketState
         )
     }
 

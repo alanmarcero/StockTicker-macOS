@@ -373,6 +373,32 @@ final class StockQuoteTests: XCTestCase {
         XCTAssertEqual(updated.highestClose, 200.0)
     }
 
+    // MARK: - yahooMarketState passthrough
+
+    func testYahooMarketState_preservedThroughWithMethods() {
+        let quote = StockQuote(
+            symbol: "SPY",
+            price: 500.0,
+            previousClose: 495.0,
+            session: .regular,
+            yahooMarketState: "REGULAR"
+        )
+
+        let withYTD = quote.withYTDStartPrice(480.0)
+        XCTAssertEqual(withYTD.yahooMarketState, "REGULAR")
+
+        let withCap = quote.withMarketCap(1_000_000_000_000)
+        XCTAssertEqual(withCap.yahooMarketState, "REGULAR")
+
+        let withHigh = quote.withHighestClose(510.0)
+        XCTAssertEqual(withHigh.yahooMarketState, "REGULAR")
+    }
+
+    func testYahooMarketState_defaultsToNil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0)
+        XCTAssertNil(quote.yahooMarketState)
+    }
+
     // MARK: - Extended hours with CLOSED session (time-based fallback)
 
     func testHasExtendedHoursData_closedSessionWithPostMarketData_usesTimeBased() {

@@ -43,10 +43,16 @@ extension StockService {
         await fetchEMA(symbol: symbol, range: "2y", interval: "1mo")
     }
 
-    func fetchEMAEntry(symbol: String) async -> EMACacheEntry {
-        async let day = fetchDailyEMA(symbol: symbol)
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil) async -> EMACacheEntry {
         async let weeklyCloses = fetchChartCloses(symbol: symbol, range: "6mo", interval: "1wk")
         async let month = fetchMonthlyEMA(symbol: symbol)
+
+        let day: Double?
+        if let precomputed = precomputedDailyEMA {
+            day = precomputed
+        } else {
+            day = await fetchDailyEMA(symbol: symbol)
+        }
 
         let closes = await weeklyCloses
         let weekEMA = closes.flatMap { EMAAnalysis.calculate(closes: $0) }
@@ -58,6 +64,12 @@ extension StockService {
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
         await ThrottledTaskGroup.map(items: symbols) { symbol in
             await self.fetchEMAEntry(symbol: symbol)
+        }
+    }
+
+    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] {
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
         }
     }
 }

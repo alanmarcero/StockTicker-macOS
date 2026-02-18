@@ -124,36 +124,6 @@ extension MenuBarController {
         if await highestCloseCacheManager.needsDailyRefresh() {
             await highestCloseCacheManager.clearPricesForDailyRefresh()
         }
-
-        await fetchMissingHighestCloses()
-    }
-
-    func fetchMissingHighestCloses() async {
-        let missingSymbols = await highestCloseCacheManager.getMissingSymbols(from: allCacheSymbols)
-
-        guard !missingSymbols.isEmpty else {
-            highestClosePrices = await highestCloseCacheManager.getAllPrices()
-            return
-        }
-
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        guard let oldest = quarters.last else {
-            highestClosePrices = await highestCloseCacheManager.getAllPrices()
-            return
-        }
-
-        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(Date().timeIntervalSince1970)
-
-        let fetched = await stockService.batchFetchHighestCloses(
-            symbols: missingSymbols, period1: period1, period2: period2
-        )
-        for (symbol, price) in fetched {
-            await highestCloseCacheManager.setHighestClose(for: symbol, price: price)
-        }
-        await highestCloseCacheManager.save()
-
-        highestClosePrices = await highestCloseCacheManager.getAllPrices()
     }
 
     func attachHighestClosesToQuotes() {
@@ -168,12 +138,6 @@ extension MenuBarController {
                 universeQuotes[symbol] = quote.withHighestClose(highest)
             }
         }
-    }
-
-    func refreshHighestClosesIfNeeded() async {
-        guard await highestCloseCacheManager.needsDailyRefresh() else { return }
-        await highestCloseCacheManager.clearPricesForDailyRefresh()
-        await fetchMissingHighestCloses()
     }
 
     // MARK: - Forward P/E Cache
@@ -230,42 +194,6 @@ extension MenuBarController {
         if await swingLevelCacheManager.needsDailyRefresh() {
             await swingLevelCacheManager.clearEntriesForDailyRefresh()
         }
-
-        await fetchMissingSwingLevels()
-    }
-
-    func fetchMissingSwingLevels() async {
-        let missingSymbols = await swingLevelCacheManager.getMissingSymbols(from: allCacheSymbols)
-
-        guard !missingSymbols.isEmpty else {
-            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-            return
-        }
-
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        guard let oldest = quarters.last else {
-            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-            return
-        }
-
-        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(Date().timeIntervalSince1970)
-
-        let fetched = await stockService.batchFetchSwingLevels(
-            symbols: missingSymbols, period1: period1, period2: period2
-        )
-        for (symbol, entry) in fetched {
-            await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
-        }
-        await swingLevelCacheManager.save()
-
-        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-    }
-
-    func refreshSwingLevelsIfNeeded() async {
-        guard await swingLevelCacheManager.needsDailyRefresh() else { return }
-        await swingLevelCacheManager.clearEntriesForDailyRefresh()
-        await fetchMissingSwingLevels()
     }
 
     // MARK: - RSI Cache
@@ -276,31 +204,6 @@ extension MenuBarController {
         if await rsiCacheManager.needsDailyRefresh() {
             await rsiCacheManager.clearForDailyRefresh()
         }
-
-        await fetchMissingRSIValues()
-    }
-
-    func fetchMissingRSIValues() async {
-        let missingSymbols = await rsiCacheManager.getMissingSymbols(from: allCacheSymbols)
-
-        guard !missingSymbols.isEmpty else {
-            rsiValues = await rsiCacheManager.getAllValues()
-            return
-        }
-
-        let fetched = await stockService.batchFetchRSIValues(symbols: missingSymbols)
-        for (symbol, value) in fetched {
-            await rsiCacheManager.setRSI(for: symbol, value: value)
-        }
-        await rsiCacheManager.save()
-
-        rsiValues = await rsiCacheManager.getAllValues()
-    }
-
-    func refreshRSIIfNeeded() async {
-        guard await rsiCacheManager.needsDailyRefresh() else { return }
-        await rsiCacheManager.clearForDailyRefresh()
-        await fetchMissingRSIValues()
     }
 
     // MARK: - EMA Cache
@@ -311,31 +214,101 @@ extension MenuBarController {
         if await emaCacheManager.needsDailyRefresh() {
             await emaCacheManager.clearForDailyRefresh()
         }
-
-        await fetchMissingEMAValues()
     }
 
-    func fetchMissingEMAValues() async {
-        let missingSymbols = await emaCacheManager.getMissingSymbols(from: allCacheSymbols)
+    // MARK: - Consolidated Daily Analysis
 
-        guard !missingSymbols.isEmpty else {
+    func fetchMissingDailyAnalysis() async {
+        let highestCloseMissing = Set(await highestCloseCacheManager.getMissingSymbols(from: allCacheSymbols))
+        let swingMissing = Set(await swingLevelCacheManager.getMissingSymbols(from: allCacheSymbols))
+        let rsiMissing = Set(await rsiCacheManager.getMissingSymbols(from: allCacheSymbols))
+        let emaMissing = Set(await emaCacheManager.getMissingSymbols(from: allCacheSymbols))
+
+        let allMissing = Array(highestCloseMissing.union(swingMissing).union(rsiMissing).union(emaMissing))
+
+        guard !allMissing.isEmpty else {
+            highestClosePrices = await highestCloseCacheManager.getAllPrices()
+            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+            rsiValues = await rsiCacheManager.getAllValues()
             emaEntries = await emaCacheManager.getAllEntries()
             return
         }
 
-        let fetched = await stockService.batchFetchEMAValues(symbols: missingSymbols)
-        for (symbol, entry) in fetched {
-            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last else {
+            highestClosePrices = await highestCloseCacheManager.getAllPrices()
+            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+            rsiValues = await rsiCacheManager.getAllValues()
+            emaEntries = await emaCacheManager.getAllEntries()
+            return
         }
-        await emaCacheManager.save()
 
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        let results = await stockService.batchFetchDailyAnalysis(
+            symbols: allMissing, period1: period1, period2: period2
+        )
+
+        // Distribute results to individual caches
+        var dailyEMAs: [String: Double] = [:]
+        for (symbol, result) in results {
+            if highestCloseMissing.contains(symbol), let highest = result.highestClose {
+                await highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
+            }
+            if swingMissing.contains(symbol), let entry = result.swingLevelEntry {
+                await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
+            }
+            if rsiMissing.contains(symbol), let rsi = result.rsi {
+                await rsiCacheManager.setRSI(for: symbol, value: rsi)
+            }
+            if emaMissing.contains(symbol), let ema = result.dailyEMA {
+                dailyEMAs[symbol] = ema
+            }
+        }
+
+        if !highestCloseMissing.isEmpty { await highestCloseCacheManager.save() }
+        if !swingMissing.isEmpty { await swingLevelCacheManager.save() }
+        if !rsiMissing.isEmpty { await rsiCacheManager.save() }
+
+        // Fetch remaining EMA timeframes (weekly + monthly) with pre-computed daily values
+        let emaMissingArray = Array(emaMissing)
+        if !emaMissingArray.isEmpty {
+            let fetched = await stockService.batchFetchEMAValues(symbols: emaMissingArray, dailyEMAs: dailyEMAs)
+            for (symbol, entry) in fetched {
+                await emaCacheManager.setEntry(for: symbol, entry: entry)
+            }
+            await emaCacheManager.save()
+        }
+
+        highestClosePrices = await highestCloseCacheManager.getAllPrices()
+        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+        rsiValues = await rsiCacheManager.getAllValues()
         emaEntries = await emaCacheManager.getAllEntries()
     }
 
-    func refreshEMAIfNeeded() async {
-        guard await emaCacheManager.needsDailyRefresh() else { return }
-        await emaCacheManager.clearForDailyRefresh()
-        await fetchMissingEMAValues()
+    func refreshDailyAnalysisIfNeeded() async {
+        var needsRefresh = false
+
+        if await highestCloseCacheManager.needsDailyRefresh() {
+            await highestCloseCacheManager.clearPricesForDailyRefresh()
+            needsRefresh = true
+        }
+        if await swingLevelCacheManager.needsDailyRefresh() {
+            await swingLevelCacheManager.clearEntriesForDailyRefresh()
+            needsRefresh = true
+        }
+        if await rsiCacheManager.needsDailyRefresh() {
+            await rsiCacheManager.clearForDailyRefresh()
+            needsRefresh = true
+        }
+        if await emaCacheManager.needsDailyRefresh() {
+            await emaCacheManager.clearForDailyRefresh()
+            needsRefresh = true
+        }
+
+        guard needsRefresh else { return }
+        await fetchMissingDailyAnalysis()
     }
 
     // MARK: - Market Cap Attachment

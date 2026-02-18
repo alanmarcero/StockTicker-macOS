@@ -161,6 +161,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadSwingLevelCache()
             await loadRSICache()
             await loadEMACache()
+            await fetchMissingDailyAnalysis()
             await refreshAllQuotes()
             await refreshNews()
         }
@@ -351,11 +352,8 @@ class MenuBarController: NSObject, ObservableObject {
             currentForwardPEs.merge(fetchedPEs) { _, new in new }
         }
         attachMarketCapsToQuotes()
-        await refreshHighestClosesIfNeeded()
+        await refreshDailyAnalysisIfNeeded()
         attachHighestClosesToQuotes()
-        await refreshSwingLevelsIfNeeded()
-        await refreshRSIIfNeeded()
-        await refreshEMAIfNeeded()
         highlightFetchedSymbols(result.fetchedSymbols)
 
         await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad, marketOpen: scheduleInfo.state == .open)
@@ -733,11 +731,8 @@ class MenuBarController: NSObject, ObservableObject {
         Task {
             await fetchMissingYTDPrices()
             await fetchMissingQuarterlyPrices()
-            await fetchMissingHighestCloses()
             await fetchMissingForwardPERatios()
-            await fetchMissingSwingLevels()
-            await fetchMissingRSIValues()
-            await fetchMissingEMAValues()
+            await fetchMissingDailyAnalysis()
             await refreshAllQuotes()
         }
     }
@@ -789,11 +784,8 @@ class MenuBarController: NSObject, ObservableObject {
         Task {
             await fetchMissingYTDPrices()
             await fetchMissingQuarterlyPrices()
-            await fetchMissingHighestCloses()
             await fetchMissingForwardPERatios()
-            await fetchMissingSwingLevels()
-            await fetchMissingRSIValues()
-            await fetchMissingEMAValues()
+            await fetchMissingDailyAnalysis()
             await refreshAllQuotes()
         }
     }

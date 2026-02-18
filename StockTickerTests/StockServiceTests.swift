@@ -758,6 +758,136 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNil(ema)
     }
 
+    // MARK: - fetchDailyAnalysis tests
+
+    func testFetchDailyAnalysis_validResponse_returnsAllDataPoints() async {
+        let mockClient = MockHTTPClient()
+        // Generate 20 closes with timestamps for a valid response
+        var closes: [Double] = []
+        var timestamps: [Int] = []
+        let baseTimestamp = 1700000000
+        for i in 0..<20 {
+            closes.append(100.0 + Double(i) * 2.0)
+            timestamps.append(baseTimestamp + i * 86400)
+        }
+        let closesJSON = closes.map { String($0) }.joined(separator: ", ")
+        let timestampsJSON = timestamps.map { String($0) }.joined(separator: ", ")
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "timestamp": [\(timestampsJSON)],
+                    "indicators": {
+                        "quote": [{
+                            "close": [\(closesJSON)]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=1000&period2=2000&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
+
+        XCTAssertNotNil(result)
+        // Highest close should be the max of all closes (138.0)
+        XCTAssertEqual(result?.highestClose, 138.0)
+        // RSI should be non-nil (steady rise = 100.0)
+        XCTAssertNotNil(result?.rsi)
+        XCTAssertEqual(result?.rsi, 100.0)
+        // Daily EMA should be non-nil
+        XCTAssertNotNil(result?.dailyEMA)
+        // Swing entry should be present (but may have nil levels for steady rise)
+        XCTAssertNotNil(result?.swingLevelEntry)
+    }
+
+    func testFetchDailyAnalysis_networkError_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=1000&period2=2000&interval=1d")!
+        mockClient.responses[url] = .failure(URLError(.timedOut))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
+
+        XCTAssertNil(result)
+    }
+
+    func testFetchDailyAnalysis_emptyCloses_returnsNilHighest() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {
+            "chart": {
+                "result": [{
+                    "meta": {
+                        "symbol": "AAPL",
+                        "regularMarketPrice": 150.50,
+                        "chartPreviousClose": 148.00
+                    },
+                    "timestamp": [],
+                    "indicators": {
+                        "quote": [{
+                            "close": [null, null]
+                        }]
+                    }
+                }]
+            }
+        }
+        """
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?period1=1000&period2=2000&interval=1d")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
+
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.highestClose)
+        XCTAssertNil(result?.rsi)
+        XCTAssertNil(result?.dailyEMA)
+    }
+
+    // MARK: - batchFetchEMAValues with dailyEMAs tests
+
+    func testBatchFetchEMAValues_withDailyEMAs_skipsDailyFetch() async {
+        let mockClient = MockHTTPClient()
+        // Only set up weekly and monthly responses (no daily)
+        let weeklyClosesJSON = (0..<10).map { String(Double(100 + $0 * 5)) }.joined(separator: ", ")
+        let monthlyClosesJSON = (0..<10).map { String(Double(100 + $0 * 3)) }.joined(separator: ", ")
+
+        let weeklyJSON = """
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(weeklyClosesJSON)]}]}}]}}
+        """
+        let monthlyJSON = """
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(monthlyClosesJSON)]}]}}]}}
+        """
+
+        let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
+        let monthlyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=2y&interval=1mo")!
+        let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let monthlyResp = HTTPURLResponse(url: monthlyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
+        mockClient.responses[monthlyURL] = .success((monthlyJSON.data(using: .utf8)!, monthlyResp))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.batchFetchEMAValues(symbols: ["AAPL"], dailyEMAs: ["AAPL": 155.0])
+
+        XCTAssertNotNil(result["AAPL"])
+        // The pre-computed daily EMA should be used
+        XCTAssertEqual(result["AAPL"]?.day, 155.0)
+        // Weekly and monthly should be computed from chart data
+        XCTAssertNotNil(result["AAPL"]?.week)
+        XCTAssertNotNil(result["AAPL"]?.month)
+    }
+
     func testFetchMonthlyEMA_insufficientCloses_returnsNil() async {
         let mockClient = MockHTTPClient()
         let json = """

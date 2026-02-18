@@ -20,6 +20,10 @@ enum QuoteFetchCoordinator {
         return symbols + [symbol]
     }
 
+    static func extractMarketState(from quotes: [String: StockQuote], symbol: String = "SPY") -> String? {
+        quotes[symbol]?.yahooMarketState
+    }
+
     static func fetchInitialLoad(
         service: StockServiceProtocol,
         watchlist: [String],
@@ -33,17 +37,18 @@ enum QuoteFetchCoordinator {
         async let fetchedQuotes = service.fetchQuotes(symbols: allSymbols)
         async let fetchedIndexQuotes = service.fetchQuotes(symbols: indexSymbols)
         async let fetchedAlwaysOpen = service.fetchQuotes(symbols: alwaysOpenSymbols)
-        async let fetchedMarketState = service.fetchMarketState(symbol: "SPY")
+
+        let quotes = await fetchedQuotes
 
         var combinedIndexQuotes = await fetchedIndexQuotes
         combinedIndexQuotes.merge(await fetchedAlwaysOpen) { _, new in new }
 
+        // Extract market state from SPY quote (already fetched as part of watchlist/index)
         // On weekends, force CLOSED regardless of what API returns
-        // (API may still report POST from Friday's after-hours)
-        let marketState = isWeekend ? "CLOSED" : await fetchedMarketState
+        let marketState = isWeekend ? "CLOSED" : extractMarketState(from: quotes) ?? extractMarketState(from: combinedIndexQuotes)
 
         return FetchResult(
-            quotes: await fetchedQuotes,
+            quotes: quotes,
             indexQuotes: combinedIndexQuotes,
             yahooMarketState: marketState,
             fetchedSymbols: Set(allSymbols),
@@ -80,12 +85,13 @@ enum QuoteFetchCoordinator {
 
         async let fetchedQuotes = service.fetchQuotes(symbols: allSymbols)
         async let fetchedIndexQuotes = service.fetchQuotes(symbols: indexSymbols)
-        async let fetchedMarketState = service.fetchMarketState(symbol: "SPY")
+
+        let quotes = await fetchedQuotes
 
         return FetchResult(
-            quotes: await fetchedQuotes,
+            quotes: quotes,
             indexQuotes: await fetchedIndexQuotes,
-            yahooMarketState: await fetchedMarketState,
+            yahooMarketState: extractMarketState(from: quotes),
             fetchedSymbols: Set(allSymbols),
             isInitialLoadComplete: false,
             shouldMergeQuotes: false
@@ -102,12 +108,13 @@ enum QuoteFetchCoordinator {
 
         async let fetchedQuotes = service.fetchQuotes(symbols: allSymbols)
         async let fetchedAlwaysOpen = service.fetchQuotes(symbols: alwaysOpenSymbols)
-        async let fetchedMarketState = service.fetchMarketState(symbol: "SPY")
+
+        let quotes = await fetchedQuotes
 
         return FetchResult(
-            quotes: await fetchedQuotes,
+            quotes: quotes,
             indexQuotes: await fetchedAlwaysOpen,
-            yahooMarketState: await fetchedMarketState,
+            yahooMarketState: extractMarketState(from: quotes),
             fetchedSymbols: Set(allSymbols),
             isInitialLoadComplete: false,
             shouldMergeQuotes: false

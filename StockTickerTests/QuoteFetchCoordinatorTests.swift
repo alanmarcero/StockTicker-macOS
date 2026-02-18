@@ -15,6 +15,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var swingLevelsToReturn: [String: SwingLevelCacheEntry] = [:]
     var rsiValuesToReturn: [String: Double] = [:]
     var emaEntriesToReturn: [String: EMACacheEntry] = [:]
+    var dailyAnalysisToReturn: [String: DailyAnalysisResult] = [:]
 
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
@@ -106,6 +107,18 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
         emaEntriesToReturn.filter { symbols.contains($0.key) }
     }
+
+    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] {
+        emaEntriesToReturn.filter { symbols.contains($0.key) }
+    }
+
+    func fetchDailyAnalysis(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult? {
+        dailyAnalysisToReturn[symbol]
+    }
+
+    func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult] {
+        dailyAnalysisToReturn.filter { symbols.contains($0.key) }
+    }
 }
 
 // MARK: - Tests
@@ -128,14 +141,13 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
 
     func testFetchInitialLoad_returnsAllData() async {
         let mock = MockStockService()
-        let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
-        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0)
+        let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, yahooMarketState: "REGULAR")
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "REGULAR")
         let btc = StockQuote(symbol: "BTC-USD", price: 60000.0, previousClose: 59000.0)
         mock.quotesToReturn = ["AAPL": aapl, "SPY": spy, "BTC-USD": btc]
-        mock.marketStateToReturn = "REGULAR"
 
         let result = await QuoteFetchCoordinator.fetchInitialLoad(
-            service: mock, watchlist: ["AAPL"],
+            service: mock, watchlist: ["AAPL", "SPY"],
             indexSymbols: ["SPY"], alwaysOpenSymbols: ["BTC-USD"],
             closedMarketSymbol: "BTC-USD", isWeekend: false
         )
@@ -150,10 +162,11 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
 
     func testFetchInitialLoad_weekendForcesClosed() async {
         let mock = MockStockService()
-        mock.marketStateToReturn = "POST"
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "POST")
+        mock.quotesToReturn = ["AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0), "SPY": spy]
 
         let result = await QuoteFetchCoordinator.fetchInitialLoad(
-            service: mock, watchlist: ["AAPL"],
+            service: mock, watchlist: ["AAPL", "SPY"],
             indexSymbols: [], alwaysOpenSymbols: [],
             closedMarketSymbol: "BTC-USD", isWeekend: true
         )
@@ -214,12 +227,11 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
     func testFetchRegularSession_returnsCorrectData() async {
         let mock = MockStockService()
         let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
-        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0)
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "REGULAR")
         mock.quotesToReturn = ["AAPL": aapl, "SPY": spy]
-        mock.marketStateToReturn = "REGULAR"
 
         let result = await QuoteFetchCoordinator.fetchRegularSession(
-            service: mock, watchlist: ["AAPL"],
+            service: mock, watchlist: ["AAPL", "SPY"],
             indexSymbols: ["SPY"], closedMarketSymbol: "BTC-USD"
         )
 
@@ -235,12 +247,12 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
     func testFetchExtendedHours_returnsCorrectData() async {
         let mock = MockStockService()
         let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "POST")
         let btc = StockQuote(symbol: "BTC-USD", price: 60000.0, previousClose: 59000.0)
-        mock.quotesToReturn = ["AAPL": aapl, "BTC-USD": btc]
-        mock.marketStateToReturn = "POST"
+        mock.quotesToReturn = ["AAPL": aapl, "SPY": spy, "BTC-USD": btc]
 
         let result = await QuoteFetchCoordinator.fetchExtendedHours(
-            service: mock, watchlist: ["AAPL"],
+            service: mock, watchlist: ["AAPL", "SPY"],
             alwaysOpenSymbols: ["BTC-USD"], closedMarketSymbol: "BTC-USD"
         )
 
@@ -249,5 +261,43 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
         XCTAssertEqual(result.yahooMarketState, "POST")
         XCTAssertFalse(result.shouldMergeQuotes)
         XCTAssertFalse(result.isInitialLoadComplete)
+    }
+
+    // MARK: - extractMarketState
+
+    func testExtractMarketState_fromSPYQuote() {
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "REGULAR")
+        let quotes: [String: StockQuote] = ["SPY": spy, "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)]
+
+        XCTAssertEqual(QuoteFetchCoordinator.extractMarketState(from: quotes), "REGULAR")
+    }
+
+    func testExtractMarketState_nilWhenSPYMissing() {
+        let quotes: [String: StockQuote] = ["AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)]
+
+        XCTAssertNil(QuoteFetchCoordinator.extractMarketState(from: quotes))
+    }
+
+    func testExtractMarketState_nilWhenNoYahooState() {
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0)
+        let quotes: [String: StockQuote] = ["SPY": spy]
+
+        XCTAssertNil(QuoteFetchCoordinator.extractMarketState(from: quotes))
+    }
+
+    func testFetchInitialLoad_fallsBackToIndexQuotesForMarketState() async {
+        let mock = MockStockService()
+        let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        let spy = StockQuote(symbol: "SPY", price: 500.0, previousClose: 495.0, yahooMarketState: "REGULAR")
+        mock.quotesToReturn = ["AAPL": aapl, "SPY": spy]
+
+        let result = await QuoteFetchCoordinator.fetchInitialLoad(
+            service: mock, watchlist: ["AAPL"],
+            indexSymbols: ["SPY"], alwaysOpenSymbols: [],
+            closedMarketSymbol: "BTC-USD", isWeekend: false
+        )
+
+        // SPY is in indexSymbols, not watchlist — market state should still be extracted
+        XCTAssertEqual(result.yahooMarketState, "REGULAR")
     }
 }

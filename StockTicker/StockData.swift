@@ -168,10 +168,14 @@ struct StockQuote: Identifiable, Sendable {
     // Highest daily close over trailing 12 quarters (~3 years)
     let highestClose: Double?
 
+    // Raw Yahoo market state string (e.g. "REGULAR", "PRE", "POST", "CLOSED")
+    let yahooMarketState: String?
+
     init(symbol: String, price: Double, previousClose: Double, session: TradingSession = .closed,
          preMarketPrice: Double? = nil, preMarketChange: Double? = nil, preMarketChangePercent: Double? = nil,
          postMarketPrice: Double? = nil, postMarketChange: Double? = nil, postMarketChangePercent: Double? = nil,
-         ytdStartPrice: Double? = nil, marketCap: Double? = nil, highestClose: Double? = nil) {
+         ytdStartPrice: Double? = nil, marketCap: Double? = nil, highestClose: Double? = nil,
+         yahooMarketState: String? = nil) {
         self.id = UUID()
         self.symbol = symbol
         self.price = price
@@ -186,6 +190,7 @@ struct StockQuote: Identifiable, Sendable {
         self.ytdStartPrice = ytdStartPrice
         self.marketCap = marketCap
         self.highestClose = highestClose
+        self.yahooMarketState = yahooMarketState
     }
 
     // Regular market change (always based on regular price)
@@ -476,7 +481,8 @@ extension StockQuote {
             postMarketChangePercent: postMarketChangePercent,
             ytdStartPrice: ytdPrice,
             marketCap: marketCap,
-            highestClose: highestClose
+            highestClose: highestClose,
+            yahooMarketState: yahooMarketState
         )
     }
 
@@ -495,7 +501,8 @@ extension StockQuote {
             postMarketChangePercent: postMarketChangePercent,
             ytdStartPrice: ytdStartPrice,
             marketCap: cap,
-            highestClose: highestClose
+            highestClose: highestClose,
+            yahooMarketState: yahooMarketState
         )
     }
 
@@ -514,7 +521,8 @@ extension StockQuote {
             postMarketChangePercent: postMarketChangePercent,
             ytdStartPrice: ytdStartPrice,
             marketCap: marketCap,
-            highestClose: highest
+            highestClose: highest,
+            yahooMarketState: yahooMarketState
         )
     }
 }

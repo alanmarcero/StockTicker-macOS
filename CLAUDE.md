@@ -33,19 +33,19 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (39 files, ~7,358 lines)
+## Source Files (39 files, ~7,435 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (935L)  Main controller: menu bar UI, state management, two-tier universe fetching
-MenuBarController+Cache.swift    (356L)  Extension: YTD, quarterly, highest close, forward P/E, swing level, RSI, EMA, and market cap cache coordination with shared helpers
+MenuBarView.swift                (927L)  Main controller: menu bar UI, state management, two-tier universe fetching
+MenuBarController+Cache.swift    (329L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (201L)  Yahoo Finance API client (actor), chart v8 methods
+StockService.swift               (205L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
-StockService+Historical.swift    (181L)  Extension: historical price fetching (YTD, quarterly, highest close, swing levels with dates, RSI)
+StockService+Historical.swift    (264L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation)
 StockService+ForwardPE.swift     (53L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (63L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
-StockData.swift                  (524L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
+StockService+EMA.swift           (75L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
+StockData.swift                  (528L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (306L)  Config loading/saving, protocols, legacy backward compat, universe field
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
@@ -65,7 +65,7 @@ LayoutConfig.swift               (81L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
 TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
-QuoteFetchCoordinator.swift      (116L)  Stateless fetch orchestration with FetchResult
+QuoteFetchCoordinator.swift      (123L)  Stateless fetch orchestration with FetchResult, market state extraction from quotes
 HighestCloseCache.swift          (103L)  Highest daily close cache manager (actor), daily refresh
 ForwardPECache.swift             (89L)   Forward P/E ratio cache manager (actor), permanent per-quarter cache
 SwingAnalysis.swift              (73L)   Pure swing analysis algorithm (breakout/breakdown detection with indices)
@@ -77,11 +77,11 @@ EMACache.swift                   (96L)   EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (31L)   Bounded concurrency utility (max 20 concurrent tasks)
 ```
 
-## Test Files (33 files, ~10,418 lines)
+## Test Files (33 files, ~10,635 lines)
 
 ```
-StockDataTests.swift             (724L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries
-StockServiceTests.swift          (790L)  API mocking, fetch operations, extended hours, v7 response decoding, highest close, forward P/E, swing levels with dates, RSI, EMA
+StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
+StockServiceTests.swift          (920L)  API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (775L)  Config load/save, encoding, legacy backward compat, universe field
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -103,7 +103,7 @@ TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, 
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
-QuoteFetchCoordinatorTests.swift (253L)  Fetch modes, FetchResult correctness, MockStockService
+QuoteFetchCoordinatorTests.swift (303L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
 SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings, index tracking
@@ -147,7 +147,7 @@ MenuBarView.swift (MenuBarController)
 
 StockService.swift
 ├── StockService+MarketCap.swift (market cap + forward P/E extension)
-├── StockService+Historical.swift (historical price + swing level extension)
+├── StockService+Historical.swift (historical price + daily analysis consolidation extension)
 ├── StockService+ForwardPE.swift (forward P/E timeseries extension)
 ├── StockService+EMA.swift (5-day/week/month EMA extension)
 ├── ThrottledTaskGroup.swift (bounded concurrency for batch methods)
@@ -160,7 +160,8 @@ TickerDisplayBuilder.swift
 └── LayoutConfig.swift (LayoutConfig.Ticker)
 
 QuoteFetchCoordinator.swift
-└── StockService.swift (StockServiceProtocol)
+├── StockService.swift (StockServiceProtocol)
+└── StockData.swift (StockQuote)
 
 NewsService.swift
 ├── NewsData.swift (NewsItem, RSSParser)
@@ -194,7 +195,8 @@ QuarterlyPanelViewModel.swift
 
 StockService+Historical.swift
 ├── SwingAnalysis.swift (SwingAnalysis)
-└── RSIAnalysis.swift (RSIAnalysis)
+├── RSIAnalysis.swift (RSIAnalysis)
+└── EMAAnalysis.swift (EMAAnalysis)
 
 StockService+EMA.swift
 └── EMAAnalysis.swift (EMAAnalysis)
@@ -432,7 +434,7 @@ Cached at `~/.stockticker/highest-close-cache.json`:
 
 **API:** One chart v8 call per symbol for the full 3-year range (`interval=1d`), extracts `.max()` from close prices (~750 daily bars, ~20-30KB).
 
-Key methods: `loadHighestCloseCache()`, `fetchMissingHighestCloses()`, `attachHighestClosesToQuotes()`, `refreshHighestClosesIfNeeded()`
+Key methods: `loadHighestCloseCache()`, `attachHighestClosesToQuotes()` (fetching consolidated into daily analysis)
 
 ## Forward P/E Tracking
 
@@ -480,7 +482,7 @@ Cached at `~/.stockticker/swing-level-cache.json`:
 
 **API:** Same chart v8 call as highest close (daily bars for full 3-year range). Timestamps and closes are zipped, null closes filtered. `SwingAnalysis.analyze(closes:)` returns prices and indices; indices map to timestamps for date formatting ("M/d/yy").
 
-Key methods: `loadSwingLevelCache()`, `fetchMissingSwingLevels()`, `refreshSwingLevelsIfNeeded()`
+Key methods: `loadSwingLevelCache()` (fetching consolidated into daily analysis)
 
 ## RSI Tracking
 
@@ -501,7 +503,7 @@ Cached at `~/.stockticker/rsi-cache.json`:
 
 **API:** One chart v8 call per symbol with `range=1y&interval=1d` (~250 bars, ~10KB). `RSIAnalysis.calculate()` computes RSI from close prices.
 
-Key methods: `loadRSICache()`, `fetchMissingRSIValues()`, `refreshRSIIfNeeded()`
+Key methods: `loadRSICache()` (fetching consolidated into daily analysis)
 
 ## EMA Tracking
 
@@ -532,7 +534,25 @@ All three fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGr
 
 **Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil.
 
-Key methods: `loadEMACache()`, `fetchMissingEMAValues()`, `refreshEMAIfNeeded()`
+Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly/monthly fetched separately)
+
+## Consolidated Daily Analysis
+
+Four per-symbol daily-interval API calls (highest close, swing levels, RSI, daily EMA) are consolidated into a single chart v8 call via `DailyAnalysisResult` and `fetchDailyAnalysis(symbol:period1:period2:)`. This reduces ~1,500 API calls per daily refresh for 500 universe symbols.
+
+**`DailyAnalysisResult`** bundles all 4 data points from one `period1={3yr}&period2={now}&interval=1d` response:
+- `highestClose` — `max()` of all valid closes
+- `swingLevelEntry` — `SwingAnalysis.analyze()` with timestamps for date formatting
+- `rsi` — `RSIAnalysis.calculate()` (750 bars gives better warm-up than 250)
+- `dailyEMA` — `EMAAnalysis.calculate()` (converges identically with more data)
+
+**Cache coordination:** `fetchMissingDailyAnalysis()` computes the union of missing symbols across all 4 caches, makes ONE `batchFetchDailyAnalysis` call, then distributes results to individual cache actors. Daily EMA values are passed to `batchFetchEMAValues(symbols:dailyEMAs:)` to skip the daily chart call during weekly/monthly EMA fetching.
+
+**`refreshDailyAnalysisIfNeeded()`** checks all 4 caches for daily staleness, clears whichever need it, then calls `fetchMissingDailyAnalysis()`.
+
+**Market state optimization:** `QuoteFetchCoordinator.extractMarketState(from:symbol:)` extracts `yahooMarketState` from the SPY quote already being fetched, eliminating a redundant `fetchMarketState("SPY")` call every 15s refresh. `StockQuote.yahooMarketState` stores the raw Yahoo market state string from the chart v8 meta response.
+
+Key methods: `fetchDailyAnalysis()`, `batchFetchDailyAnalysis()`, `fetchMissingDailyAnalysis()`, `refreshDailyAnalysisIfNeeded()`, `extractMarketState()`
 
 ## Extra Stats (Cmd+Opt+Q)
 
