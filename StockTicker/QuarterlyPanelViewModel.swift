@@ -229,7 +229,8 @@ class QuarterlyPanelViewModel: ObservableObject {
         var crossRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
             guard let entry = storedEMAEntries[symbol],
-                  let weeksBelow = entry.weekCrossoverWeeksBelow else { continue }
+                  let weeksBelow = entry.weekCrossoverWeeksBelow,
+                  weeksBelow >= 3 else { continue }
             crossRows.append(QuarterlyRow(id: "\(symbol)-ema-cross", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
         }
         emaCrossRows = crossRows

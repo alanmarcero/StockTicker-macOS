@@ -3,30 +3,15 @@ import XCTest
 
 final class SymbolRoutingTests: XCTestCase {
 
-    // MARK: - historicalSource
+    // MARK: - historicalSource (always Yahoo — candle endpoint requires paid tier)
 
-    func testHistoricalSource_equity_withKey_returnsFinnhub() {
+    func testHistoricalSource_equity_withKey_returnsYahoo() {
         let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .finnhub)
-    }
-
-    func testHistoricalSource_etf_withKey_returnsFinnhub() {
-        let source = SymbolRouting.historicalSource(for: "SPY", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .finnhub)
+        XCTAssertEqual(source, .yahoo)
     }
 
     func testHistoricalSource_index_withKey_returnsYahoo() {
         let source = SymbolRouting.historicalSource(for: "^GSPC", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .yahoo)
-    }
-
-    func testHistoricalSource_crypto_withKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "BTC-USD", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .yahoo)
-    }
-
-    func testHistoricalSource_brkb_withKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "BRK-B", finnhubApiKey: "test_key")
         XCTAssertEqual(source, .yahoo)
     }
 
@@ -35,9 +20,21 @@ final class SymbolRoutingTests: XCTestCase {
         XCTAssertEqual(source, .yahoo)
     }
 
-    func testHistoricalSource_index_nilKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "^GSPC", finnhubApiKey: nil)
-        XCTAssertEqual(source, .yahoo)
+    // MARK: - isFinnhubCompatible
+
+    func testIsFinnhubCompatible_equity_returnsTrue() {
+        XCTAssertTrue(SymbolRouting.isFinnhubCompatible("AAPL"))
+        XCTAssertTrue(SymbolRouting.isFinnhubCompatible("SPY"))
+    }
+
+    func testIsFinnhubCompatible_index_returnsFalse() {
+        XCTAssertFalse(SymbolRouting.isFinnhubCompatible("^GSPC"))
+        XCTAssertFalse(SymbolRouting.isFinnhubCompatible("^DJI"))
+    }
+
+    func testIsFinnhubCompatible_crypto_returnsFalse() {
+        XCTAssertFalse(SymbolRouting.isFinnhubCompatible("BTC-USD"))
+        XCTAssertFalse(SymbolRouting.isFinnhubCompatible("BRK-B"))
     }
 
     // MARK: - partition

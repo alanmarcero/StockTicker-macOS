@@ -64,20 +64,26 @@ enum SymbolRouting {
         case yahoo
     }
 
-    static func historicalSource(for symbol: String, finnhubApiKey: String?) -> Source {
-        guard finnhubApiKey != nil else { return .yahoo }
-        if symbol.hasPrefix("^") { return .yahoo }
-        if symbol.contains("-") { return .yahoo }
-        return .finnhub
+    /// Whether a symbol type is supported by Finnhub (equities/ETFs only, not indices or crypto)
+    static func isFinnhubCompatible(_ symbol: String) -> Bool {
+        !symbol.hasPrefix("^") && !symbol.contains("-")
     }
 
+    /// Historical price routing — always Yahoo (Finnhub candle endpoint requires paid tier)
+    static func historicalSource(for symbol: String, finnhubApiKey: String?) -> Source {
+        .yahoo
+    }
+
+    /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote)
     static func partition(_ symbols: [String], finnhubApiKey: String?) -> (finnhub: [String], yahoo: [String]) {
+        guard finnhubApiKey != nil else { return ([], symbols) }
         var finnhub: [String] = []
         var yahoo: [String] = []
         for symbol in symbols {
-            switch historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
-            case .finnhub: finnhub.append(symbol)
-            case .yahoo: yahoo.append(symbol)
+            if isFinnhubCompatible(symbol) {
+                finnhub.append(symbol)
+            } else {
+                yahoo.append(symbol)
             }
         }
         return (finnhub, yahoo)

@@ -1569,23 +1569,25 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertTrue(vm.emaCrossRows.isEmpty)
     }
 
-    func testEMAs_crossRows_multipleSymbols() {
+    func testEMAs_crossRows_multipleSymbols_filtersBelow3Weeks() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
             "MSFT": makeQuote(symbol: "MSFT", price: 400.0),
+            "GOOGL": makeQuote(symbol: "GOOGL", price: 170.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
             "AAPL": EMACacheEntry(day: 200.0, week: 210.0, month: nil, weekCrossoverWeeksBelow: 2),
             "MSFT": EMACacheEntry(day: 380.0, week: nil, month: nil, weekCrossoverWeeksBelow: nil),
+            "GOOGL": EMACacheEntry(day: 160.0, week: 165.0, month: 170.0, weekCrossoverWeeksBelow: 5),
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
         vm.switchMode(.emas)
 
-        XCTAssertEqual(vm.emaCrossRows.count, 1)
-        XCTAssertEqual(vm.emaCrossRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.emaCrossRows.count, 1, "Only GOOGL (5 weeks) should appear; AAPL (2 weeks) filtered out")
+        XCTAssertEqual(vm.emaCrossRows[0].symbol, "GOOGL")
     }
 
     // MARK: - Universe Label Tests

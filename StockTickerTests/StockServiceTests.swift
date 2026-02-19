@@ -863,9 +863,10 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         // Only set up weekly and monthly responses (no daily)
         let weeklyClosesJSON = (0..<10).map { String(Double(100 + $0 * 5)) }.joined(separator: ", ")
         let monthlyClosesJSON = (0..<10).map { String(Double(100 + $0 * 3)) }.joined(separator: ", ")
+        let weeklyTimestampsJSON = (0..<10).map { String(1700000000 + $0 * 604800) }.joined(separator: ", ")
 
         let weeklyJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(weeklyClosesJSON)]}]}}]}}
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(weeklyTimestampsJSON)],"indicators":{"quote":[{"close":[\(weeklyClosesJSON)]}]}}]}}
         """
         let monthlyJSON = """
         {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(monthlyClosesJSON)]}]}}]}}
@@ -900,9 +901,11 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
     func testFetchEMAEntry_partialSuccess_returnsEntry() async {
         let mockClient = MockHTTPClient()
-        // Only weekly succeeds
+        // Only weekly succeeds — timestamps required for fetchWeeklyClosesWithTimestamps
+        let timestamps = (0..<10).map { 1700000000 + $0 * 604800 }
+        let timestampsStr = timestamps.map { String($0) }.joined(separator: ",")
         let weeklyJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[100, 105, 110, 115, 120, 125, 130, 135, 140, 145]}]}}]}}
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(timestampsStr)],"indicators":{"quote":[{"close":[100, 105, 110, 115, 120, 125, 130, 135, 140, 145]}]}}]}}
         """
         let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
         let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
@@ -990,16 +993,29 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         [40, 45, 50, 55, 60, 45, 80]
     }
 
-    private func makeWeeklyJSON(closes: [Double]) -> String {
+    private func makeWeeklyJSON(closes: [Double], timestamps: [Int]) -> String {
         let closesStr = closes.map { String($0) }.joined(separator: ",")
+        let timestampsStr = timestamps.map { String($0) }.joined(separator: ",")
         return """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(closesStr)]}]}}]}}
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(timestampsStr)],"indicators":{"quote":[{"close":[\(closesStr)]}]}}]}}
         """
+    }
+
+    /// Generates timestamps as consecutive Mondays ending at Feb 16, 2026 00:00 ET.
+    /// The last bar (Feb 16) is the "current week" for tests dated Feb 16–22,
+    /// and becomes a completed bar for tests on Feb 23+.
+    private func crossoverTimestamps(count: Int) -> [Int] {
+        let referenceMonday = makeETDate(year: 2026, month: 2, day: 16, hour: 0)
+        return (0..<count).map { i in
+            let weeksBack = count - 1 - i
+            return Int(referenceMonday.addingTimeInterval(-Double(weeksBack) * 604800).timeIntervalSince1970)
+        }
     }
 
     private func setupCrossoverMock(closes: [Double]) -> (MockHTTPClient, StockService) {
         let mockClient = MockHTTPClient()
-        let weeklyJSON = makeWeeklyJSON(closes: closes)
+        let timestamps = crossoverTimestamps(count: closes.count)
+        let weeklyJSON = makeWeeklyJSON(closes: closes, timestamps: timestamps)
         let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
         let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
@@ -1055,34 +1071,55 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Friday 2PM+ should include current bar and detect crossover")
     }
 
-    func testCrossoverTiming_saturday_includesCurrentWeek() async {
+    func testCrossoverTiming_saturday_excludesCurrentWeek() async {
         let closes = crossoverWeeklyCloses()
         let (_, service) = setupCrossoverMock(closes: closes)
-        // 2026-02-21 is a Saturday
+        // 2026-02-21 is a Saturday — outside the Friday 2PM–4PM sneak peek window
         let saturday = makeETDate(year: 2026, month: 2, day: 21, hour: 10)
 
         let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: saturday)
 
         XCTAssertNotNil(result)
-        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Saturday should include current bar and detect crossover")
+        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Saturday should exclude current week bar — sneak peek is Friday 2PM–4PM only")
+    }
+
+    func testCrossoverTiming_friday4PM_excludesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-20 is a Friday — 4PM is past the sneak peek window
+        let friday4pm = makeETDate(year: 2026, month: 2, day: 20, hour: 16)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday4pm)
+
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Friday 4PM+ should exclude current bar — sneak peek ends at 4PM")
+    }
+
+    func testCrossoverTiming_followingMonday_includesPriorWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-23 is the following Monday — the crossover bar (Feb 16) is now a completed prior week
+        let monday = makeETDate(year: 2026, month: 2, day: 23, hour: 10)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: monday)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Following Monday should include prior week's completed bar and detect crossover")
     }
 
     // MARK: - Finnhub integration tests
 
-    func testFinnhubDailyAnalysis_validResponse_returnsAllDataPoints() async {
+    func testDailyAnalysis_equity_withKey_usesYahoo() async {
         let mockClient = MockHTTPClient()
+
         let closes = (0..<30).map { 100.0 + Double($0) }
-        let timestamps = (0..<30).map { 1700000000 + $0 * 86400 }
-
         let closesJSON = closes.map { String($0) }.joined(separator: ",")
-        let timestampsJSON = timestamps.map { String($0) }.joined(separator: ",")
-        let json = """
-        {"c":[\(closesJSON)],"t":[\(timestampsJSON)],"s":"ok"}
+        let yahooJSON = """
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[],"indicators":{"quote":[{"close":[\(closesJSON)]}]}}]}}
         """
-
         mockClient.patternResponses.append((
-            pattern: "finnhub.io/api/v1/stock/candle",
-            result: .success((json.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://finnhub.io")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
+            pattern: "query1.finance.yahoo.com/v8/finance/chart/AAPL",
+            result: .success((yahooJSON.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://query1.finance.yahoo.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
         ))
 
         let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
@@ -1092,34 +1129,9 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertEqual(result?.highestClose, 129.0)
         XCTAssertNotNil(result?.rsi)
         XCTAssertNotNil(result?.dailyEMA)
-    }
 
-    func testFinnhubDailyAnalysis_failure_fallsBackToYahoo() async {
-        let mockClient = MockHTTPClient()
-
-        // Finnhub returns error
-        mockClient.patternResponses.append((
-            pattern: "finnhub.io",
-            result: .success((Data(), HTTPURLResponse(url: URL(string: "https://finnhub.io")!, statusCode: 403, httpVersion: nil, headerFields: nil)!))
-        ))
-
-        // Yahoo returns valid response
-        let closes = (0..<20).map { 100.0 + Double($0) }
-        let closesJSON = closes.map { String($0) }.joined(separator: ",")
-        let yahooJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[],"indicators":{"quote":[{"close":[\(closesJSON)]}]}}]}}
-        """
-
-        mockClient.patternResponses.append((
-            pattern: "query1.finance.yahoo.com/v8/finance/chart/AAPL",
-            result: .success((yahooJSON.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://query1.finance.yahoo.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
-        ))
-
-        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
-        let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
-
-        XCTAssertNotNil(result, "Should fall back to Yahoo when Finnhub fails")
-        XCTAssertEqual(result?.highestClose, 119.0)
+        let finnhubRequests = mockClient.requestedURLs.filter { $0.absoluteString.contains("finnhub") }
+        XCTAssertTrue(finnhubRequests.isEmpty, "Historical data should always use Yahoo (candle endpoint is paid)")
     }
 
     func testFinnhubRouting_indexSymbol_usesYahooDirectly() async {

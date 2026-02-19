@@ -64,6 +64,42 @@ extension StockService {
         }
     }
 
+    private func fetchWeeklyClosesWithTimestamps(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
+        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=6mo&interval=1wk") else { return nil }
+
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let rawCloses = result.indicators?.quote?.first?.close,
+                  let rawTimestamps = result.timestamp else { return nil }
+
+            var closes: [Double] = []
+            var timestamps: [Int] = []
+            for (ts, c) in zip(rawTimestamps, rawCloses) {
+                guard let close = c else { continue }
+                closes.append(close)
+                timestamps.append(ts)
+            }
+            guard !closes.isEmpty else { return nil }
+            return (closes, timestamps)
+        } catch {
+            return nil
+        }
+    }
+
+    private func completedWeeklyBarCount(timestamps: [Int], now: Date) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let weekday = calendar.component(.weekday, from: now)
+        let daysFromMonday = (weekday + 5) % 7
+        let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: calendar.startOfDay(for: now))!
+        let cutoff = Int(monday.timeIntervalSince1970)
+        return timestamps.filter { $0 < cutoff }.count
+    }
+
     // MARK: - EMA Calculations
 
     private func fetchEMA(symbol: String, range: String, interval: String) async -> Double? {
@@ -84,7 +120,7 @@ extension StockService {
     }
 
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, now: Date = Date()) async -> EMACacheEntry? {
-        async let weeklyCloses = fetchChartCloses(symbol: symbol, range: "6mo", interval: "1wk")
+        async let weeklyData = fetchWeeklyClosesWithTimestamps(symbol: symbol)
         async let month = fetchMonthlyEMA(symbol: symbol)
 
         let day: Double?
@@ -94,15 +130,18 @@ extension StockService {
             day = await fetchDailyEMA(symbol: symbol)
         }
 
-        let closes = await weeklyCloses
-        let weekEMA = closes.flatMap { EMAAnalysis.calculate(closes: $0) }
+        let weekly = await weeklyData
+        let weekEMA = weekly.flatMap { EMAAnalysis.calculate(closes: $0.closes) }
 
-        // Crossover uses only completed weekly bars — drop current week before Friday 2PM ET
+        // Crossover uses only completed weekly bars — filter by timestamp, not dropLast
         let crossoverCloses: [Double]?
-        if isWeeklyBarComplete(now: now) {
-            crossoverCloses = closes
-        } else if let c = closes, c.count > 1 {
-            crossoverCloses = Array(c.dropLast())
+        if let w = weekly {
+            if isCurrentWeekSneakPeek(now: now) {
+                crossoverCloses = w.closes
+            } else {
+                let count = completedWeeklyBarCount(timestamps: w.timestamps, now: now)
+                crossoverCloses = count > 0 ? Array(w.closes[0..<count]) : nil
+            }
         } else {
             crossoverCloses = nil
         }
@@ -113,15 +152,16 @@ extension StockService {
         return EMACacheEntry(day: day, week: weekEMA, month: monthEMA, weekCrossoverWeeksBelow: crossover)
     }
 
-    private func isWeeklyBarComplete(now: Date) -> Bool {
+    /// Sneak peek window: only include the current (incomplete) week's bar on Friday 2PM–4PM ET.
+    /// All other times use only completed prior-week bars. On Saturday+, the just-ended week
+    /// naturally enters the completed set once the following Monday arrives.
+    private func isCurrentWeekSneakPeek(now: Date) -> Bool {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/New_York")!
         let weekday = calendar.component(.weekday, from: now)
-        // Saturday (7) or Sunday (1)
-        guard weekday != 7, weekday != 1 else { return true }
-        // Friday (6) at 2PM+ ET
-        guard weekday == 6 else { return false }
-        return calendar.component(.hour, from: now) >= 14
+        guard weekday == 6 else { return false }  // Friday only
+        let hour = calendar.component(.hour, from: now)
+        return hour >= 14 && hour < 16
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
