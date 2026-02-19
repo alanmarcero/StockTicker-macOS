@@ -155,6 +155,7 @@ class MenuBarController: NSObject, ObservableObject {
         setupStatusItem()
         startTimers()
         Task {
+            await stockService.updateFinnhubApiKey(config.finnhubApiKey)
             await loadYTDCache()
             await loadQuarterlyCache()
             await loadHighestCloseCache()
@@ -733,6 +734,7 @@ class MenuBarController: NSObject, ObservableObject {
         stopTimers()
         startTimers()
         Task {
+            await stockService.updateFinnhubApiKey(config.finnhubApiKey)
             await fetchMissingYTDPrices()
             await fetchMissingQuarterlyPrices()
             await fetchMissingForwardPERatios()

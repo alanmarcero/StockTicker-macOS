@@ -5,6 +5,23 @@ import Foundation
 extension StockService {
 
     private func fetchChartCloses(symbol: String, range: String, interval: String) async -> [Double]? {
+        switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
+        case .finnhub:
+            if let closes = await fetchChartClosesFromFinnhub(symbol: symbol, range: range, interval: interval) { return closes }
+            return await fetchChartClosesFromYahoo(symbol: symbol, range: range, interval: interval)
+        case .yahoo:
+            return await fetchChartClosesFromYahoo(symbol: symbol, range: range, interval: interval)
+        }
+    }
+
+    private func fetchChartClosesFromFinnhub(symbol: String, range: String, interval: String) async -> [Double]? {
+        guard let resolution = finnhubResolution(interval) else { return nil }
+        let now = Int(Date().timeIntervalSince1970)
+        guard let from = finnhubFromTimestamp(range: range, now: now) else { return nil }
+        return await fetchFinnhubCloses(symbol: symbol, resolution: resolution, from: from, to: now)
+    }
+
+    private func fetchChartClosesFromYahoo(symbol: String, range: String, interval: String) async -> [Double]? {
         guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=\(range)&interval=\(interval)") else {
             return nil
         }
@@ -25,6 +42,29 @@ extension StockService {
             return nil
         }
     }
+
+    // MARK: - Finnhub Conversion Helpers
+
+    private func finnhubResolution(_ yahooInterval: String) -> String? {
+        switch yahooInterval {
+        case "1d": return "D"
+        case "1wk": return "W"
+        case "1mo": return "M"
+        default: return nil
+        }
+    }
+
+    private func finnhubFromTimestamp(range: String, now: Int) -> Int? {
+        switch range {
+        case "1mo": return now - 30 * 24 * 60 * 60
+        case "6mo": return now - 180 * 24 * 60 * 60
+        case "1y": return now - 365 * 24 * 60 * 60
+        case "2y": return now - 730 * 24 * 60 * 60
+        default: return nil
+        }
+    }
+
+    // MARK: - EMA Calculations
 
     private func fetchEMA(symbol: String, range: String, interval: String) async -> Double? {
         guard let closes = await fetchChartCloses(symbol: symbol, range: range, interval: interval) else { return nil }
@@ -85,22 +125,50 @@ extension StockService {
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
-        await ThrottledTaskGroup.map(
-            items: symbols,
+        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
+
+        async let finnhubResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
+            items: finnhubSymbols,
+            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
+            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
+        ) { symbol in
+            await self.fetchEMAEntry(symbol: symbol)
+        }
+
+        async let yahooResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
+            items: yahooSymbols,
             maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
             delay: ThrottledTaskGroup.Backfill.delayNanoseconds
         ) { symbol in
             await self.fetchEMAEntry(symbol: symbol)
         }
+
+        let fResults = await finnhubResults
+        let yResults = await yahooResults
+        return fResults.merging(yResults) { f, _ in f }
     }
 
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] {
-        await ThrottledTaskGroup.map(
-            items: symbols,
+        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
+
+        async let finnhubResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
+            items: finnhubSymbols,
+            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
+            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
+        ) { symbol in
+            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
+        }
+
+        async let yahooResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
+            items: yahooSymbols,
             maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
             delay: ThrottledTaskGroup.Backfill.delayNanoseconds
         ) { symbol in
             await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
         }
+
+        let fResults = await finnhubResults
+        let yResults = await yahooResults
+        return fResults.merging(yResults) { f, _ in f }
     }
 }

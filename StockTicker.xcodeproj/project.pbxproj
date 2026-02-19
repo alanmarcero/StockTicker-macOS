@@ -32,6 +32,8 @@
 		B1000005232C5A0000000001 /* TickerEditorStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006232C5A0000000001 /* TickerEditorStateTests.swift */; };
 		B1000007232C5A0000000001 /* TickerValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008232C5A0000000001 /* TickerValidatorTests.swift */; };
 		B1000009232C5A0000000001 /* StockServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000A232C5A0000000001 /* StockServiceTests.swift */; };
+		O9D1CA5D4B41C01FB057CA37 /* FinnhubResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */; };
+		O1E0BAFB36527D7D26960729 /* SymbolRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */; };
 		B100000B232C5A0000000001 /* StockDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000C232C5A0000000001 /* StockDataTests.swift */; };
 		B100000D232C5A0000000001 /* MarketScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000E232C5A0000000001 /* MarketScheduleTests.swift */; };
 		B100000F232C5A0000000001 /* TickerConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010232C5A0000000001 /* TickerConfigTests.swift */; };
@@ -66,6 +68,7 @@
 		N1000001232C5A0000000001 /* CacheStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000002232C5A0000000001 /* CacheStorage.swift */; };
 		N1000003232C5A0000000001 /* CacheStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000004232C5A0000000001 /* CacheStorageTests.swift */; };
 		O1000001232C5A0000000001 /* StockService+MarketCap.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000002232C5A0000000001 /* StockService+MarketCap.swift */; };
+		O9B9C55A3EB0997D72E72E7D /* StockService+Finnhub.swift in Sources */ = {isa = PBXBuildFile; fileRef = O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */; };
 		O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000004232C5A0000000001 /* StockService+Historical.swift */; };
 		P1000001232C5A0000000001 /* TickerDisplayBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */; };
 		P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */; };
@@ -116,6 +119,8 @@
 		B1000006232C5A0000000001 /* TickerEditorStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerEditorStateTests.swift; sourceTree = "<group>"; };
 		B1000008232C5A0000000001 /* TickerValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerValidatorTests.swift; sourceTree = "<group>"; };
 		B100000A232C5A0000000001 /* StockServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockServiceTests.swift; sourceTree = "<group>"; };
+		OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinnhubResponseTests.swift; sourceTree = "<group>"; };
+		O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolRoutingTests.swift; sourceTree = "<group>"; };
 		B100000C232C5A0000000001 /* StockDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDataTests.swift; sourceTree = "<group>"; };
 		B100000E232C5A0000000001 /* MarketScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketScheduleTests.swift; sourceTree = "<group>"; };
 		B1000010232C5A0000000001 /* TickerConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerConfigTests.swift; sourceTree = "<group>"; };
@@ -155,6 +160,7 @@
 		N1000002232C5A0000000001 /* CacheStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorage.swift; sourceTree = "<group>"; };
 		N1000004232C5A0000000001 /* CacheStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorageTests.swift; sourceTree = "<group>"; };
 		O1000002232C5A0000000001 /* StockService+MarketCap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+MarketCap.swift"; sourceTree = "<group>"; };
+		O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Finnhub.swift"; sourceTree = "<group>"; };
 		O1000004232C5A0000000001 /* StockService+Historical.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Historical.swift"; sourceTree = "<group>"; };
 		P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilder.swift; sourceTree = "<group>"; };
 		P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilderTests.swift; sourceTree = "<group>"; };
@@ -207,6 +213,7 @@
 				A100001E232C5A0000000001 /* TickerEditorView.swift */,
 				A1000006232C5A0000000001 /* StockService.swift */,
 				O1000002232C5A0000000001 /* StockService+MarketCap.swift */,
+				O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */,
 				O1000004232C5A0000000001 /* StockService+Historical.swift */,
 				R1000002232C5A0000000001 /* StockService+ForwardPE.swift */,
 				A1000008232C5A0000000001 /* StockData.swift */,
@@ -263,6 +270,8 @@
 				B1000006232C5A0000000001 /* TickerEditorStateTests.swift */,
 				B1000008232C5A0000000001 /* TickerValidatorTests.swift */,
 				B100000A232C5A0000000001 /* StockServiceTests.swift */,
+				OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */,
+				O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */,
 				B100000C232C5A0000000001 /* StockDataTests.swift */,
 				B100000E232C5A0000000001 /* MarketScheduleTests.swift */,
 				B1000010232C5A0000000001 /* TickerConfigTests.swift */,
@@ -399,6 +408,7 @@
 				A100001D232C5A0000000001 /* TickerEditorView.swift in Sources */,
 				A1000005232C5A0000000001 /* StockService.swift in Sources */,
 				O1000001232C5A0000000001 /* StockService+MarketCap.swift in Sources */,
+				O9B9C55A3EB0997D72E72E7D /* StockService+Finnhub.swift in Sources */,
 				O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */,
 				A1000007232C5A0000000001 /* StockData.swift in Sources */,
 				A1000009232C5A0000000001 /* TickerConfig.swift in Sources */,
@@ -445,6 +455,8 @@
 				B1000005232C5A0000000001 /* TickerEditorStateTests.swift in Sources */,
 				B1000007232C5A0000000001 /* TickerValidatorTests.swift in Sources */,
 				B1000009232C5A0000000001 /* StockServiceTests.swift in Sources */,
+				O9D1CA5D4B41C01FB057CA37 /* FinnhubResponseTests.swift in Sources */,
+				O1E0BAFB36527D7D26960729 /* SymbolRoutingTests.swift in Sources */,
 				B100000B232C5A0000000001 /* StockDataTests.swift in Sources */,
 				B100000D232C5A0000000001 /* MarketScheduleTests.swift in Sources */,
 				B100000F232C5A0000000001 /* TickerConfigTests.swift in Sources */,

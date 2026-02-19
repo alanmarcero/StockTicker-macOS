@@ -68,6 +68,7 @@ struct WatchlistConfig: Codable, Equatable {
     var showNewsHeadlines: Bool
     var newsRefreshInterval: Int
     var universe: [String]
+    var finnhubApiKey: String?
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -119,6 +120,7 @@ struct WatchlistConfig: Codable, Equatable {
         case highlightColor, highlightOpacity
         case showNewsHeadlines, newsRefreshInterval
         case universe
+        case finnhubApiKey
     }
 
     init(from decoder: Decoder) throws {
@@ -140,6 +142,7 @@ struct WatchlistConfig: Codable, Equatable {
         showNewsHeadlines = try container.decodeIfPresent(Bool.self, forKey: .showNewsHeadlines) ?? true
         newsRefreshInterval = try container.decodeIfPresent(Int.self, forKey: .newsRefreshInterval) ?? 300
         universe = try container.decodeIfPresent([String].self, forKey: .universe) ?? []
+        finnhubApiKey = try container.decodeIfPresent(String.self, forKey: .finnhubApiKey)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -157,6 +160,7 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(showNewsHeadlines, forKey: .showNewsHeadlines)
         try container.encode(newsRefreshInterval, forKey: .newsRefreshInterval)
         try container.encode(universe, forKey: .universe)
+        try container.encodeIfPresent(finnhubApiKey, forKey: .finnhubApiKey)
     }
 
     init(
@@ -172,7 +176,8 @@ struct WatchlistConfig: Codable, Equatable {
         highlightOpacity: Double = 0.25,
         showNewsHeadlines: Bool = true,
         newsRefreshInterval: Int = 300,
-        universe: [String] = []
+        universe: [String] = [],
+        finnhubApiKey: String? = nil
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -187,6 +192,7 @@ struct WatchlistConfig: Codable, Equatable {
         self.showNewsHeadlines = showNewsHeadlines
         self.newsRefreshInterval = newsRefreshInterval
         self.universe = universe
+        self.finnhubApiKey = finnhubApiKey
     }
 }
 

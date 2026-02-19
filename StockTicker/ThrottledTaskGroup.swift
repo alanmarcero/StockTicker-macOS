@@ -11,6 +11,11 @@ enum ThrottledTaskGroup {
         static let delayNanoseconds: UInt64 = 2_000_000_000 // 2s between launches
     }
 
+    enum FinnhubBackfill {
+        static let maxConcurrency = 5
+        static let delayNanoseconds: UInt64 = 200_000_000 // 200ms between launches
+    }
+
     static func map<T: Sendable>(
         items: [String],
         maxConcurrency: Int = Limits.maxConcurrency,

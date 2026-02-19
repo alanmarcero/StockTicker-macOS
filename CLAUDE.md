@@ -33,21 +33,22 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (39 files, ~7,537 lines)
+## Source Files (40 files, ~7,887 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (931L)  Main controller: menu bar UI, state management, two-tier universe fetching
+MenuBarView.swift                (933L)  Main controller: menu bar UI, state management, two-tier universe fetching
 MenuBarController+Cache.swift    (379L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (205L)  Yahoo Finance API client (actor), chart v8 methods
+StockService.swift               (241L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
-StockService+Historical.swift    (276L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation)
+StockService+Historical.swift    (450L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
 StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (106L)  Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API (2PM ET Friday bar completion)
-StockData.swift                  (528L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
+StockService+Finnhub.swift       (49L)   Extension: Finnhub candle API fetch methods (daily candles, closes, historical close)
+StockService+EMA.swift           (174L)  Extension: 5-day/week/month EMA fetch + weekly crossover with Finnhub routing + Yahoo fallback
+StockData.swift                  (538L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models, FinnhubCandleResponse
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
-TickerConfig.swift               (306L)  Config loading/saving, protocols, legacy backward compat, universe field
+TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
 RequestLogger.swift              (275L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries
 DebugWindow.swift                (281L)  Debug window with error indicator, injected RequestLogger
@@ -74,16 +75,16 @@ RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothi
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (47L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection
 EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 3 timeframes + crossover per symbol
-ThrottledTaskGroup.swift         (39L)   Bounded concurrency utility with Backfill throttle mode
+ThrottledTaskGroup.swift         (44L)   Bounded concurrency utility with Backfill and FinnhubBackfill throttle modes
 ```
 
-## Test Files (33 files, ~10,854 lines)
+## Test Files (35 files, ~11,184 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
-StockServiceTests.swift          (1069L) API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily, crossover timing
+StockServiceTests.swift          (1181L) API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily, crossover timing, Finnhub routing + fallback
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
-TickerConfigTests.swift          (775L)  Config load/save, encoding, legacy backward compat, universe field
+TickerConfigTests.swift          (829L)  Config load/save, encoding, legacy backward compat, universe field, finnhubApiKey
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
 TickerListOperationsTests.swift  (212L)  Pure watchlist function tests
 TickerValidatorTests.swift       (406L)  Symbol validation, HTTP mocking
@@ -103,7 +104,7 @@ TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, 
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
-QuoteFetchCoordinatorTests.swift (303L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
+QuoteFetchCoordinatorTests.swift (305L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
 SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings, index tracking
@@ -112,7 +113,9 @@ RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
 EMAAnalysisTests.swift           (140L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection
 EMACacheTests.swift              (313L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
-ThrottledTaskGroupTests.swift    (118L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill constants
+SymbolRoutingTests.swift         (74L)   Symbol routing: equity→Finnhub, index→Yahoo, crypto→Yahoo, nil key→Yahoo, partition splits
+FinnhubResponseTests.swift       (83L)   Finnhub candle response decoding: valid, no_data, null fields, empty arrays
+ThrottledTaskGroupTests.swift    (123L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill + FinnhubBackfill constants
 ```
 
 ## File Dependencies
@@ -147,9 +150,10 @@ MenuBarView.swift (MenuBarController)
 
 StockService.swift
 ├── StockService+MarketCap.swift (market cap + forward P/E extension)
-├── StockService+Historical.swift (historical price + daily analysis consolidation extension)
+├── StockService+Finnhub.swift (Finnhub candle API extension)
+├── StockService+Historical.swift (historical price + daily analysis with Finnhub routing)
 ├── StockService+ForwardPE.swift (forward P/E timeseries extension)
-├── StockService+EMA.swift (5-day/week/month EMA extension)
+├── StockService+EMA.swift (5-day/week/month EMA with Finnhub routing)
 ├── ThrottledTaskGroup.swift (bounded concurrency for batch methods)
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
@@ -255,7 +259,10 @@ All major components use protocols for testability:
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Bounded Concurrency (ThrottledTaskGroup)
-`ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Two modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, and **Backfill** (1 concurrent, 2s delay) for cache population. Used by all `StockService` batch methods (`fetchQuotes` at default, all cache batch methods at Backfill). `fetchQuotes` stays fast for ~52 watchlist symbols; cache methods throttle heavily to avoid Yahoo 429s at universe scale (~500 symbols). 429 responses are not retried by `LoggingHTTPClient`.
+`ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Three modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, **Backfill** (1 concurrent, 2s delay) for Yahoo cache population, and **FinnhubBackfill** (5 concurrent, 200ms delay) for Finnhub cache population. Batch methods partition symbols by source via `SymbolRouting.partition()` and run both API groups in parallel. 429 responses are not retried by `LoggingHTTPClient`.
+
+### Symbol Routing (Dual-API Architecture)
+`SymbolRouting` enum routes historical price fetching between Finnhub and Yahoo Finance. **Finnhub** handles equities and ETFs (AAPL, SPY) — 60 req/min, no daily cap. **Yahoo** handles indices (^GSPC, ^DJI) and crypto (BTC-USD, ETH-USD) — Finnhub uses different identifiers for these. When `finnhubApiKey` is nil, all symbols route to Yahoo (graceful degradation). Each routed method tries Finnhub first, falls back to Yahoo on failure.
 
 ### Two-Tier Symbol Sets
 - `allCacheSymbols` — deduplicated union of watchlist + universe + index symbols. Used by YTD, highest close, swing, RSI, EMA cache fetchers.
@@ -303,6 +310,7 @@ All magic numbers are extracted into namespaced enums:
 - `SwingAnalysis` — stateless enum with pure swing high/low detection algorithm (returns prices + indices)
 - `RSIAnalysis` — stateless enum with pure RSI-14 calculation (Wilder's smoothing)
 - `EMAAnalysis` — stateless enum with pure 5-period EMA calculation (SMA seed) and weekly crossover detection
+- `SymbolRouting` — stateless enum with `historicalSource(for:finnhubApiKey:)` and `partition(_:finnhubApiKey:)` for dual-API routing
 
 ### Callback Cleanup
 `WatchlistEditorState` explicitly clears callbacks to prevent retain cycles. Called in `save()`, `cancel()`, and when window closes.
@@ -317,6 +325,13 @@ Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManage
 `decodeLegacy()` extension on `KeyedDecodingContainer` handles backward-compatible field names (e.g. `tickers` → `watchlist`, `cycleInterval` → `menuBarRotationInterval`). Two overloads: required (throws) and optional (with default).
 
 ## API Integration
+
+### Finnhub Stock Candle API — Historical Prices (Equities/ETFs)
+```
+GET https://finnhub.io/api/v1/stock/candle?symbol={SYM}&resolution={D|W|M}&from={UNIX}&to={UNIX}&token={KEY}
+```
+
+Response: `{"c":[closes...],"t":[timestamps...],"s":"ok"}`. We only use `c` (closes), `t` (timestamps), and `s` (status). Closes are non-nullable `[Double]`. Status `"ok"` = valid data, `"no_data"` = no data for range. Used for daily analysis, highest close, swing levels, RSI, and EMA (weekly/monthly) for equity and ETF symbols. Requires `finnhubApiKey` in config. Rate limit: 60 req/min.
 
 ### Yahoo Finance Chart API (v8) — Price Data
 ```
@@ -641,6 +656,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 | `highlightColor` | `String` | `"yellow"` |
 | `highlightOpacity` | `Double` | `0.25` |
 | `universe` | `[String]` | `[]` |
+| `finnhubApiKey` | `String?` | `nil` |
 | `showNewsHeadlines` | `Bool` | `true` |
 | `newsRefreshInterval` | `Int` (seconds) | `300` |
 
@@ -703,7 +719,7 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 
 1. **Meaningful Names** — Names reveal intent without comments
 2. **Functions Do One Thing** — Small, focused, single-responsibility functions
-3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `ThrottledTaskGroup` (+ `Backfill` constants), `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
+3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `ThrottledTaskGroup` (+ `Backfill`/`FinnhubBackfill` constants), `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`, `SymbolRouting`
 4. **Single Responsibility** — Extracted SortOption, MarqueeView, MenuItemFactory, MenuBarController+Cache, TimerManager, TickerDisplayBuilder, QuoteFetchCoordinator, StockService extensions, pure WatchlistOperations
 5. **Boy Scout Rule** — Leave code cleaner than found
 6. **Minimize Comments** — Comments explain *why* (intent, warnings), never *what*

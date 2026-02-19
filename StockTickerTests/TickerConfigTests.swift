@@ -615,6 +615,60 @@ final class WatchlistConfigTests: XCTestCase {
 
         XCTAssertNotEqual(config1, config2)
     }
+
+    // MARK: - finnhubApiKey tests
+
+    func testDecoder_finnhubApiKey_decodesCorrectly() throws {
+        let json = """
+        {"watchlist":["SPY"],"menuBarRotationInterval":5,"refreshInterval":15,"sortDirection":"percentDesc","menuBarAssetWhenClosed":"BTC-USD","finnhubApiKey":"my_test_key_123"}
+        """
+        let data = json.data(using: .utf8)!
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(config.finnhubApiKey, "my_test_key_123")
+    }
+
+    func testDecoder_missingFinnhubApiKey_defaultsToNil() throws {
+        let json = """
+        {"watchlist":["SPY"],"menuBarRotationInterval":5,"refreshInterval":15,"sortDirection":"percentDesc","menuBarAssetWhenClosed":"BTC-USD"}
+        """
+        let data = json.data(using: .utf8)!
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertNil(config.finnhubApiKey)
+    }
+
+    func testRoundTrip_finnhubApiKey_preserved() throws {
+        let original = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            finnhubApiKey: "test_key_abc"
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.finnhubApiKey, "test_key_abc")
+    }
+
+    func testRoundTrip_nilFinnhubApiKey_remainsNil() throws {
+        let original = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            finnhubApiKey: nil
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertNil(decoded.finnhubApiKey)
+    }
+
+    func testDefaultConfig_hasNilFinnhubApiKey() {
+        XCTAssertNil(WatchlistConfig.defaultConfig.finnhubApiKey)
+    }
 }
 
 // MARK: - WatchlistConfigManager Tests

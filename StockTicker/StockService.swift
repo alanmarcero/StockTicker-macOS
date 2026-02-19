@@ -3,6 +3,7 @@ import Foundation
 // MARK: - Protocol for Dependency Injection
 
 protocol StockServiceProtocol: Sendable {
+    func updateFinnhubApiKey(_ key: String?) async
     func fetchQuote(symbol: String) async -> StockQuote?
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote]
     func fetchMarketState(symbol: String) async -> String?
@@ -54,14 +55,44 @@ extension URLResponse {
     }
 }
 
+// MARK: - Symbol Routing
+
+enum SymbolRouting {
+    enum Source {
+        case finnhub
+        case yahoo
+    }
+
+    static func historicalSource(for symbol: String, finnhubApiKey: String?) -> Source {
+        guard finnhubApiKey != nil else { return .yahoo }
+        if symbol.hasPrefix("^") { return .yahoo }
+        if symbol.contains("-") { return .yahoo }
+        return .finnhub
+    }
+
+    static func partition(_ symbols: [String], finnhubApiKey: String?) -> (finnhub: [String], yahoo: [String]) {
+        var finnhub: [String] = []
+        var yahoo: [String] = []
+        for symbol in symbols {
+            switch historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
+            case .finnhub: finnhub.append(symbol)
+            case .yahoo: yahoo.append(symbol)
+            }
+        }
+        return (finnhub, yahoo)
+    }
+}
+
 // MARK: - Stock Service Implementation
 
 actor StockService: StockServiceProtocol {
     let httpClient: HTTPClient
     var crumb: String?
+    var finnhubApiKey: String?
 
     enum APIEndpoints {
         static let chartBase = "https://query1.finance.yahoo.com/v8/finance/chart/"
+        static let finnhubCandleBase = "https://finnhub.io/api/v1/stock/candle"
         static let cookieSetup = "https://fc.yahoo.com/v1/test"
         static let crumbFetch = "https://query2.finance.yahoo.com/v1/test/getcrumb"
         static let quoteBase = "https://query2.finance.yahoo.com/v7/finance/quote"
@@ -69,8 +100,13 @@ actor StockService: StockServiceProtocol {
         static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
     }
 
-    init(httpClient: HTTPClient = LoggingHTTPClient()) {
+    init(httpClient: HTTPClient = LoggingHTTPClient(), finnhubApiKey: String? = nil) {
         self.httpClient = httpClient
+        self.finnhubApiKey = finnhubApiKey
+    }
+
+    func updateFinnhubApiKey(_ key: String?) {
+        finnhubApiKey = key
     }
 
     func fetchQuote(symbol: String) async -> StockQuote? {
