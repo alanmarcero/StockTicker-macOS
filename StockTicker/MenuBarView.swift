@@ -36,6 +36,7 @@ private enum Timing {
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
     static let universeRefreshCadence = 4  // Every 4th refresh cycle (~60s at 15s interval)
+    static let cacheRetryCadence = 4      // Retry missing cache entries every 4th cycle (~60s)
 }
 
 // MARK: - Menu Bar Controller
@@ -353,7 +354,9 @@ class MenuBarController: NSObject, ObservableObject {
         }
         attachMarketCapsToQuotes()
         await refreshDailyAnalysisIfNeeded()
-        await retryMissingCacheEntries()
+        if refreshCycleCount % Timing.cacheRetryCadence == 0 {
+            await retryMissingCacheEntries()
+        }
         attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 

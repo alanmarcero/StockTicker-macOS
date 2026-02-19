@@ -221,6 +221,7 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
                 await logger.log(entry)
 
                 if let code = entry.statusCode, !(200..<300).contains(code),
+                   code != 429,
                    attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
                     try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
                     continue

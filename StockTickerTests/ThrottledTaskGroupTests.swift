@@ -70,6 +70,21 @@ final class ThrottledTaskGroupTests: XCTestCase {
 
         XCTAssertEqual(result.count, 100)
     }
+
+    func testMap_customDelayParameter_accepted() async {
+        let items = ["A", "B", "C"]
+        let result = await ThrottledTaskGroup.map(items: items, delay: 1_000) { item in
+            return item.lowercased()
+        }
+
+        XCTAssertEqual(result.count, 3)
+        XCTAssertEqual(result["A"], "a")
+    }
+
+    func testBackfillConstants_accessible() {
+        XCTAssertEqual(ThrottledTaskGroup.Backfill.maxConcurrency, 2)
+        XCTAssertEqual(ThrottledTaskGroup.Backfill.delayNanoseconds, 1_000_000_000)
+    }
 }
 
 // Simple thread-safe atomic counter for testing

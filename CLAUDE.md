@@ -33,23 +33,23 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (39 files, ~7,431 lines)
+## Source Files (39 files, ~7,537 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (927L)  Main controller: menu bar UI, state management, two-tier universe fetching
-MenuBarController+Cache.swift    (329L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
+MenuBarView.swift                (931L)  Main controller: menu bar UI, state management, two-tier universe fetching
+MenuBarController+Cache.swift    (379L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (205L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
-StockService+Historical.swift    (264L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation)
-StockService+ForwardPE.swift     (47L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (77L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
+StockService+Historical.swift    (276L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation)
+StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
+StockService+EMA.swift           (106L)  Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API (2PM ET Friday bar completion)
 StockData.swift                  (528L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (306L)  Config loading/saving, protocols, legacy backward compat, universe field
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
-RequestLogger.swift              (274L)  API request logging (actor), LoggingHTTPClient with retry, error queries
+RequestLogger.swift              (275L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries
 DebugWindow.swift                (281L)  Debug window with error indicator, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
@@ -74,14 +74,14 @@ RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothi
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (47L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection
 EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 3 timeframes + crossover per symbol
-ThrottledTaskGroup.swift         (31L)   Bounded concurrency utility (max 20 concurrent tasks)
+ThrottledTaskGroup.swift         (39L)   Bounded concurrency utility with Backfill throttle mode
 ```
 
-## Test Files (33 files, ~10,699 lines)
+## Test Files (33 files, ~10,854 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
-StockServiceTests.swift          (984L)  API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily
+StockServiceTests.swift          (1069L) API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily, crossover timing
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (775L)  Config load/save, encoding, legacy backward compat, universe field
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -97,7 +97,7 @@ QuarterlyPanelTests.swift        (1654L) Row computation, sorting, direction tog
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
-RequestLoggerTests.swift         (70L)   Error count/last error queries, clear reset
+RequestLoggerTests.swift         (125L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
@@ -112,7 +112,7 @@ RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
 EMAAnalysisTests.swift           (140L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection
 EMACacheTests.swift              (313L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
-ThrottledTaskGroupTests.swift    (103L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item
+ThrottledTaskGroupTests.swift    (118L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill constants
 ```
 
 ## File Dependencies
@@ -255,7 +255,7 @@ All major components use protocols for testability:
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Bounded Concurrency (ThrottledTaskGroup)
-`ThrottledTaskGroup.map()` limits concurrent API calls to 20 (configurable). Seeds N tasks, then adds one as each completes — standard index-advancing pattern. Used by all `StockService` batch methods (`fetchQuotes`, `batchFetchHistoricalClosePrices`, `batchFetchSwingLevels`, `batchFetchForwardPERatios`, `batchFetchEMAValues`). Critical for universe-scale fetching (~500 symbols).
+`ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Two modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, and **Backfill** (2 concurrent, 1s delay) for cache population. Used by all `StockService` batch methods (`fetchQuotes` at default, all cache batch methods at Backfill). `fetchQuotes` stays fast for ~52 watchlist symbols; cache methods throttle heavily to avoid Yahoo 429s at universe scale (~500 symbols). 429 responses are not retried by `LoggingHTTPClient`.
 
 ### Two-Tier Symbol Sets
 - `allCacheSymbols` — deduplicated union of watchlist + universe + index symbols. Used by YTD, highest close, swing, RSI, EMA cache fetchers.
@@ -351,7 +351,7 @@ URLSession (conforms) ─── raw network layer
 LoggingHTTPClient (wraps HTTPClient)
     ├── Logs all requests to RequestLogger actor
     ├── buildSuccessEntry() extracts headers/body into log entries
-    ├── Retry: 1 retry after 0.5s on non-2xx or network error
+    ├── Retry: 1 retry after 0.5s on non-2xx or network error (skips 429)
     ├── Skips retries during pre-market/after-hours
     └── Response body capped at ResponseLimits.maxBodySize (50KB)
     │
@@ -532,9 +532,11 @@ Cached at `~/.stockticker/ema-cache.json`:
 
 All three fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` over symbols (max 20 concurrent).
 
-**Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil.
+**Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil. Crossover detection uses only completed weekly bars — the current week's candle is excluded before Friday 2PM ET (when the bar is considered closed). `isWeeklyBarComplete(now:)` returns true on Saturday/Sunday or Friday 2PM+ ET.
 
 **Failure resilience:** `fetchEMAEntry` returns `nil` when all three EMA values (day, week, month) are nil (total API failure). `ThrottledTaskGroup.map` excludes nil results, so failed symbols remain "missing" and are retried on the next fetch cycle. Partial success (e.g., daily succeeds but monthly fails) is stored with non-nil fields.
+
+**Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~60s). This produces ~20 API calls per cycle (5 EMA × 3 timeframes + 5 Forward P/E) = 0.33 req/sec sustained rate.
 
 Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly/monthly fetched separately)
 
@@ -701,7 +703,7 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 
 1. **Meaningful Names** — Names reveal intent without comments
 2. **Functions Do One Thing** — Small, focused, single-responsibility functions
-3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `ThrottledTaskGroup`, `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
+3. **DRY** — Single source of truth; `decodeLegacy`, `CacheStorage<T>`, `ThrottledTaskGroup` (+ `Backfill` constants), `HighlightConfig`, `ColorMapping`, shared `TradingHours` constants, `APIEndpoints`
 4. **Single Responsibility** — Extracted SortOption, MarqueeView, MenuItemFactory, MenuBarController+Cache, TimerManager, TickerDisplayBuilder, QuoteFetchCoordinator, StockService extensions, pure WatchlistOperations
 5. **Boy Scout Rule** — Leave code cleaner than found
 6. **Minimize Comments** — Comments explain *why* (intent, warnings), never *what*

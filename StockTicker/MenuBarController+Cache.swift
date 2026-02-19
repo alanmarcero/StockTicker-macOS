@@ -219,7 +219,7 @@ extension MenuBarController {
     // MARK: - Cache Retry
 
     private enum CacheRetry {
-        static let batchSize = 20
+        static let batchSize = 5
     }
 
     func retryMissingCacheEntries() async {

@@ -31,7 +31,11 @@ extension StockService {
     }
 
     func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await self.fetchForwardPERatios(symbol: symbol, period1: period1, period2: period2)
         }
     }

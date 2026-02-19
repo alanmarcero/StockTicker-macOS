@@ -43,7 +43,7 @@ extension StockService {
         await fetchEMA(symbol: symbol, range: "2y", interval: "1mo")
     }
 
-    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil) async -> EMACacheEntry? {
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, now: Date = Date()) async -> EMACacheEntry? {
         async let weeklyCloses = fetchChartCloses(symbol: symbol, range: "6mo", interval: "1wk")
         async let month = fetchMonthlyEMA(symbol: symbol)
 
@@ -56,21 +56,50 @@ extension StockService {
 
         let closes = await weeklyCloses
         let weekEMA = closes.flatMap { EMAAnalysis.calculate(closes: $0) }
-        let crossover = closes.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
+
+        // Crossover uses only completed weekly bars — drop current week before Friday 2PM ET
+        let crossoverCloses: [Double]?
+        if isWeeklyBarComplete(now: now) {
+            crossoverCloses = closes
+        } else if let c = closes, c.count > 1 {
+            crossoverCloses = Array(c.dropLast())
+        } else {
+            crossoverCloses = nil
+        }
+        let crossover = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
 
         let monthEMA = await month
         guard day != nil || weekEMA != nil || monthEMA != nil else { return nil }
         return EMACacheEntry(day: day, week: weekEMA, month: monthEMA, weekCrossoverWeeksBelow: crossover)
     }
 
+    private func isWeeklyBarComplete(now: Date) -> Bool {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let weekday = calendar.component(.weekday, from: now)
+        // Saturday (7) or Sunday (1)
+        guard weekday != 7, weekday != 1 else { return true }
+        // Friday (6) at 2PM+ ET
+        guard weekday == 6 else { return false }
+        return calendar.component(.hour, from: now) >= 14
+    }
+
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await self.fetchEMAEntry(symbol: symbol)
         }
     }
 
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
         }
     }

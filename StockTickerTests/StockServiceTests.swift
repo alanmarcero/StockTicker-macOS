@@ -981,4 +981,89 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
         XCTAssertNil(ema)
     }
+
+    // MARK: - Weekly Crossover Timing Tests
+
+    /// Weekly closes that produce a crossover on the last bar: 6 bars below EMA then 1 above.
+    /// With period=5: SMA(first 5)=50, bar 6 below at 45, bar 7 crosses above at 60.
+    private func crossoverWeeklyCloses() -> [Double] {
+        [40, 45, 50, 55, 60, 45, 80]
+    }
+
+    private func makeWeeklyJSON(closes: [Double]) -> String {
+        let closesStr = closes.map { String($0) }.joined(separator: ",")
+        return """
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(closesStr)]}]}}]}}
+        """
+    }
+
+    private func setupCrossoverMock(closes: [Double]) -> (MockHTTPClient, StockService) {
+        let mockClient = MockHTTPClient()
+        let weeklyJSON = makeWeeklyJSON(closes: closes)
+        let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
+        let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
+        return (mockClient, StockService(httpClient: mockClient))
+    }
+
+    private func makeETDate(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        return calendar.date(from: components)!
+    }
+
+    func testCrossoverTiming_thursday_excludesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-19 is a Thursday
+        let thursday = makeETDate(year: 2026, month: 2, day: 19, hour: 12)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: thursday)
+
+        XCTAssertNotNil(result)
+        // Crossover is on the last bar; dropping it means no crossover detected
+        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Mid-week should drop current bar and see no crossover")
+    }
+
+    func testCrossoverTiming_friday159PM_excludesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-20 is a Friday
+        let friday159 = makeETDate(year: 2026, month: 2, day: 20, hour: 13, minute: 59)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday159)
+
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Before Friday 2PM should drop current bar")
+    }
+
+    func testCrossoverTiming_friday2PM_includesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-20 is a Friday
+        let friday2pm = makeETDate(year: 2026, month: 2, day: 20, hour: 14)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday2pm)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Friday 2PM+ should include current bar and detect crossover")
+    }
+
+    func testCrossoverTiming_saturday_includesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-21 is a Saturday
+        let saturday = makeETDate(year: 2026, month: 2, day: 21, hour: 10)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: saturday)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Saturday should include current bar and detect crossover")
+    }
 }

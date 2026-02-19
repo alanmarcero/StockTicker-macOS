@@ -82,7 +82,11 @@ extension StockService {
     }
 
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await self.fetchDailyAnalysis(symbol: symbol, period1: period1, period2: period2)
         }
     }
@@ -196,7 +200,11 @@ extension StockService {
     }
 
     func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingLevelCacheEntry] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2)
         }
     }
@@ -257,7 +265,11 @@ extension StockService {
         symbols: [String],
         fetcher: @escaping @Sendable (String) async -> Double?
     ) async -> [String: Double] {
-        await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
             await fetcher(symbol)
         }
     }
