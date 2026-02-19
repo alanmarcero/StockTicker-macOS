@@ -90,6 +90,12 @@ final class ThrottledTaskGroupTests: XCTestCase {
         XCTAssertEqual(ThrottledTaskGroup.FinnhubBackfill.maxConcurrency, 5)
         XCTAssertEqual(ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds, 200_000_000)
     }
+
+    func testFinnhubQuoteConstants_accessible() {
+        XCTAssertEqual(ThrottledTaskGroup.FinnhubQuote.maxConcurrency, 5)
+        XCTAssertEqual(ThrottledTaskGroup.FinnhubQuote.delayNanoseconds, 200_000_000)
+        XCTAssertEqual(ThrottledTaskGroup.FinnhubQuote.maxSymbolsPerCycle, 50)
+    }
 }
 
 // Simple thread-safe atomic counter for testing

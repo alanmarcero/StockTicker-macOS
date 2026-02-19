@@ -16,6 +16,12 @@ enum ThrottledTaskGroup {
         static let delayNanoseconds: UInt64 = 200_000_000 // 200ms between launches
     }
 
+    enum FinnhubQuote {
+        static let maxConcurrency = 5
+        static let delayNanoseconds: UInt64 = 200_000_000 // 200ms between launches
+        static let maxSymbolsPerCycle = 50  // Stay under 60 req/min
+    }
+
     static func map<T: Sendable>(
         items: [String],
         maxConcurrency: Int = Limits.maxConcurrency,

@@ -27,6 +27,7 @@ protocol StockServiceProtocol: Sendable {
     func fetchDailyAnalysis(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult?
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult]
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry]
+    func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote]
 }
 
 // MARK: - HTTP Client Protocol
@@ -93,6 +94,7 @@ actor StockService: StockServiceProtocol {
     enum APIEndpoints {
         static let chartBase = "https://query1.finance.yahoo.com/v8/finance/chart/"
         static let finnhubCandleBase = "https://finnhub.io/api/v1/stock/candle"
+        static let finnhubQuoteBase = "https://finnhub.io/api/v1/quote"
         static let cookieSetup = "https://fc.yahoo.com/v1/test"
         static let crumbFetch = "https://query2.finance.yahoo.com/v1/test/getcrumb"
         static let quoteBase = "https://query2.finance.yahoo.com/v7/finance/quote"

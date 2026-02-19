@@ -50,4 +50,33 @@ extension StockService {
         guard let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2) else { return nil }
         return result.closes.last
     }
+
+    // MARK: - Finnhub Real-Time Quote
+
+    func fetchFinnhubQuote(symbol: String) async -> StockQuote? {
+        guard let key = finnhubApiKey,
+              let url = URL(string: "\(APIEndpoints.finnhubQuoteBase)?symbol=\(symbol)") else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue(key, forHTTPHeaderField: "X-Finnhub-Token")
+
+        do {
+            let (data, response) = try await httpClient.data(for: request)
+            guard response.isSuccessfulHTTP else { return nil }
+            let decoded = try JSONDecoder().decode(FinnhubQuoteResponse.self, from: data)
+            guard decoded.isValid else { return nil }
+            return StockQuote(symbol: symbol, price: decoded.c, previousClose: decoded.pc, session: .regular)
+        } catch {
+            return nil
+        }
+    }
+
+    func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote] {
+        await ThrottledTaskGroup.map(
+            items: symbols,
+            maxConcurrency: ThrottledTaskGroup.FinnhubQuote.maxConcurrency,
+            delay: ThrottledTaskGroup.FinnhubQuote.delayNanoseconds
+        ) { symbol in
+            await self.fetchFinnhubQuote(symbol: symbol)
+        }
+    }
 }

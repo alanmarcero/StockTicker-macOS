@@ -1178,4 +1178,89 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         let source3 = await service.finnhubApiKey
         XCTAssertNil(source3)
     }
+
+    // MARK: - Finnhub Quote Tests
+
+    func testFetchFinnhubQuote_validResponse_returnsQuote() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {"c":263.84,"d":-0.51,"dp":-0.1929,"h":264.48,"l":262.29,"o":263.21,"pc":264.35,"t":1771519213}
+        """
+        let url = URL(string: "https://finnhub.io/api/v1/quote?symbol=AAPL")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
+        let quote = await service.fetchFinnhubQuote(symbol: "AAPL")
+
+        XCTAssertNotNil(quote)
+        XCTAssertEqual(quote?.symbol, "AAPL")
+        XCTAssertEqual(quote?.price, 263.84)
+        XCTAssertEqual(quote?.previousClose, 264.35)
+        XCTAssertEqual(quote?.session, .regular)
+    }
+
+    func testFetchFinnhubQuote_zeroPrices_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let json = """
+        {"c":0,"d":null,"dp":null,"h":0,"l":0,"o":0,"pc":0,"t":0}
+        """
+        let url = URL(string: "https://finnhub.io/api/v1/quote?symbol=UNKNOWN")!
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
+
+        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
+        let quote = await service.fetchFinnhubQuote(symbol: "UNKNOWN")
+
+        XCTAssertNil(quote)
+    }
+
+    func testFetchFinnhubQuote_noApiKey_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let service = StockService(httpClient: mockClient) // No finnhubApiKey
+        let quote = await service.fetchFinnhubQuote(symbol: "AAPL")
+
+        XCTAssertNil(quote)
+        let finnhubRequests = mockClient.requestedURLs.filter { $0.absoluteString.contains("finnhub") }
+        XCTAssertTrue(finnhubRequests.isEmpty)
+    }
+
+    func testFetchFinnhubQuote_httpError_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        let url = URL(string: "https://finnhub.io/api/v1/quote?symbol=AAPL")!
+        let response = HTTPURLResponse(url: url, statusCode: 429, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[url] = .success((Data(), response))
+
+        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
+        let quote = await service.fetchFinnhubQuote(symbol: "AAPL")
+
+        XCTAssertNil(quote)
+    }
+
+    func testFetchFinnhubQuotes_batch_returnsValidOnly() async {
+        let mockClient = MockHTTPClient()
+
+        // Valid quote for AAPL
+        let aaplJson = """
+        {"c":150.0,"d":1.0,"dp":0.67,"h":151.0,"l":149.0,"o":149.5,"pc":149.0,"t":1700000000}
+        """
+        let aaplUrl = URL(string: "https://finnhub.io/api/v1/quote?symbol=AAPL")!
+        let aaplResponse = HTTPURLResponse(url: aaplUrl, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[aaplUrl] = .success((aaplJson.data(using: .utf8)!, aaplResponse))
+
+        // Invalid (zeros) for UNKNOWN
+        let unknownJson = """
+        {"c":0,"d":null,"dp":null,"h":0,"l":0,"o":0,"pc":0,"t":0}
+        """
+        let unknownUrl = URL(string: "https://finnhub.io/api/v1/quote?symbol=UNKNOWN")!
+        let unknownResponse = HTTPURLResponse(url: unknownUrl, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[unknownUrl] = .success((unknownJson.data(using: .utf8)!, unknownResponse))
+
+        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
+        let quotes = await service.fetchFinnhubQuotes(symbols: ["AAPL", "UNKNOWN"])
+
+        XCTAssertEqual(quotes.count, 1)
+        XCTAssertNotNil(quotes["AAPL"])
+        XCTAssertNil(quotes["UNKNOWN"])
+    }
 }

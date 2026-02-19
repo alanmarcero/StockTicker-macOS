@@ -114,6 +114,7 @@ class MenuBarController: NSObject, ObservableObject {
     var universeMarketCaps: [String: Double] = [:]
     var universeForwardPEs: [String: Double] = [:]
     private var refreshCycleCount = 0
+    private var universeFinnhubBatchIndex = 0
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -401,7 +402,33 @@ class MenuBarController: NSObject, ObservableObject {
 
         guard shouldFetch else { return }
 
-        let fetched = await stockService.fetchQuotes(symbols: symbols)
+        // Partition: equities → Finnhub, indices/crypto → Yahoo
+        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: config.finnhubApiKey)
+
+        // Stagger Finnhub: max N per cycle to stay under 60 req/min
+        let maxPerCycle = ThrottledTaskGroup.FinnhubQuote.maxSymbolsPerCycle
+        let batch: [String]
+        if finnhubSymbols.count <= maxPerCycle {
+            batch = finnhubSymbols
+        } else {
+            let sorted = finnhubSymbols.sorted()
+            let offset = (universeFinnhubBatchIndex * maxPerCycle) % sorted.count
+            let end = min(offset + maxPerCycle, sorted.count)
+            batch = Array(sorted[offset..<end])
+            universeFinnhubBatchIndex += 1
+        }
+
+        // Overflow equity symbols fall back to Yahoo this cycle
+        let batchSet = Set(batch)
+        let overflow = finnhubSymbols.filter { !batchSet.contains($0) }
+        let allYahoo = yahooSymbols + overflow
+
+        // Fetch in parallel
+        async let fQuotes = stockService.fetchFinnhubQuotes(symbols: batch)
+        async let yQuotes = stockService.fetchQuotes(symbols: allYahoo)
+        var fetched = await yQuotes
+        fetched.merge(await fQuotes) { _, new in new }
+
         universeQuotes.merge(fetched) { _, new in new }
 
         let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: symbols)
@@ -728,6 +755,7 @@ class MenuBarController: NSObject, ObservableObject {
         currentSortOption = SortOption.from(configString: config.sortDirection)
         currentIndex = 0
         hasCompletedInitialLoad = false  // Reset so next refresh fetches all symbols
+        universeFinnhubBatchIndex = 0
         universeQuotes = [:]
         universeMarketCaps = [:]
         universeForwardPEs = [:]

@@ -26,6 +26,21 @@ struct FinnhubCandleResponse: Codable {
     var isValid: Bool { s == "ok" }
 }
 
+// MARK: - Finnhub Quote API Response Model
+
+struct FinnhubQuoteResponse: Codable {
+    let c: Double   // current price
+    let d: Double?  // change (null for unknown symbols)
+    let dp: Double? // change percent
+    let h: Double   // high
+    let l: Double   // low
+    let o: Double   // open
+    let pc: Double  // previous close
+    let t: Int      // timestamp
+
+    var isValid: Bool { c > 0 && pc > 0 }
+}
+
 // MARK: - Yahoo Finance Chart API Response Models (v8)
 
 struct YahooChartResponse: Codable {

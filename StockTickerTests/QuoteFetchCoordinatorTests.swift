@@ -17,6 +17,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var emaEntriesToReturn: [String: EMACacheEntry] = [:]
     var dailyAnalysisToReturn: [String: DailyAnalysisResult] = [:]
 
+    var finnhubQuotesToReturn: [String: StockQuote] = [:]
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
 
@@ -120,6 +121,10 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
 
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult] {
         dailyAnalysisToReturn.filter { symbols.contains($0.key) }
+    }
+
+    func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote] {
+        finnhubQuotesToReturn.filter { symbols.contains($0.key) }
     }
 }
 
