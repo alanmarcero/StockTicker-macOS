@@ -360,7 +360,7 @@ final class StockServiceTests: XCTestCase {
         XCTAssertEqual(result?["Q4-2025"], 27.8)
     }
 
-    func testFetchForwardPERatios_emptyResult_returnsNil() async {
+    func testFetchForwardPERatios_emptyResult_returnsEmptyDict() async {
         let mockClient = MockHTTPClient()
         let json = """
         {
@@ -381,7 +381,8 @@ final class StockServiceTests: XCTestCase {
         let service = StockService(httpClient: mockClient)
         let result = await service.fetchForwardPERatios(symbol: "BTC-USD", period1: 100, period2: 200)
 
-        XCTAssertNil(result)
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result?.isEmpty ?? false)
     }
 
     func testFetchForwardPERatios_networkError_returnsNil() async {
@@ -886,6 +887,69 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         // Weekly and monthly should be computed from chart data
         XCTAssertNotNil(result["AAPL"]?.week)
         XCTAssertNotNil(result["AAPL"]?.month)
+    }
+
+    func testFetchEMAEntry_allAPIsFail_returnsNil() async {
+        let mockClient = MockHTTPClient()
+        // No responses set — all API calls will fail
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchEMAEntry(symbol: "AAPL")
+
+        XCTAssertNil(result)
+    }
+
+    func testFetchEMAEntry_partialSuccess_returnsEntry() async {
+        let mockClient = MockHTTPClient()
+        // Only weekly succeeds
+        let weeklyJSON = """
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[100, 105, 110, 115, 120, 125, 130, 135, 140, 145]}]}}]}}
+        """
+        let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
+        let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.fetchEMAEntry(symbol: "AAPL")
+
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.day)
+        XCTAssertNotNil(result?.week)
+        XCTAssertNil(result?.month)
+    }
+
+    func testBatchFetchForwardPE_apiFailure_excludesFromResult() async {
+        let mockClient = MockHTTPClient()
+        // AAPL succeeds, MSFT fails (no response set)
+        let json = """
+        {"timeseries":{"result":[{"meta":{"symbol":["AAPL"],"type":["quarterlyForwardPeRatio"]},"quarterlyForwardPeRatio":[{"asOfDate":"2025-12-31","reportedValue":{"raw":28.5,"fmt":"28.50"}}]}]}}
+        """
+        let aaplURL = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        let resp = HTTPURLResponse(url: aaplURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[aaplURL] = .success((json.data(using: .utf8)!, resp))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.batchFetchForwardPERatios(symbols: ["AAPL", "MSFT"], period1: 100, period2: 200)
+
+        XCTAssertNotNil(result["AAPL"])
+        XCTAssertEqual(result["AAPL"]?["Q4-2025"], 28.5)
+        XCTAssertNil(result["MSFT"])  // API failure — not stored
+    }
+
+    func testBatchFetchForwardPE_noData_includesEmptyDict() async {
+        let mockClient = MockHTTPClient()
+        // BTC-USD succeeds but has no PE data
+        let json = """
+        {"timeseries":{"result":[{"meta":{"symbol":["BTC-USD"],"type":["quarterlyForwardPeRatio"]}}]}}
+        """
+        let btcURL = URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/BTC-USD?type=quarterlyForwardPeRatio&period1=100&period2=200")!
+        let resp = HTTPURLResponse(url: btcURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[btcURL] = .success((json.data(using: .utf8)!, resp))
+
+        let service = StockService(httpClient: mockClient)
+        let result = await service.batchFetchForwardPERatios(symbols: ["BTC-USD"], period1: 100, period2: 200)
+
+        XCTAssertNotNil(result["BTC-USD"])
+        XCTAssertTrue(result["BTC-USD"]?.isEmpty ?? false)  // Stored as empty — won't retry
     }
 
     func testFetchMonthlyEMA_insufficientCloses_returnsNil() async {

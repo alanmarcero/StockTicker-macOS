@@ -15,7 +15,7 @@ extension StockService {
 
             let decoded = try JSONDecoder().decode(YahooTimeseriesResponse.self, from: data)
             guard let entries = decoded.timeseries.result?.first?.quarterlyForwardPeRatio else {
-                return nil
+                return [:]  // API success but no P/E data for this symbol
             }
 
             var result: [String: Double] = [:]
@@ -23,7 +23,7 @@ extension StockService {
                 guard let quarterId = parseAsOfDateToQuarter(entry.asOfDate) else { continue }
                 result[quarterId] = entry.reportedValue.raw
             }
-            return result.isEmpty ? nil : result
+            return result
         } catch {
             print("Forward P/E fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
@@ -31,15 +31,9 @@ extension StockService {
     }
 
     func batchFetchForwardPERatios(symbols: [String], period1: Int, period2: Int) async -> [String: [String: Double]] {
-        let results = await ThrottledTaskGroup.map(items: symbols) { symbol in
+        await ThrottledTaskGroup.map(items: symbols) { symbol in
             await self.fetchForwardPERatios(symbol: symbol, period1: period1, period2: period2)
         }
-        // Symbols without P/E data stored as empty dict to avoid refetching
-        var complete: [String: [String: Double]] = [:]
-        for symbol in symbols {
-            complete[symbol] = results[symbol] ?? [:]
-        }
-        return complete
     }
 
     private func parseAsOfDateToQuarter(_ dateString: String) -> String? {

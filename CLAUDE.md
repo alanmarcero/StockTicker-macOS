@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (39 files, ~7,435 lines)
+## Source Files (39 files, ~7,431 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -43,8 +43,8 @@ TimerManager.swift               (101L)  Timer lifecycle management with delegat
 StockService.swift               (205L)  Yahoo Finance API client (actor), chart v8 methods
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
 StockService+Historical.swift    (264L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation)
-StockService+ForwardPE.swift     (53L)   Extension: historical forward P/E ratios via timeseries API
-StockService+EMA.swift           (75L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
+StockService+ForwardPE.swift     (47L)   Extension: historical forward P/E ratios via timeseries API
+StockService+EMA.swift           (77L)   Extension: 5-day/week/month EMA fetch + weekly crossover via chart v8 API
 StockData.swift                  (528L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (306L)  Config loading/saving, protocols, legacy backward compat, universe field
@@ -77,11 +77,11 @@ EMACache.swift                   (96L)   EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (31L)   Bounded concurrency utility (max 20 concurrent tasks)
 ```
 
-## Test Files (33 files, ~10,635 lines)
+## Test Files (33 files, ~10,699 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
-StockServiceTests.swift          (920L)  API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily
+StockServiceTests.swift          (984L)  API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (775L)  Config load/save, encoding, legacy backward compat, universe field
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -453,7 +453,7 @@ Historical forward P/E ratios per quarter end, fetched from Yahoo Finance Fundam
 
 **Flow:** App startup loads cache → checks quarter range invalidation → fetches missing symbols → stores results (empty dict for non-equity symbols) → displayed in Extra Stats Forward P/E tab.
 
-**Permanent cache:** Quarter-end P/E values are immutable historical facts. No daily refresh. Only fetches on startup for missing symbols or when quarter range changes (new quarter completes). Symbols with no P/E data stored as empty `{}` to avoid refetching.
+**Permanent cache:** Quarter-end P/E values are immutable historical facts. No daily refresh. Only fetches on startup for missing symbols or when quarter range changes (new quarter completes). Symbols with no P/E data (API success, no entries) stored as empty `{}` to avoid refetching. API failures (non-200, network error) return `nil` and are NOT cached — they remain "missing" and are retried on the next fetch cycle.
 
 **API:** One timeseries call per symbol for the full 3-year range. Batch fetch via ThrottledTaskGroup (max 20 concurrent).
 
@@ -533,6 +533,8 @@ Cached at `~/.stockticker/ema-cache.json`:
 All three fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` over symbols (max 20 concurrent).
 
 **Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after one or more weeks below; returns weeks-below count or nil.
+
+**Failure resilience:** `fetchEMAEntry` returns `nil` when all three EMA values (day, week, month) are nil (total API failure). `ThrottledTaskGroup.map` excludes nil results, so failed symbols remain "missing" and are retried on the next fetch cycle. Partial success (e.g., daily succeeds but monthly fails) is stored with non-nil fields.
 
 Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly/monthly fetched separately)
 

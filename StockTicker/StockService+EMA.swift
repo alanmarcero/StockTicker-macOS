@@ -43,7 +43,7 @@ extension StockService {
         await fetchEMA(symbol: symbol, range: "2y", interval: "1mo")
     }
 
-    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil) async -> EMACacheEntry {
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil) async -> EMACacheEntry? {
         async let weeklyCloses = fetchChartCloses(symbol: symbol, range: "6mo", interval: "1wk")
         async let month = fetchMonthlyEMA(symbol: symbol)
 
@@ -58,7 +58,9 @@ extension StockService {
         let weekEMA = closes.flatMap { EMAAnalysis.calculate(closes: $0) }
         let crossover = closes.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
 
-        return await EMACacheEntry(day: day, week: weekEMA, month: month, weekCrossoverWeeksBelow: crossover)
+        let monthEMA = await month
+        guard day != nil || weekEMA != nil || monthEMA != nil else { return nil }
+        return EMACacheEntry(day: day, week: weekEMA, month: monthEMA, weekCrossoverWeeksBelow: crossover)
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
