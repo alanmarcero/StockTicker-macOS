@@ -216,6 +216,56 @@ extension MenuBarController {
         }
     }
 
+    // MARK: - Cache Retry
+
+    private enum CacheRetry {
+        static let batchSize = 20
+    }
+
+    func retryMissingCacheEntries() async {
+        await retryMissingEMAEntries()
+        await retryMissingForwardPERatios()
+    }
+
+    private func retryMissingEMAEntries() async {
+        let missing = await emaCacheManager.getMissingSymbols(from: allCacheSymbols)
+        guard !missing.isEmpty else { return }
+
+        let batch = Array(missing.prefix(CacheRetry.batchSize))
+        let fetched = await stockService.batchFetchEMAValues(symbols: batch)
+        guard !fetched.isEmpty else { return }
+
+        for (symbol, entry) in fetched {
+            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        }
+        await emaCacheManager.save()
+        emaEntries = await emaCacheManager.getAllEntries()
+    }
+
+    private func retryMissingForwardPERatios() async {
+        let missing = await forwardPECacheManager.getMissingSymbols(from: extraStatsSymbols)
+        guard !missing.isEmpty else { return }
+
+        let batch = Array(missing.prefix(CacheRetry.batchSize))
+
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        guard let oldest = quarters.last else { return }
+
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        let fetched = await stockService.batchFetchForwardPERatios(
+            symbols: batch, period1: period1, period2: period2
+        )
+        guard !fetched.isEmpty else { return }
+
+        for (symbol, quarterPEs) in fetched {
+            await forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs)
+        }
+        await forwardPECacheManager.save()
+        forwardPEData = await forwardPECacheManager.getAllData()
+    }
+
     // MARK: - Consolidated Daily Analysis
 
     func fetchMissingDailyAnalysis() async {

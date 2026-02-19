@@ -353,6 +353,7 @@ class MenuBarController: NSObject, ObservableObject {
         }
         attachMarketCapsToQuotes()
         await refreshDailyAnalysisIfNeeded()
+        await retryMissingCacheEntries()
         attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
