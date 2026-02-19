@@ -22,7 +22,6 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchRSIValues(symbols: [String]) async -> [String: Double]
     func fetchDailyEMA(symbol: String) async -> Double?
     func fetchWeeklyEMA(symbol: String) async -> Double?
-    func fetchMonthlyEMA(symbol: String) async -> Double?
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry]
     func fetchDailyAnalysis(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult?
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult]

@@ -5,7 +5,6 @@ import Foundation
 struct EMACacheEntry: Codable, Equatable {
     let day: Double?
     let week: Double?
-    let month: Double?
     let weekCrossoverWeeksBelow: Int?
 }
 

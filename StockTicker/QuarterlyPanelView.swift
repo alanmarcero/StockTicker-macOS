@@ -12,7 +12,7 @@ struct QuarterlyPanelView: View {
             Divider()
             if viewModel.isMiscStatsMode {
                 miscStatsView
-            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaMonthRows.isEmpty && viewModel.emaAllRows.isEmpty && viewModel.emaCrossRows.isEmpty) : viewModel.rows.isEmpty {
+            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaCrossRows.isEmpty) : viewModel.rows.isEmpty {
                 emptyState
             } else {
                 scrollableContent
@@ -68,10 +68,6 @@ struct QuarterlyPanelView: View {
                 emaTable("5-Day", rows: viewModel.emaDayRows)
                 Divider()
                 emaTable("5-Week", rows: viewModel.emaWeekRows)
-                Divider()
-                emaTable("5-Month", rows: viewModel.emaMonthRows)
-                Divider()
-                emaAllTable("All Three", rows: viewModel.emaAllRows)
                 Divider()
                 emaCrossTable("5W Cross", rows: viewModel.emaCrossRows)
             }
@@ -228,76 +224,6 @@ struct QuarterlyPanelView: View {
 
             cellView(row.breakoutPercent)
                 .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(viewModel.highlightColor.opacity(
-                    viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
-                ))
-        )
-        .contentShape(Rectangle())
-        .onTapGesture {
-            viewModel.toggleHighlight(for: row.symbol)
-        }
-    }
-
-    private func emaAllTable(_ title: String, rows: [QuarterlyRow]) -> some View {
-        ScrollView([.vertical]) {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section(header: emaAllPinnedHeaders(title)) {
-                    ForEach(rows) { row in
-                        emaAllRowView(row)
-                        Divider().opacity(0.3)
-                    }
-                }
-            }
-            .padding(.horizontal, 8)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private func emaAllPinnedHeaders(_ title: String) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(title)
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-            .padding(.top, 4)
-            HStack(spacing: 0) {
-                sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
-                sortableHeader("P/E", column: .currentPE, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
-                Spacer(minLength: 0)
-            }
-            .padding(.vertical, 6)
-            Divider()
-        }
-        .background(.background)
-    }
-
-    private func emaAllRowView(_ row: QuarterlyRow) -> some View {
-        HStack(spacing: 0) {
-            Text(row.symbol)
-                .font(.system(.body, design: .monospaced))
-                .fontWeight(.medium)
-                .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
-
-            Group {
-                if let pe = row.currentForwardPE {
-                    Text(String(format: "%.1f", pe))
-                        .foregroundColor(.secondary)
-                } else {
-                    Text(QuarterlyFormatting.noData)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .font(.system(.body, design: .monospaced))
-            .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 
             Spacer(minLength: 0)
         }
@@ -542,7 +468,7 @@ struct QuarterlyPanelView: View {
             return "\(viewModel.miscStats.count) stats"
         }
         if viewModel.isEMAsMode {
-            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaMonthRows.count) month, \(viewModel.emaAllRows.count) all, \(viewModel.emaCrossRows.count) cross"
+            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross"
         }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"

@@ -21,8 +21,6 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     @Published var emaDayRows: [QuarterlyRow] = []
     @Published var emaWeekRows: [QuarterlyRow] = []
-    @Published var emaMonthRows: [QuarterlyRow] = []
-    @Published var emaAllRows: [QuarterlyRow] = []
     @Published var emaCrossRows: [QuarterlyRow] = []
 
     var isForwardPEMode: Bool { viewMode == .forwardPE }
@@ -196,7 +194,6 @@ class QuarterlyPanelViewModel: ObservableObject {
     private func buildEMAsRows() -> [QuarterlyRow] {
         var dayRows: [QuarterlyRow] = []
         var weekRows: [QuarterlyRow] = []
-        var monthRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
             guard let entry = storedEMAEntries[symbol],
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
@@ -208,23 +205,9 @@ class QuarterlyPanelViewModel: ObservableObject {
                 let pct = ((quote.price - ema) / ema) * 100
                 weekRows.append(QuarterlyRow(id: "\(symbol)-ema-week", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
             }
-            if let ema = entry.month, quote.price > ema, ema > 0 {
-                let pct = ((quote.price - ema) / ema) * 100
-                monthRows.append(QuarterlyRow(id: "\(symbol)-ema-month", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
-            }
         }
         emaDayRows = dayRows
         emaWeekRows = weekRows
-        emaMonthRows = monthRows
-
-        let daySymbols = Set(dayRows.map { $0.symbol })
-        let weekSymbols = Set(weekRows.map { $0.symbol })
-        let monthSymbols = Set(monthRows.map { $0.symbol })
-        let allSymbols = daySymbols.intersection(weekSymbols).intersection(monthSymbols)
-
-        emaAllRows = dayRows.filter { allSymbols.contains($0.symbol) }.map { row in
-            QuarterlyRow(id: "\(row.symbol)-ema-all", symbol: row.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: storedCurrentForwardPEs[row.symbol], breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
-        }
 
         var crossRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
@@ -235,7 +218,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
         emaCrossRows = crossRows
 
-        return dayRows + weekRows + monthRows + emaAllRows + crossRows
+        return dayRows + weekRows + crossRows
     }
 
     private func highestClosePercent(for symbol: String) -> Double? {
@@ -397,8 +380,6 @@ class QuarterlyPanelViewModel: ObservableObject {
         if isEMAsMode {
             emaDayRows.sort(by: comparator)
             emaWeekRows.sort(by: comparator)
-            emaMonthRows.sort(by: comparator)
-            emaAllRows.sort(by: comparator)
             emaCrossRows.sort(by: comparator)
         }
         rows.sort(by: comparator)

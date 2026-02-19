@@ -103,10 +103,6 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
         emaEntriesToReturn[symbol]?.week
     }
 
-    func fetchMonthlyEMA(symbol: String) async -> Double? {
-        emaEntriesToReturn[symbol]?.month
-    }
-
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
         emaEntriesToReturn.filter { symbols.contains($0.key) }
     }

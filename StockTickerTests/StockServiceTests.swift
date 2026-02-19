@@ -860,24 +860,17 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
     func testBatchFetchEMAValues_withDailyEMAs_skipsDailyFetch() async {
         let mockClient = MockHTTPClient()
-        // Only set up weekly and monthly responses (no daily)
+        // Only set up weekly response (no daily)
         let weeklyClosesJSON = (0..<10).map { String(Double(100 + $0 * 5)) }.joined(separator: ", ")
-        let monthlyClosesJSON = (0..<10).map { String(Double(100 + $0 * 3)) }.joined(separator: ", ")
         let weeklyTimestampsJSON = (0..<10).map { String(1700000000 + $0 * 604800) }.joined(separator: ", ")
 
         let weeklyJSON = """
         {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(weeklyTimestampsJSON)],"indicators":{"quote":[{"close":[\(weeklyClosesJSON)]}]}}]}}
         """
-        let monthlyJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"indicators":{"quote":[{"close":[\(monthlyClosesJSON)]}]}}]}}
-        """
 
         let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
-        let monthlyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=2y&interval=1mo")!
         let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        let monthlyResp = HTTPURLResponse(url: monthlyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
-        mockClient.responses[monthlyURL] = .success((monthlyJSON.data(using: .utf8)!, monthlyResp))
 
         let service = StockService(httpClient: mockClient)
         let result = await service.batchFetchEMAValues(symbols: ["AAPL"], dailyEMAs: ["AAPL": 155.0])
@@ -885,9 +878,8 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result["AAPL"])
         // The pre-computed daily EMA should be used
         XCTAssertEqual(result["AAPL"]?.day, 155.0)
-        // Weekly and monthly should be computed from chart data
+        // Weekly should be computed from chart data
         XCTAssertNotNil(result["AAPL"]?.week)
-        XCTAssertNotNil(result["AAPL"]?.month)
     }
 
     func testFetchEMAEntry_allAPIsFail_returnsNil() async {
@@ -917,7 +909,6 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result)
         XCTAssertNil(result?.day)
         XCTAssertNotNil(result?.week)
-        XCTAssertNil(result?.month)
     }
 
     func testBatchFetchForwardPE_apiFailure_excludesFromResult() async {
@@ -953,36 +944,6 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
         XCTAssertNotNil(result["BTC-USD"])
         XCTAssertTrue(result["BTC-USD"]?.isEmpty ?? false)  // Stored as empty — won't retry
-    }
-
-    func testFetchMonthlyEMA_insufficientCloses_returnsNil() async {
-        let mockClient = MockHTTPClient()
-        let json = """
-        {
-            "chart": {
-                "result": [{
-                    "meta": {
-                        "symbol": "AAPL",
-                        "regularMarketPrice": 150.50,
-                        "chartPreviousClose": 148.00
-                    },
-                    "indicators": {
-                        "quote": [{
-                            "close": [100.0, 101.0]
-                        }]
-                    }
-                }]
-            }
-        }
-        """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=2y&interval=1mo")!
-        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
-        mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
-
-        let service = StockService(httpClient: mockClient)
-        let ema = await service.fetchMonthlyEMA(symbol: "AAPL")
-
-        XCTAssertNil(ema)
     }
 
     // MARK: - Weekly Crossover Timing Tests

@@ -35,7 +35,7 @@ enum LayoutConfig {
 
     enum Headlines {
         static let maxLength = 70
-        static let itemsPerSource = 3
+        static let itemsPerSource = 5
     }
 
     // MARK: - Watchlist Editor Window

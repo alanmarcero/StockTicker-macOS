@@ -33,19 +33,19 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x StockTicker && echo "App is running"
 ```
 
-## Source Files (40 files, ~7,969 lines)
+## Source Files (40 files, ~7,913 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
 MenuBarView.swift                (961L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
 MenuBarController+Cache.swift    (379L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
+StockService.swift               (248L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
 StockService+Historical.swift    (450L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
 StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
 StockService+Finnhub.swift       (82L)   Extension: Finnhub candle API fetch methods (daily candles, closes, historical close) + real-time quote fetch
-StockService+EMA.swift           (214L)  Extension: 5-day/week/month EMA fetch + weekly crossover with Finnhub routing + Yahoo fallback
+StockService+EMA.swift           (208L)  Extension: 5-day/week EMA fetch + weekly crossover with Finnhub routing + Yahoo fallback
 StockData.swift                  (553L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models, FinnhubCandleResponse, FinnhubQuoteResponse
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
@@ -60,9 +60,9 @@ NewsData.swift                   (148L)  NewsItem model, RSSParser, NewsSource e
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
-QuarterlyPanelView.swift         (698L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (406L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
-LayoutConfig.swift               (81L)   Centralized layout constants
+QuarterlyPanelView.swift         (624L)  Extra Stats window: SwiftUI view, controller
+QuarterlyPanelViewModel.swift     (387L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
+LayoutConfig.swift               (80L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
 TickerDisplayBuilder.swift       (181L)  Ticker display formatting, color helpers, HighlightConfig
@@ -74,15 +74,15 @@ SwingLevelCache.swift            (110L)  Swing level cache manager (actor), dail
 RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothing method)
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (47L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection
-EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 3 timeframes + crossover per symbol
+EMACache.swift                   (95L)   EMA cache manager (actor), daily refresh, 2 timeframes + crossover per symbol
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (35 files, ~11,280 lines)
+## Test Files (35 files, ~11,085 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
-StockServiceTests.swift          (1278L) API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily, crossover timing, Finnhub quote routing
+StockServiceTests.swift          (1239L) API mocking, fetch operations, extended hours, v7 response decoding, daily analysis, forward P/E, EMA with pre-computed daily, crossover timing, Finnhub quote routing
 MarketScheduleTests.swift        (271L)  Holiday calculations, market state, schedules
 TickerConfigTests.swift          (829L)  Config load/save, encoding, legacy backward compat, universe field, finnhubApiKey
 TickerEditorStateTests.swift     (314L)  Editor state machine, validation
@@ -94,7 +94,7 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (1656L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats, universe labels
+QuarterlyPanelTests.swift        (1556L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats, universe labels
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (712L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
@@ -104,7 +104,7 @@ TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, 
 DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
-QuoteFetchCoordinatorTests.swift (310L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
+QuoteFetchCoordinatorTests.swift (306L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
 SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings, index tracking
@@ -112,7 +112,7 @@ SwingLevelCacheTests.swift       (371L)  Swing level cache load/save, invalidati
 RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all gains/losses, alternating, trends, custom period
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
 EMAAnalysisTests.swift           (140L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection
-EMACacheTests.swift              (313L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
+EMACacheTests.swift              (309L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
 SymbolRoutingTests.swift         (71L)   Symbol routing: historical always Yahoo, isFinnhubCompatible, partition splits for quote routing
 FinnhubResponseTests.swift       (144L)  Finnhub candle + quote response decoding: valid, no_data, null fields, empty arrays, isValid
 ThrottledTaskGroupTests.swift    (129L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill + FinnhubBackfill + FinnhubQuote constants
@@ -153,7 +153,7 @@ StockService.swift
 ├── StockService+Finnhub.swift (Finnhub candle API extension)
 ├── StockService+Historical.swift (historical price + daily analysis with Finnhub routing)
 ├── StockService+ForwardPE.swift (forward P/E timeseries extension)
-├── StockService+EMA.swift (5-day/week/month EMA with Finnhub routing)
+├── StockService+EMA.swift (5-day/week EMA with Finnhub routing)
 ├── ThrottledTaskGroup.swift (bounded concurrency for batch methods)
 ├── StockData.swift (StockQuote, TradingSession, YahooChartResponse, TradingHours)
 └── RequestLogger.swift (LoggingHTTPClient, HTTPClient)
@@ -278,7 +278,7 @@ All major components use protocols for testability:
 - `ForwardPECacheManager` — thread-safe forward P/E ratio cache
 - `SwingLevelCacheManager` — thread-safe swing level (breakout/breakdown) cache
 - `RSICacheManager` — thread-safe RSI value cache
-- `EMACacheManager` — thread-safe EMA value cache (3 timeframes per symbol)
+- `EMACacheManager` — thread-safe EMA value cache (2 timeframes per symbol)
 
 ### State Management
 - `MenuBarController` — `@MainActor`, `@Published` properties, drives all UI
@@ -331,7 +331,7 @@ Eliminates duplicate load/save file I/O in YTDCacheManager, QuarterlyCacheManage
 GET https://finnhub.io/api/v1/stock/candle?symbol={SYM}&resolution={D|W|M}&from={UNIX}&to={UNIX}&token={KEY}
 ```
 
-Response: `{"c":[closes...],"t":[timestamps...],"s":"ok"}`. We only use `c` (closes), `t` (timestamps), and `s` (status). Closes are non-nullable `[Double]`. Status `"ok"` = valid data, `"no_data"` = no data for range. Used for daily analysis, highest close, swing levels, RSI, and EMA (weekly/monthly) for equity and ETF symbols. Requires `finnhubApiKey` in config. Rate limit: 60 req/min.
+Response: `{"c":[closes...],"t":[timestamps...],"s":"ok"}`. We only use `c` (closes), `t` (timestamps), and `s` (status). Closes are non-nullable `[Double]`. Status `"ok"` = valid data, `"no_data"` = no data for range. Used for daily analysis, highest close, swing levels, RSI, and EMA (weekly) for equity and ETF symbols. Requires `finnhubApiKey` in config. Rate limit: 60 req/min.
 
 ### Finnhub Quote API — Real-Time Universe Quotes (Equities/ETFs)
 ```
@@ -529,7 +529,7 @@ Key methods: `loadRSICache()` (fetching consolidated into daily analysis)
 
 ## EMA Tracking
 
-5-period Exponential Moving Average across three timeframes: daily (5-day), weekly (5-week), and monthly (5-month). Displayed in the Extra Stats "5 EMAs" tab — three side-by-side tables showing symbols whose current price is above the EMA for each timeframe.
+5-period Exponential Moving Average across two timeframes: daily (5-day) and weekly (5-week). Displayed in the Extra Stats "5 EMAs" tab — two side-by-side tables showing symbols whose current price is above the EMA for each timeframe, plus a crossover table.
 
 Cached at `~/.stockticker/ema-cache.json`:
 
@@ -537,8 +537,8 @@ Cached at `~/.stockticker/ema-cache.json`:
 {
   "lastUpdated": "2026-02-17T12:00:00Z",
   "entries": {
-    "AAPL": { "day": 150.2, "week": 148.5, "month": 145.0, "weekCrossoverWeeksBelow": 3 },
-    "BTC-USD": { "day": null, "week": null, "month": null, "weekCrossoverWeeksBelow": null }
+    "AAPL": { "day": 150.2, "week": 148.5, "weekCrossoverWeeksBelow": 3 },
+    "BTC-USD": { "day": null, "week": null, "weekCrossoverWeeksBelow": null }
   }
 }
 ```
@@ -547,20 +547,19 @@ Cached at `~/.stockticker/ema-cache.json`:
 
 **Invalidation:** Daily refresh clears entries so fresh EMAs are computed from latest bars.
 
-**API:** Three chart v8 calls per symbol:
+**API:** Two chart v8 calls per symbol:
 - Daily: `range=1mo&interval=1d` (~20 bars)
 - Weekly: `range=6mo&interval=1wk` (~26 bars)
-- Monthly: `range=2y&interval=1mo` (~24 bars)
 
-All three fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` over symbols (max 20 concurrent).
+Both fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` over symbols (max 20 concurrent).
 
 **Algorithm:** `EMAAnalysis.calculate()` — SMA of first `period` values as seed, then iterative EMA with multiplier `2/(period+1)` = 0.3333 for period 5. `EMAAnalysis.detectWeeklyCrossover()` — computes full EMA series, detects most recent weekly close crossing above 5-week EMA after 3+ weeks below (1-2 weeks is chop); returns weeks-below count or nil. Crossover detection uses only completed weekly bars via timestamp-based filtering — `completedWeeklyBarCount(timestamps:now:)` excludes bars from the current calendar week. The only exception is the "sneak peek" window: `isCurrentWeekSneakPeek(now:)` returns true on Friday 2PM–4PM ET only, allowing the current week's bar to preview potential crossovers before the week closes.
 
-**Failure resilience:** `fetchEMAEntry` returns `nil` when all three EMA values (day, week, month) are nil (total API failure). `ThrottledTaskGroup.map` excludes nil results, so failed symbols remain "missing" and are retried on the next fetch cycle. Partial success (e.g., daily succeeds but monthly fails) is stored with non-nil fields.
+**Failure resilience:** `fetchEMAEntry` returns `nil` when both EMA values (day, week) are nil (total API failure). `ThrottledTaskGroup.map` excludes nil results, so failed symbols remain "missing" and are retried on the next fetch cycle. Partial success (e.g., daily succeeds but weekly fails) is stored with non-nil fields.
 
-**Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~60s). This produces ~20 API calls per cycle (5 EMA × 3 timeframes + 5 Forward P/E) = 0.33 req/sec sustained rate.
+**Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~60s). This produces ~15 API calls per cycle (5 EMA × 2 timeframes + 5 Forward P/E) = 0.25 req/sec sustained rate.
 
-Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly/monthly fetched separately)
+Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly fetched separately)
 
 ## Consolidated Daily Analysis
 
@@ -572,7 +571,7 @@ Four per-symbol daily-interval API calls (highest close, swing levels, RSI, dail
 - `rsi` — `RSIAnalysis.calculate()` (750 bars gives better warm-up than 250)
 - `dailyEMA` — `EMAAnalysis.calculate()` (converges identically with more data)
 
-**Cache coordination:** `fetchMissingDailyAnalysis()` computes the union of missing symbols across all 4 caches, makes ONE `batchFetchDailyAnalysis` call, then distributes results to individual cache actors. Daily EMA values are passed to `batchFetchEMAValues(symbols:dailyEMAs:)` to skip the daily chart call during weekly/monthly EMA fetching.
+**Cache coordination:** `fetchMissingDailyAnalysis()` computes the union of missing symbols across all 4 caches, makes ONE `batchFetchDailyAnalysis` call, then distributes results to individual cache actors. Daily EMA values are passed to `batchFetchEMAValues(symbols:dailyEMAs:)` to skip the daily chart call during weekly EMA fetching.
 
 **`refreshDailyAnalysisIfNeeded()`** checks all 4 caches for daily staleness, clears whichever need it, then calls `fetchMissingDailyAnalysis()`.
 
@@ -582,7 +581,7 @@ Key methods: `fetchDailyAnalysis()`, `batchFetchDailyAnalysis()`, `fetchMissingD
 
 ## Extra Stats (Cmd+Opt+Q)
 
-Standalone window with six view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end); **Forward P/E** shows historical forward P/E ratios per quarter end; **Price Breaks** shows two headed sub-tables — Breakout (percent from highest significant high) and Breakdown (percent from lowest significant low) via swing analysis; **5 EMAs** shows three side-by-side tables of symbols above their 5-day, 5-week, and 5-month EMAs with % above; **Misc Stats** shows aggregate statistics across the watchlist (e.g., % of symbols within 5% of their highest close). Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
+Standalone window with six view modes (segmented picker): **Since Quarter** shows percent change from each quarter's end to current price; **During Quarter** shows percent change within each quarter (start to end); **Forward P/E** shows historical forward P/E ratios per quarter end; **Price Breaks** shows two headed sub-tables — Breakout (percent from highest significant high) and Breakdown (percent from lowest significant low) via swing analysis; **5 EMAs** shows two side-by-side tables of symbols above their 5-day and 5-week EMAs with % above, plus a crossover table; **Misc Stats** shows aggregate statistics across the watchlist (e.g., % of symbols within 5% of their highest close). Uses 12 most recent completed quarters (3 years). Cached at `~/.stockticker/quarterly-cache.json`:
 
 ```json
 {
@@ -600,7 +599,7 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **Universe support:** Extra Stats always displays `extraStatsSymbols` (deduplicated union of watchlist + universe). Quotes are merged from both `quotes` (watchlist) and `universeQuotes` (universe-only symbols), with watchlist taking precedence for overlapping symbols. Misc Stats labels adapt: "% of symbols" when universe active, "% of watchlist" otherwise.
 
-**View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows three independently sorted tables (emaDayRows, emaWeekRows, emaMonthRows) with Symbol and % columns, `.miscStats` shows non-sortable aggregate statistics (e.g., % of symbols within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
+**View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows two independently sorted tables (emaDayRows, emaWeekRows) with Symbol and % columns plus a crossover table, `.miscStats` shows non-sortable aggregate statistics (e.g., % of symbols within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
 
 **Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
@@ -612,13 +611,13 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **Price Breaks mode:** Combined mode (`isPriceBreaksMode`) with side-by-side layout — "Breakout" table on the left, "Breakdown" table on the right, each independently scrollable with its own title and column headers. Sorted independently. No High column, no quarter columns. Columns: Symbol (sortable), Date (sortable, "M/d/yy" format), % (sortable), RSI (sortable, daily RSI-14 color-coded >70 red / <30 green). Symbols with both breakout and breakdown data appear in both tables with unique IDs (`symbol-breakout`, `symbol-breakdown`). Header shows "X breakout, Y breakdown" count.
 
-**5 EMAs mode:** Five-column layout (`isEMAsMode`) — "5-Day", "5-Week", "5-Month", "All Three", and "5W Cross" tables side by side. First four tables show symbols whose current price is above the respective 5-period EMA. "All Three" shows only symbols appearing in all three timeframe tables with their forward P/E (or -- for non-equity). "5W Cross" shows symbols whose most recent weekly close crossed above the 5-week EMA after one or more weeks below; "Wks" column shows weeks-below count (green for 2+, secondary for 1). Columns: Symbol (sortable), % or P/E or Wks (sortable). Sorted independently. Header shows "X day, Y week, Z month, N all, M cross" count. Unique IDs use `symbol-ema-day`, `symbol-ema-week`, `symbol-ema-month`, `symbol-ema-all`, `symbol-ema-cross`.
+**5 EMAs mode:** Three-column layout (`isEMAsMode`) — "5-Day", "5-Week", and "5W Cross" tables side by side. First two tables show symbols whose current price is above the respective 5-period EMA. "5W Cross" shows symbols whose most recent weekly close crossed above the 5-week EMA after one or more weeks below; "Wks" column shows weeks-below count (green for 2+, secondary for 1). Columns: Symbol (sortable), % or Wks (sortable). Sorted independently. Header shows "X day, Y week, Z cross" count. Unique IDs use `symbol-ema-day`, `symbol-ema-week`, `symbol-ema-cross`.
 
 Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuarterlyPanel()`
 
 ## News Headlines
 
-Actor-based `NewsService` fetches from CNBC RSS via TaskGroup. Requests include a user-agent header (required to avoid 429/403 responses). `RSSParser` (XMLParserDelegate) parses XML with dual date format support (RFC 2822 + ISO 8601). Headlines deduplicated via Jaccard word similarity (threshold: 0.6). Cache-busted with timestamp query parameter. Up to 6 clickable headlines displayed with proportional font; top-from-source headlines use bold variant.
+Actor-based `NewsService` fetches from CNBC RSS via TaskGroup. Requests include a user-agent header (required to avoid 429/403 responses). `RSSParser` (XMLParserDelegate) parses XML with dual date format support (RFC 2822 + ISO 8601). Headlines deduplicated via Jaccard word similarity (threshold: 0.6). Cache-busted with timestamp query parameter. Up to 5 clickable headlines displayed with proportional font; top-from-source headlines use bold variant.
 
 ## Menu Bar Features
 

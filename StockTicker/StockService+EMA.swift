@@ -115,13 +115,8 @@ extension StockService {
         await fetchEMA(symbol: symbol, range: "6mo", interval: "1wk")
     }
 
-    func fetchMonthlyEMA(symbol: String) async -> Double? {
-        await fetchEMA(symbol: symbol, range: "2y", interval: "1mo")
-    }
-
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, now: Date = Date()) async -> EMACacheEntry? {
         async let weeklyData = fetchWeeklyClosesWithTimestamps(symbol: symbol)
-        async let month = fetchMonthlyEMA(symbol: symbol)
 
         let day: Double?
         if let precomputed = precomputedDailyEMA {
@@ -147,9 +142,8 @@ extension StockService {
         }
         let crossover = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
 
-        let monthEMA = await month
-        guard day != nil || weekEMA != nil || monthEMA != nil else { return nil }
-        return EMACacheEntry(day: day, week: weekEMA, month: monthEMA, weekCrossoverWeeksBelow: crossover)
+        guard day != nil || weekEMA != nil else { return nil }
+        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover)
     }
 
     /// Sneak peek window: only include the current (incomplete) week's bar on Friday 2PM–4PM ET.
