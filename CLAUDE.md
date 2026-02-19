@@ -266,7 +266,7 @@ All major components use protocols for testability:
 
 ### Two-Tier Symbol Sets
 - `allCacheSymbols` — deduplicated union of watchlist + universe + index symbols. Used by YTD, highest close, swing, RSI, EMA cache fetchers.
-- `extraStatsSymbols` — universe if populated, otherwise watchlist. Used by quarterly and forward P/E cache fetchers, and as the symbol list passed to Extra Stats.
+- `extraStatsSymbols` — deduplicated union of watchlist + universe. Used by quarterly and forward P/E cache fetchers, and as the symbol list passed to Extra Stats.
 
 ### Actors for Thread Safety
 - `StockService` — concurrent quote fetching via ThrottledTaskGroup
@@ -598,7 +598,7 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **Fetching strategy:** Per-quarter sequential, per-symbol parallel via ThrottledTaskGroup (max 20 concurrent). Cache saved after each quarter (preserves progress if interrupted). First run scales with symbol count (~500 symbols x 13 quarters for full universe); subsequent runs only fetch new symbols or newly completed quarters.
 
-**Universe support:** When `config.universe` is populated, Extra Stats displays `extraStatsSymbols` (universe) instead of just the watchlist. Quotes are merged from both `quotes` (watchlist) and `universeQuotes` (universe-only symbols), with watchlist taking precedence for overlapping symbols. Misc Stats labels adapt: "% of symbols" when universe active, "% of watchlist" otherwise.
+**Universe support:** Extra Stats always displays `extraStatsSymbols` (deduplicated union of watchlist + universe). Quotes are merged from both `quotes` (watchlist) and `universeQuotes` (universe-only symbols), with watchlist taking precedence for overlapping symbols. Misc Stats labels adapt: "% of symbols" when universe active, "% of watchlist" otherwise.
 
 **View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows three independently sorted tables (emaDayRows, emaWeekRows, emaMonthRows) with Symbol and % columns, `.miscStats` shows non-sortable aggregate statistics (e.g., % of symbols within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
 

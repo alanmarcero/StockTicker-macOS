@@ -16,7 +16,8 @@ extension MenuBarController {
     }
 
     var extraStatsSymbols: [String] {
-        config.universe.isEmpty ? config.watchlist : config.universe
+        let combined = Set(config.watchlist + config.universe)
+        return Array(combined)
     }
 
     func cacheQuarterRange() -> String {
