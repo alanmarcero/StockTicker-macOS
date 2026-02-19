@@ -130,13 +130,10 @@ final class RSSParser: NSObject, XMLParserDelegate {
 // MARK: - News Source Configuration
 
 enum NewsSource: String, CaseIterable {
-    case yahoo
     case cnbcMarkets
 
     var feedURL: String {
         switch self {
-        case .yahoo:
-            return "https://finance.yahoo.com/news/rssindex"
         case .cnbcMarkets:
             return "https://www.cnbc.com/id/20910258/device/rss/rss.html"
         }
@@ -144,8 +141,6 @@ enum NewsSource: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .yahoo:
-            return "Yahoo"
         case .cnbcMarkets:
             return "CNBC"
         }

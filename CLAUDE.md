@@ -56,7 +56,7 @@ SortOption.swift                 (58L)   Sort option enum with config parsing an
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
 NewsService.swift                (134L)  RSS feed fetcher for financial news (actor)
-NewsData.swift                   (153L)  NewsItem model, RSSParser, NewsSource enum
+NewsData.swift                   (148L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
@@ -96,7 +96,7 @@ YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DatePro
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
 QuarterlyPanelTests.swift        (1656L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, misc stats, universe labels
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
-NewsServiceTests.swift           (832L)  RSS parsing, deduplication, multi-source fetching
+NewsServiceTests.swift           (712L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
 RequestLoggerTests.swift         (125L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
@@ -618,7 +618,7 @@ Key methods: `loadQuarterlyCache()`, `fetchMissingQuarterlyPrices()`, `showQuart
 
 ## News Headlines
 
-Actor-based `NewsService` fetches from Yahoo Finance RSS and CNBC RSS concurrently via TaskGroup. Requests include a user-agent header (required by both feeds to avoid 429/403 responses). `RSSParser` (XMLParserDelegate) parses XML with dual date format support (RFC 2822 + ISO 8601). Headlines deduplicated via Jaccard word similarity (threshold: 0.6). Cache-busted with timestamp query parameter. Up to 6 clickable headlines displayed with proportional font; top-from-source headlines use bold variant.
+Actor-based `NewsService` fetches from CNBC RSS via TaskGroup. Requests include a user-agent header (required to avoid 429/403 responses). `RSSParser` (XMLParserDelegate) parses XML with dual date format support (RFC 2822 + ISO 8601). Headlines deduplicated via Jaccard word similarity (threshold: 0.6). Cache-busted with timestamp query parameter. Up to 6 clickable headlines displayed with proportional font; top-from-source headlines use bold variant.
 
 ## Menu Bar Features
 
