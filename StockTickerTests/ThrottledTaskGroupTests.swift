@@ -82,8 +82,8 @@ final class ThrottledTaskGroupTests: XCTestCase {
     }
 
     func testBackfillConstants_accessible() {
-        XCTAssertEqual(ThrottledTaskGroup.Backfill.maxConcurrency, 2)
-        XCTAssertEqual(ThrottledTaskGroup.Backfill.delayNanoseconds, 1_000_000_000)
+        XCTAssertEqual(ThrottledTaskGroup.Backfill.maxConcurrency, 1)
+        XCTAssertEqual(ThrottledTaskGroup.Backfill.delayNanoseconds, 2_000_000_000)
     }
 }
 

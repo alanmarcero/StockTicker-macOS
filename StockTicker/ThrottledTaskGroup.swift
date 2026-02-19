@@ -7,8 +7,8 @@ enum ThrottledTaskGroup {
     }
 
     enum Backfill {
-        static let maxConcurrency = 2
-        static let delayNanoseconds: UInt64 = 1_000_000_000 // 1s between launches
+        static let maxConcurrency = 1
+        static let delayNanoseconds: UInt64 = 2_000_000_000 // 2s between launches
     }
 
     static func map<T: Sendable>(

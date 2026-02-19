@@ -255,7 +255,7 @@ All major components use protocols for testability:
 - `URLOpener` / `WindowProvider` — UI abstraction
 
 ### Bounded Concurrency (ThrottledTaskGroup)
-`ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Two modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, and **Backfill** (2 concurrent, 1s delay) for cache population. Used by all `StockService` batch methods (`fetchQuotes` at default, all cache batch methods at Backfill). `fetchQuotes` stays fast for ~52 watchlist symbols; cache methods throttle heavily to avoid Yahoo 429s at universe scale (~500 symbols). 429 responses are not retried by `LoggingHTTPClient`.
+`ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Two modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, and **Backfill** (1 concurrent, 2s delay) for cache population. Used by all `StockService` batch methods (`fetchQuotes` at default, all cache batch methods at Backfill). `fetchQuotes` stays fast for ~52 watchlist symbols; cache methods throttle heavily to avoid Yahoo 429s at universe scale (~500 symbols). 429 responses are not retried by `LoggingHTTPClient`.
 
 ### Two-Tier Symbol Sets
 - `allCacheSymbols` — deduplicated union of watchlist + universe + index symbols. Used by YTD, highest close, swing, RSI, EMA cache fetchers.
