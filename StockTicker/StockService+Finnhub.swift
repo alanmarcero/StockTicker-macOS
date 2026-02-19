@@ -4,14 +4,21 @@ import Foundation
 
 extension StockService {
 
-    func fetchFinnhubDailyCandles(symbol: String, from period1: Int, to period2: Int) async -> (closes: [Double], timestamps: [Int])? {
+    private func finnhubRequest(symbol: String, resolution: String, from period1: Int, to period2: Int) -> URLRequest? {
         guard let key = finnhubApiKey,
-              let url = URL(string: "\(APIEndpoints.finnhubCandleBase)?symbol=\(symbol)&resolution=D&from=\(period1)&to=\(period2)&token=\(key)") else {
+              let url = URL(string: "\(APIEndpoints.finnhubCandleBase)?symbol=\(symbol)&resolution=\(resolution)&from=\(period1)&to=\(period2)") else {
             return nil
         }
+        var request = URLRequest(url: url)
+        request.setValue(key, forHTTPHeaderField: "X-Finnhub-Token")
+        return request
+    }
+
+    func fetchFinnhubDailyCandles(symbol: String, from period1: Int, to period2: Int) async -> (closes: [Double], timestamps: [Int])? {
+        guard let request = finnhubRequest(symbol: symbol, resolution: "D", from: period1, to: period2) else { return nil }
 
         do {
-            let (data, response) = try await httpClient.data(from: url)
+            let (data, response) = try await httpClient.data(for: request)
             guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(FinnhubCandleResponse.self, from: data)
@@ -24,13 +31,10 @@ extension StockService {
     }
 
     func fetchFinnhubCloses(symbol: String, resolution: String, from period1: Int, to period2: Int) async -> [Double]? {
-        guard let key = finnhubApiKey,
-              let url = URL(string: "\(APIEndpoints.finnhubCandleBase)?symbol=\(symbol)&resolution=\(resolution)&from=\(period1)&to=\(period2)&token=\(key)") else {
-            return nil
-        }
+        guard let request = finnhubRequest(symbol: symbol, resolution: resolution, from: period1, to: period2) else { return nil }
 
         do {
-            let (data, response) = try await httpClient.data(from: url)
+            let (data, response) = try await httpClient.data(for: request)
             guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(FinnhubCandleResponse.self, from: data)
