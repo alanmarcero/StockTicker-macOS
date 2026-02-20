@@ -141,7 +141,7 @@ extension StockService {
             crossoverCloses = nil
         }
         let crossover = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
-        let belowCount = crossoverCloses.flatMap { EMAAnalysis.countWeeksBelow(closes: $0) }
+        let belowCount = weekly.flatMap { EMAAnalysis.countWeeksBelow(closes: $0.closes) }
 
         guard day != nil || weekEMA != nil else { return nil }
         return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount)

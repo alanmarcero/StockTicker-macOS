@@ -223,9 +223,9 @@ class QuarterlyPanelViewModel: ObservableObject {
         for symbol in storedWatchlist {
             guard let entry = storedEMAEntries[symbol],
                   let ema = entry.week, ema > 0,
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder,
-                  quote.price <= ema else { continue }
-            let weeksBelow = entry.weekBelowCount ?? 0
+                  let weeksBelow = entry.weekBelowCount,
+                  weeksBelow >= 3,
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
             belowRows.append(QuarterlyRow(id: "\(symbol)-ema-below", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
         }
         emaBelowRows = belowRows

@@ -288,7 +288,7 @@ struct QuarterlyPanelView: View {
             Group {
                 if let weeks = row.breakoutPercent {
                     Text("\(Int(weeks))w")
-                        .foregroundColor(Int(weeks) > 0 ? .green : .secondary)
+                        .foregroundColor(.green)
                 } else {
                     Text(QuarterlyFormatting.noData)
                         .foregroundColor(.secondary)
