@@ -5,11 +5,11 @@
     <key>LSUIElement</key>
     <true/>
     <key>CFBundleName</key>
-    <string>StockTicker</string>
+    <string>Stonks</string>
     <key>CFBundleDisplayName</key>
-    <string>Stock Ticker</string>
+    <string>Stonks</string>
     <key>CFBundleIdentifier</key>
-    <string>com.stockticker.app</string>
+    <string>com.stonks.app</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>CFBundleShortVersionString</key>

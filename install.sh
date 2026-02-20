@@ -9,7 +9,8 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-APP_NAME="StockTicker"
+APP_NAME="Stonks"
+XCODE_PROJECT="StockTicker"
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DEST="/Applications/${APP_NAME}.app"
 CONFIG_DIR="$HOME/.stockticker"
@@ -84,8 +85,8 @@ build_app() {
 
     cd "$PROJECT_DIR"
 
-    if xcodebuild -project "${APP_NAME}.xcodeproj" \
-                  -scheme "$APP_NAME" \
+    if xcodebuild -project "${XCODE_PROJECT}.xcodeproj" \
+                  -scheme "$XCODE_PROJECT" \
                   -configuration Release \
                   build 2>&1 | grep -E "(error:|BUILD SUCCEEDED|BUILD FAILED)"; then
 

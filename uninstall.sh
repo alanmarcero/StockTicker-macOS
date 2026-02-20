@@ -9,7 +9,7 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-APP_NAME="StockTicker"
+APP_NAME="Stonks"
 APP_DEST="/Applications/${APP_NAME}.app"
 CONFIG_DIR="$HOME/.stockticker"
 FORCE=false
