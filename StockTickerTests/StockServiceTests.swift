@@ -1032,28 +1032,52 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Friday 2PM+ should include current bar and detect crossover")
     }
 
-    func testCrossoverTiming_saturday_excludesCurrentWeek() async {
+    func testCrossoverTiming_saturday_includesCurrentWeek() async {
         let closes = crossoverWeeklyCloses()
         let (_, service) = setupCrossoverMock(closes: closes)
-        // 2026-02-21 is a Saturday — outside the Friday 2PM–4PM sneak peek window
+        // 2026-02-21 is a Saturday — week's bar is complete
         let saturday = makeETDate(year: 2026, month: 2, day: 21, hour: 10)
 
         let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: saturday)
 
         XCTAssertNotNil(result)
-        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Saturday should exclude current week bar — sneak peek is Friday 2PM–4PM only")
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Saturday should include current week bar — week is complete")
     }
 
-    func testCrossoverTiming_friday4PM_excludesCurrentWeek() async {
+    func testCrossoverTiming_friday4PM_includesCurrentWeek() async {
         let closes = crossoverWeeklyCloses()
         let (_, service) = setupCrossoverMock(closes: closes)
-        // 2026-02-20 is a Friday — 4PM is past the sneak peek window
+        // 2026-02-20 is a Friday — 4PM, market closed, week's bar is complete
         let friday4pm = makeETDate(year: 2026, month: 2, day: 20, hour: 16)
 
         let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday4pm)
 
         XCTAssertNotNil(result)
-        XCTAssertNil(result?.weekCrossoverWeeksBelow, "Friday 4PM+ should exclude current bar — sneak peek ends at 4PM")
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Friday 4PM+ should include current bar — market is closed for the week")
+    }
+
+    func testCrossoverTiming_sunday_includesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-22 is a Sunday — week's bar is complete
+        let sunday = makeETDate(year: 2026, month: 2, day: 22, hour: 14)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: sunday)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Sunday should include current week bar — week is complete")
+    }
+
+    func testCrossoverTiming_fridayEvening_includesCurrentWeek() async {
+        let closes = crossoverWeeklyCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // 2026-02-20 is a Friday — 8PM, well after market close
+        let fridayEvening = makeETDate(year: 2026, month: 2, day: 20, hour: 20)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: fridayEvening)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Friday evening should include current bar — market is closed for the week")
     }
 
     func testCrossoverTiming_followingMonday_includesPriorWeek() async {

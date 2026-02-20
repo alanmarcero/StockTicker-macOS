@@ -147,15 +147,18 @@ extension StockService {
         return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount)
     }
 
-    /// Sneak peek window: only include the current (incomplete) week's bar on Friday 2PM–4PM ET.
-    /// All other times use only completed prior-week bars. On Saturday+, the just-ended week
-    /// naturally enters the completed set once the following Monday arrives.
+    /// Include the current week's bar from Friday 2PM ET onward through the weekend.
+    /// Before Friday 2PM, only completed prior-week bars are used. On Monday, the new week
+    /// starts and the prior week naturally enters the completed set via timestamp filtering.
     private func isCurrentWeekSneakPeek(now: Date) -> Bool {
         let calendar = MarketSchedule.easternCalendar
         let weekday = calendar.component(.weekday, from: now)
-        guard weekday == 6 else { return false }  // Friday only
+        // Saturday (7) or Sunday (1): week's bar is complete
+        if weekday == 1 || weekday == 7 { return true }
+        // Friday (6): from 2PM ET onward
+        guard weekday == 6 else { return false }
         let hour = calendar.component(.hour, from: now)
-        return hour >= 14 && hour < 16
+        return hour >= 14
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
