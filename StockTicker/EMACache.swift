@@ -94,15 +94,18 @@ actor EMACacheManager {
               let hour = components.hour,
               hour >= 14, hour < 16 else { return false }
 
-        // Cache must have been updated today but before 2 PM ET
+        // Must be 5+ minutes since last update
         let formatter = ISO8601DateFormatter()
         guard let lastDate = formatter.date(from: cache.lastUpdated) else { return false }
-        guard calendar.isDate(lastDate, inSameDayAs: now) else { return false }
 
-        return calendar.component(.hour, from: lastDate) < 14
+        return now.timeIntervalSince(lastDate) >= SneakPeek.refreshInterval
     }
 
     // MARK: - Private
+
+    private enum SneakPeek {
+        static let refreshInterval: TimeInterval = 300
+    }
 
     private func ensureCacheExists() {
         guard cache == nil else { return }
