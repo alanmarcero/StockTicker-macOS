@@ -86,13 +86,13 @@ extension StockService {
             guard !closes.isEmpty else { return nil }
             return (closes, timestamps)
         } catch {
+            print("Weekly closes fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
         }
     }
 
     private func completedWeeklyBarCount(timestamps: [Int], now: Date) -> Int {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let calendar = MarketSchedule.easternCalendar
         let weekday = calendar.component(.weekday, from: now)
         let daysFromMonday = (weekday + 5) % 7
         let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: calendar.startOfDay(for: now))!
@@ -151,8 +151,7 @@ extension StockService {
     /// All other times use only completed prior-week bars. On Saturday+, the just-ended week
     /// naturally enters the completed set once the following Monday arrives.
     private func isCurrentWeekSneakPeek(now: Date) -> Bool {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let calendar = MarketSchedule.easternCalendar
         let weekday = calendar.component(.weekday, from: now)
         guard weekday == 6 else { return false }  // Friday only
         let hour = calendar.component(.hour, from: now)

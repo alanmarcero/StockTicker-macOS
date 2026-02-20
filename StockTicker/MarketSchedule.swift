@@ -56,6 +56,11 @@ enum MarketScheduleStrings {
 class MarketSchedule {
     static let shared = MarketSchedule()
     static let easternTimeZone = TimeZone(identifier: "America/New_York")!
+    static let easternCalendar: Calendar = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = easternTimeZone
+        return cal
+    }()
 
     private let dateProvider: DateProvider
     private let calendar: Calendar

@@ -21,7 +21,7 @@ extension MenuBarController {
     }
 
     func cacheQuarterRange() -> String {
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: dateProvider.now(), count: 12)
         guard let oldest = quarters.last, let newest = quarters.first else { return "" }
         return "\(oldest.identifier):\(newest.identifier)"
     }
@@ -59,13 +59,14 @@ extension MenuBarController {
 
     func loadQuarterlyCache() async {
         await quarterlyCacheManager.load()
-        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: dateProvider.now(), count: 12)
         await fetchMissingQuarterlyPrices()
     }
 
     func fetchMissingQuarterlyPrices() async {
-        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
-        let fetchQuarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 13)
+        let now = dateProvider.now()
+        quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
+        let fetchQuarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 13)
 
         for qi in fetchQuarters {
             let missingSymbols = await quarterlyCacheManager.getMissingSymbols(
@@ -162,14 +163,15 @@ extension MenuBarController {
             return
         }
 
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        let now = dateProvider.now()
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
         guard let oldest = quarters.last else {
             forwardPEData = await forwardPECacheManager.getAllData()
             return
         }
 
         let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(Date().timeIntervalSince1970)
+        let period2 = Int(now.timeIntervalSince1970)
 
         let fetched = await stockService.batchFetchForwardPERatios(
             symbols: missingSymbols, period1: period1, period2: period2
@@ -249,11 +251,12 @@ extension MenuBarController {
 
         let batch = Array(missing.prefix(CacheRetry.batchSize))
 
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        let now = dateProvider.now()
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
         guard let oldest = quarters.last else { return }
 
         let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(Date().timeIntervalSince1970)
+        let period2 = Int(now.timeIntervalSince1970)
 
         let fetched = await stockService.batchFetchForwardPERatios(
             symbols: batch, period1: period1, period2: period2
@@ -285,7 +288,8 @@ extension MenuBarController {
             return
         }
 
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: Date(), count: 12)
+        let now = dateProvider.now()
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
         guard let oldest = quarters.last else {
             highestClosePrices = await highestCloseCacheManager.getAllPrices()
             swingLevelEntries = await swingLevelCacheManager.getAllEntries()
@@ -295,7 +299,7 @@ extension MenuBarController {
         }
 
         let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(Date().timeIntervalSince1970)
+        let period2 = Int(now.timeIntervalSince1970)
 
         let results = await stockService.batchFetchDailyAnalysis(
             symbols: allMissing, period1: period1, period2: period2

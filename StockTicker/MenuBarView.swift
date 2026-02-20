@@ -69,6 +69,7 @@ class MenuBarController: NSObject, ObservableObject {
     private let configManager: WatchlistConfigManager
     private let marketSchedule: MarketSchedule
     private let urlOpener: URLOpener
+    let dateProvider: DateProvider
 
     // MARK: - Published State
 
@@ -125,6 +126,7 @@ class MenuBarController: NSObject, ObservableObject {
         configManager: WatchlistConfigManager = .shared,
         marketSchedule: MarketSchedule = .shared,
         urlOpener: URLOpener = NSWorkspace.shared,
+        dateProvider: DateProvider = SystemDateProvider(),
         ytdCacheManager: YTDCacheManager = YTDCacheManager(),
         quarterlyCacheManager: QuarterlyCacheManager = QuarterlyCacheManager(),
         highestCloseCacheManager: HighestCloseCacheManager = HighestCloseCacheManager(),
@@ -138,6 +140,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.configManager = configManager
         self.marketSchedule = marketSchedule
         self.urlOpener = urlOpener
+        self.dateProvider = dateProvider
         self.ytdCacheManager = ytdCacheManager
         self.quarterlyCacheManager = quarterlyCacheManager
         self.highestCloseCacheManager = highestCloseCacheManager
