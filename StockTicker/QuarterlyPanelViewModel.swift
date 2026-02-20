@@ -22,6 +22,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var emaDayRows: [QuarterlyRow] = []
     @Published var emaWeekRows: [QuarterlyRow] = []
     @Published var emaCrossRows: [QuarterlyRow] = []
+    @Published var emaBelowRows: [QuarterlyRow] = []
 
     var isForwardPEMode: Bool { viewMode == .forwardPE }
     var isPriceBreaksMode: Bool { viewMode == .priceBreaks }
@@ -218,7 +219,18 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
         emaCrossRows = crossRows
 
-        return dayRows + weekRows + crossRows
+        var belowRows: [QuarterlyRow] = []
+        for symbol in storedWatchlist {
+            guard let entry = storedEMAEntries[symbol],
+                  let ema = entry.week, ema > 0,
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder,
+                  quote.price <= ema else { continue }
+            let weeksBelow = entry.weekBelowCount ?? 0
+            belowRows.append(QuarterlyRow(id: "\(symbol)-ema-below", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+        }
+        emaBelowRows = belowRows
+
+        return dayRows + weekRows + crossRows + belowRows
     }
 
     private func highestClosePercent(for symbol: String) -> Double? {
@@ -381,6 +393,7 @@ class QuarterlyPanelViewModel: ObservableObject {
             emaDayRows.sort(by: comparator)
             emaWeekRows.sort(by: comparator)
             emaCrossRows.sort(by: comparator)
+            emaBelowRows.sort(by: comparator)
         }
         rows.sort(by: comparator)
     }

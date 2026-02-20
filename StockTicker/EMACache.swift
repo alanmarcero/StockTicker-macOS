@@ -6,6 +6,7 @@ struct EMACacheEntry: Codable, Equatable {
     let day: Double?
     let week: Double?
     let weekCrossoverWeeksBelow: Int?
+    let weekBelowCount: Int?
 }
 
 // MARK: - EMA Cache Data Model

@@ -12,7 +12,7 @@ struct QuarterlyPanelView: View {
             Divider()
             if viewModel.isMiscStatsMode {
                 miscStatsView
-            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaCrossRows.isEmpty) : viewModel.rows.isEmpty {
+            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaCrossRows.isEmpty && viewModel.emaBelowRows.isEmpty) : viewModel.rows.isEmpty {
                 emptyState
             } else {
                 scrollableContent
@@ -70,6 +70,8 @@ struct QuarterlyPanelView: View {
                 emaTable("5-Week", rows: viewModel.emaWeekRows)
                 Divider()
                 emaCrossTable("5W Cross", rows: viewModel.emaCrossRows)
+                Divider()
+                emaCrossTable("Below 5W", rows: viewModel.emaBelowRows)
             }
         } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
@@ -286,7 +288,7 @@ struct QuarterlyPanelView: View {
             Group {
                 if let weeks = row.breakoutPercent {
                     Text("\(Int(weeks))w")
-                        .foregroundColor(.green)
+                        .foregroundColor(Int(weeks) > 0 ? .green : .secondary)
                 } else {
                     Text(QuarterlyFormatting.noData)
                         .foregroundColor(.secondary)
@@ -468,7 +470,7 @@ struct QuarterlyPanelView: View {
             return "\(viewModel.miscStats.count) stats"
         }
         if viewModel.isEMAsMode {
-            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross"
+            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross, \(viewModel.emaBelowRows.count) below"
         }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"

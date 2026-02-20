@@ -141,9 +141,10 @@ extension StockService {
             crossoverCloses = nil
         }
         let crossover = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
+        let belowCount = crossoverCloses.flatMap { EMAAnalysis.countWeeksBelow(closes: $0) }
 
         guard day != nil || weekEMA != nil else { return nil }
-        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover)
+        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount)
     }
 
     /// Sneak peek window: only include the current (incomplete) week's bar on Friday 2PM–4PM ET.
