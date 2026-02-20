@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (40 files, ~8,092 lines)
+## Source Files (40 files, ~8,105 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -51,7 +51,7 @@ MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketS
 TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
 RequestLogger.swift              (316L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries, endpoint counts
-DebugWindow.swift                (293L)  Debug window with error indicator, endpoint counts, injected RequestLogger
+DebugWindow.swift                (306L)  Debug window with error indicator, errors-only filter, endpoint counts, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
@@ -78,7 +78,7 @@ EMACache.swift                   (119L)  EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (35 files, ~11,456 lines)
+## Test Files (35 files, ~11,486 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
@@ -101,7 +101,7 @@ LayoutConfigTests.swift          (97L)   Layout constant validation
 RequestLoggerTests.swift         (125L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
-DebugViewModelTests.swift        (89L)   DebugViewModel refresh/clear/endpoint counts with injected logger
+DebugViewModelTests.swift        (119L)  DebugViewModel refresh/clear/endpoint counts/errors-only filter with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
 QuoteFetchCoordinatorTests.swift (306L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService

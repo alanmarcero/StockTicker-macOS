@@ -54,6 +54,13 @@ struct DebugView: View {
                 Text("\(viewModel.entries.count) requests")
                     .foregroundColor(.secondary)
                     .font(.caption)
+                Button {
+                    viewModel.showErrorsOnly.toggle()
+                } label: {
+                    Text("Errors Only")
+                        .foregroundColor(viewModel.showErrorsOnly ? .red : .secondary)
+                }
+                .buttonStyle(.borderless)
                 Button("Clear") {
                     viewModel.clear()
                 }
@@ -79,10 +86,10 @@ struct DebugView: View {
 
     private var requestList: some View {
         Group {
-            if viewModel.entries.isEmpty {
+            if viewModel.filteredEntries.isEmpty {
                 emptyState
             } else {
-                List(viewModel.entries) { entry in
+                List(viewModel.filteredEntries) { entry in
                     RequestRowView(entry: entry)
                 }
                 .listStyle(.plain)
@@ -204,8 +211,14 @@ class DebugViewModel: ObservableObject {
     @Published var errorCount: Int = 0
     @Published var lastErrorMessage: String?
     @Published var endpointCounts: [EndpointCount] = []
+    @Published var showErrorsOnly: Bool = false
     private let logger: RequestLogger
     private var refreshTask: Task<Void, Never>?
+
+    var filteredEntries: [RequestLogEntry] {
+        guard showErrorsOnly else { return entries }
+        return entries.filter { !$0.isSuccess }
+    }
 
     init(logger: RequestLogger = .shared) {
         self.logger = logger

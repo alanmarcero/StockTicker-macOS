@@ -75,6 +75,36 @@ final class DebugViewModelTests: XCTestCase {
         XCTAssertTrue(labels.contains("CNBC RSS"))
     }
 
+    func testFilteredEntries_returnsAllWhenFilterOff() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://example.com")!
+        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Server error"))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertFalse(viewModel.showErrorsOnly)
+        XCTAssertEqual(viewModel.filteredEntries.count, 2)
+    }
+
+    func testFilteredEntries_returnsOnlyErrorsWhenFilterOn() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://example.com")!
+        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Server error"))
+        await logger.log(RequestLogEntry(url: url, statusCode: 404, responseSize: 0, duration: 0.1))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        viewModel.showErrorsOnly = true
+        XCTAssertEqual(viewModel.filteredEntries.count, 2)
+        XCTAssertTrue(viewModel.filteredEntries.allSatisfy { !$0.isSuccess })
+    }
+
     func testRefresh_showsHTTPStatusWhenNoErrorMessage() async {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!
