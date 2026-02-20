@@ -33,12 +33,12 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (40 files, ~8,049 lines)
+## Source Files (40 files, ~8,089 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
 MenuBarView.swift                (961L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
-MenuBarController+Cache.swift    (379L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, and market cap cache coordination with shared helpers
+MenuBarController+Cache.swift    (404L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, and market cap cache coordination with shared helpers
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (248L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
@@ -74,11 +74,11 @@ SwingLevelCache.swift            (110L)  Swing level cache manager (actor), dail
 RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothing method)
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (72L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection + weeks-below counting
-EMACache.swift                   (96L)   EMA cache manager (actor), daily refresh, 2 timeframes + crossover + below-count per symbol
+EMACache.swift                   (116L)  EMA cache manager (actor), daily refresh, sneak peek refresh, 2 timeframes + crossover + below-count per symbol
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (35 files, ~11,299 lines)
+## Test Files (35 files, ~11,428 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
@@ -112,7 +112,7 @@ SwingLevelCacheTests.swift       (371L)  Swing level cache load/save, invalidati
 RSIAnalysisTests.swift           (97L)   RSI algorithm: empty, insufficient, all gains/losses, alternating, trends, custom period
 RSICacheTests.swift              (230L)  RSI cache load/save, missing symbols, daily refresh, clear
 EMAAnalysisTests.swift           (189L)  EMA algorithm: empty, insufficient, SMA, known sequence, constant, custom period, trends, weekly crossover detection, weeks-below counting
-EMACacheTests.swift              (309L)  EMA cache load/save, missing symbols, daily refresh, clear, nil values, crossover field
+EMACacheTests.swift              (438L)  EMA cache load/save, missing symbols, daily refresh, sneak peek refresh, clear, nil values, crossover field
 SymbolRoutingTests.swift         (71L)   Symbol routing: historical always Yahoo, isFinnhubCompatible, partition splits for quote routing
 FinnhubResponseTests.swift       (144L)  Finnhub candle + quote response decoding: valid, no_data, null fields, empty arrays, isValid
 ThrottledTaskGroupTests.swift    (129L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill + FinnhubBackfill + FinnhubQuote constants
@@ -559,7 +559,9 @@ Both fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` 
 
 **Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~60s). This produces ~15 API calls per cycle (5 EMA × 2 timeframes + 5 Forward P/E) = 0.25 req/sec sustained rate.
 
-Key methods: `loadEMACache()` (daily EMA consolidated into daily analysis; weekly fetched separately)
+**Sneak peek refresh:** On Friday 2-4 PM ET, if the EMA cache was already refreshed earlier that day (before 2 PM), `needsSneakPeekRefresh()` triggers a one-time re-fetch of weekly EMA data only. This ensures crossover/below-count detection includes the current week's incomplete bar during the sneak peek window (`isCurrentWeekSneakPeek` in StockService+EMA.swift). Daily EMAs are preserved from the existing cache to avoid redundant API calls.
+
+Key methods: `loadEMACache()`, `refreshEMAForSneakPeek()` (daily EMA consolidated into daily analysis; weekly fetched separately)
 
 ## Consolidated Daily Analysis
 

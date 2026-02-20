@@ -362,8 +362,28 @@ extension MenuBarController {
             needsRefresh = true
         }
 
+        if await emaCacheManager.needsSneakPeekRefresh() {
+            await refreshEMAForSneakPeek()
+        }
+
         guard needsRefresh else { return }
         await fetchMissingDailyAnalysis()
+    }
+
+    func refreshEMAForSneakPeek() async {
+        let existingEntries = await emaCacheManager.getAllEntries()
+        let dailyEMAs = existingEntries.compactMapValues { $0.day }
+
+        await emaCacheManager.clearForDailyRefresh()
+
+        let symbols = allCacheSymbols
+        let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs)
+        for (symbol, entry) in fetched {
+            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        }
+        await emaCacheManager.save()
+
+        emaEntries = await emaCacheManager.getAllEntries()
     }
 
     // MARK: - Market Cap Attachment

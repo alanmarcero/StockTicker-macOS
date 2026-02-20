@@ -82,6 +82,26 @@ actor EMACacheManager {
         cache = EMACacheData(lastUpdated: "", entries: [:])
     }
 
+    func needsSneakPeekRefresh() -> Bool {
+        guard let cache = cache, !cache.entries.isEmpty else { return false }
+
+        let now = dateProvider.now()
+        let calendar = MarketSchedule.easternCalendar
+        let components = calendar.dateComponents([.weekday, .hour], from: now)
+
+        // Must be Friday (weekday 6) between 2-4 PM ET
+        guard components.weekday == 6,
+              let hour = components.hour,
+              hour >= 14, hour < 16 else { return false }
+
+        // Cache must have been updated today but before 2 PM ET
+        let formatter = ISO8601DateFormatter()
+        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return false }
+        guard calendar.isDate(lastDate, inSameDayAs: now) else { return false }
+
+        return calendar.component(.hour, from: lastDate) < 14
+    }
+
     // MARK: - Private
 
     private func ensureCacheExists() {
