@@ -212,6 +212,7 @@ actor RequestLogger {
 final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
     private let wrapped: HTTPClient
     private let logger: RequestLogger
+    private let retryShouldAttempt: @Sendable () -> Bool
 
     private enum ResponseLimits {
         static let maxBodySize = 50 * 1024  // 50KB cap to avoid memory issues
@@ -228,9 +229,10 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
         }
     }
 
-    init(wrapping client: HTTPClient = URLSession.shared, logger: RequestLogger = .shared) {
+    init(wrapping client: HTTPClient = URLSession.shared, logger: RequestLogger = .shared, retryShouldAttempt: (@Sendable () -> Bool)? = nil) {
         self.wrapped = client
         self.logger = logger
+        self.retryShouldAttempt = retryShouldAttempt ?? { RetryConfig.shouldRetry }
     }
 
     func data(from url: URL) async throws -> (Data, URLResponse) {
@@ -263,7 +265,7 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
 
                 if let code = entry.statusCode, !(200..<300).contains(code),
                    code != 429,
-                   attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
+                   attempt < RetryConfig.maxAttempts && retryShouldAttempt() {
                     try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
                     continue
                 }

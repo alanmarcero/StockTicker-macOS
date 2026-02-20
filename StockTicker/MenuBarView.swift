@@ -365,7 +365,7 @@ class MenuBarController: NSObject, ObservableObject {
         attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad, marketOpen: scheduleInfo.state == .open)
+        await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
 
         let combinedQuotes = mergedQuotes()
         quarterlyWindowController?.refresh(quotes: combinedQuotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: mergedForwardPEs(), swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
@@ -395,13 +395,13 @@ class MenuBarController: NSObject, ObservableObject {
         quarterlyWindowController?.isWindowVisible ?? false
     }
 
-    private func refreshUniverseQuotesIfNeeded(isInitialLoad: Bool, marketOpen: Bool) async {
+    private func refreshUniverseQuotesIfNeeded(isInitialLoad: Bool) async {
         guard !config.universe.isEmpty else { return }
         let symbols = universeOnlySymbols
         guard !symbols.isEmpty else { return }
 
         let shouldFetch = isInitialLoad
-            || (marketOpen && isExtraStatsVisible && refreshCycleCount % Timing.universeRefreshCadence == 0)
+            || (isExtraStatsVisible && refreshCycleCount % Timing.universeRefreshCadence == 0)
 
         guard shouldFetch else { return }
 

@@ -84,12 +84,24 @@ final class RequestLoggerTests: XCTestCase {
         let url = URL(string: "https://example.com/api")!
         let mock = CountingHTTPClient(url: url, statusCode: 500)
         let logger = RequestLogger()
-        let client = LoggingHTTPClient(wrapping: mock, logger: logger)
+        let client = LoggingHTTPClient(wrapping: mock, logger: logger, retryShouldAttempt: { true })
 
         let (_, response) = try await client.data(from: url)
         let httpResponse = response as! HTTPURLResponse
         XCTAssertEqual(httpResponse.statusCode, 500)
         XCTAssertEqual(mock.callCount, 2, "500 should be retried once")
+    }
+
+    func test500Response_notRetriedWhenShouldRetryFalse() async throws {
+        let url = URL(string: "https://example.com/api")!
+        let mock = CountingHTTPClient(url: url, statusCode: 500)
+        let logger = RequestLogger()
+        let client = LoggingHTTPClient(wrapping: mock, logger: logger, retryShouldAttempt: { false })
+
+        let (_, response) = try await client.data(from: url)
+        let httpResponse = response as! HTTPURLResponse
+        XCTAssertEqual(httpResponse.statusCode, 500)
+        XCTAssertEqual(mock.callCount, 1, "500 should not retry when shouldRetry is false")
     }
 }
 
