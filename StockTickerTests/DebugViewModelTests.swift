@@ -53,6 +53,28 @@ final class DebugViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.lastErrorMessage)
     }
 
+    func testRefresh_populatesEndpointCounts() async {
+        let logger = RequestLogger()
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://finnhub.io/api/v1/quote?symbol=AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://www.cnbc.com/id/100003114/device/rss/rss.html")!, statusCode: 200, responseSize: 100, duration: 0.1))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.endpointCounts.count, 4)
+        // Sorted by count descending: Yahoo Chart (2), then others (1 each)
+        XCTAssertEqual(viewModel.endpointCounts[0].label, "Yahoo Chart")
+        XCTAssertEqual(viewModel.endpointCounts[0].count, 2)
+        let labels = Set(viewModel.endpointCounts.map { $0.label })
+        XCTAssertTrue(labels.contains("Yahoo Quote"))
+        XCTAssertTrue(labels.contains("Finnhub Quote"))
+        XCTAssertTrue(labels.contains("CNBC RSS"))
+    }
+
     func testRefresh_showsHTTPStatusWhenNoErrorMessage() async {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!

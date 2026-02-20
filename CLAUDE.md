@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (40 files, ~7,955 lines)
+## Source Files (40 files, ~8,049 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -50,8 +50,8 @@ StockData.swift                  (553L)  Data models: StockQuote, TradingSession
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
-RequestLogger.swift              (275L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries
-DebugWindow.swift                (281L)  Debug window with error indicator, injected RequestLogger
+RequestLogger.swift              (316L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries, endpoint counts
+DebugWindow.swift                (293L)  Debug window with error indicator, endpoint counts, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
@@ -61,7 +61,7 @@ YTDCache.swift                   (99L)   Year-to-date price cache manager (actor
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
 QuarterlyPanelView.swift         (626L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (400L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
+QuarterlyPanelViewModel.swift     (430L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
 LayoutConfig.swift               (80L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
@@ -78,7 +78,7 @@ EMACache.swift                   (96L)   EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (35 files, ~11,217 lines)
+## Test Files (35 files, ~11,299 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
@@ -94,14 +94,14 @@ MarqueeViewTests.swift           (106L)  Config constants, layer setup, scrollin
 MenuItemFactoryTests.swift       (141L)  Font tests, disabled/action/submenu item creation
 YTDCacheTests.swift              (289L)  Cache load/save, year rollover, DateProvider injection
 QuarterlyCacheTests.swift        (481L)  Quarter calculations, cache operations, pruning, quarterStartTimestamp
-QuarterlyPanelTests.swift        (1639L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, below-5W, misc stats, universe labels
+QuarterlyPanelTests.swift        (1699L) Row computation, sorting, direction toggling, missing data, highlighting, view modes, highest close, forward P/E, price breaks with dates, RSI, EMA, crossover, below-5W, misc stats, universe labels
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (712L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
 RequestLoggerTests.swift         (125L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
-DebugViewModelTests.swift        (67L)   DebugViewModel refresh/clear with injected logger
+DebugViewModelTests.swift        (89L)   DebugViewModel refresh/clear/endpoint counts with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
 QuoteFetchCoordinatorTests.swift (306L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService

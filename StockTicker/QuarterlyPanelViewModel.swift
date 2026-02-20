@@ -255,6 +255,8 @@ class QuarterlyPanelViewModel: ObservableObject {
             MiscStat(id: "sectorsPositiveYTD", description: "% of sectors positive YTD", value: percentPositiveYTD(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
             MiscStat(id: "avgForwardPE", description: "Average forward P/E (equities)", value: averageForwardPE()),
             MiscStat(id: "medianForwardPE", description: "Median forward P/E (equities)", value: medianForwardPE()),
+            MiscStat(id: "pctAbove5WEMA", description: "% of \(label) above 5W EMA", value: percentAbove5WEMA()),
+            MiscStat(id: "pctBelow5WEMA", description: "% of \(label) below 5W EMA", value: percentBelow5WEMA()),
         ]
     }
 
@@ -299,6 +301,34 @@ class QuarterlyPanelViewModel: ObservableObject {
         let mid = pes.count / 2
         let median = pes.count.isMultiple(of: 2) ? (pes[mid - 1] + pes[mid]) / 2 : pes[mid]
         return String(format: "%.1f", median)
+    }
+
+    private func percentAbove5WEMA() -> String {
+        var total = 0
+        var above = 0
+        for symbol in storedWatchlist {
+            guard let entry = storedEMAEntries[symbol],
+                  let weekEMA = entry.week, weekEMA > 0,
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+            total += 1
+            if quote.price > weekEMA { above += 1 }
+        }
+        guard total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(above) / Double(total)) * 100)
+    }
+
+    private func percentBelow5WEMA() -> String {
+        var total = 0
+        var below = 0
+        for symbol in storedWatchlist {
+            guard let entry = storedEMAEntries[symbol],
+                  let weekEMA = entry.week, weekEMA > 0,
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+            total += 1
+            if quote.price <= weekEMA { below += 1 }
+        }
+        guard total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(below) / Double(total)) * 100)
     }
 
     func sort(by column: QuarterlySortColumn) {

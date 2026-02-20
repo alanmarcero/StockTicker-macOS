@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - Endpoint Count
+
+struct EndpointCount: Identifiable {
+    let label: String
+    let count: Int
+    var id: String { label }
+}
+
 // MARK: - Request Log Entry
 
 struct RequestLogEntry: Identifiable, Sendable {
@@ -154,6 +162,39 @@ actor RequestLogger {
     func getLastError() -> RequestLogEntry? {
         pruneOldEntries()
         return entries.filter { !$0.isSuccess }.max { $0.timestamp < $1.timestamp }
+    }
+
+    func getEndpointCounts() -> [EndpointCount] {
+        pruneOldEntries()
+        var counts: [String: Int] = [:]
+        for entry in entries {
+            let label = Self.classifyEndpoint(entry.url)
+            counts[label, default: 0] += 1
+        }
+        return counts
+            .filter { $0.value > 0 }
+            .sorted { $0.value > $1.value }
+            .map { EndpointCount(label: $0.key, count: $0.value) }
+    }
+
+    private static func classifyEndpoint(_ url: URL) -> String {
+        let host = url.host ?? ""
+        let path = url.path
+
+        if host.contains("finnhub.io") {
+            if path.contains("/stock/candle") { return "Finnhub Candle" }
+            if path.contains("/quote") { return "Finnhub Quote" }
+            return "Finnhub Other"
+        }
+        if host.contains("yahoo.com") {
+            if path.contains("/v8/finance/chart") { return "Yahoo Chart" }
+            if path.contains("/v7/finance/quote") { return "Yahoo Quote" }
+            if path.contains("/fundamentals-timeseries") { return "Yahoo Timeseries" }
+            if host.contains("fc.yahoo.com") || path.contains("getcrumb") { return "Yahoo Auth" }
+            return "Yahoo Other"
+        }
+        if host.contains("cnbc.com") { return "CNBC RSS" }
+        return "Other"
     }
 
     func clear() {

@@ -64,6 +64,15 @@ struct DebugView: View {
                     .font(.caption)
                     .foregroundColor(.red)
             }
+            if !viewModel.endpointCounts.isEmpty {
+                HStack(spacing: 12) {
+                    ForEach(viewModel.endpointCounts) { endpoint in
+                        Text("\(endpoint.label): \(endpoint.count)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
         .padding()
     }
@@ -194,6 +203,7 @@ class DebugViewModel: ObservableObject {
     @Published var entries: [RequestLogEntry] = []
     @Published var errorCount: Int = 0
     @Published var lastErrorMessage: String?
+    @Published var endpointCounts: [EndpointCount] = []
     private let logger: RequestLogger
     private var refreshTask: Task<Void, Never>?
 
@@ -205,6 +215,7 @@ class DebugViewModel: ObservableObject {
         Task {
             entries = await logger.getEntries()
             errorCount = await logger.getErrorCount()
+            endpointCounts = await logger.getEndpointCounts()
             let lastError = await logger.getLastError()
             lastErrorMessage = lastError?.error ?? lastError.map { "HTTP \($0.statusCode ?? 0)" }
         }
@@ -216,6 +227,7 @@ class DebugViewModel: ObservableObject {
             entries = []
             errorCount = 0
             lastErrorMessage = nil
+            endpointCounts = []
         }
     }
 

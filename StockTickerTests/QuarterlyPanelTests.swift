@@ -967,7 +967,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
         vm.switchMode(.miscStats)
 
-        XCTAssertEqual(vm.miscStats.count, 8)
+        XCTAssertEqual(vm.miscStats.count, 10)
         XCTAssertEqual(vm.miscStats[0].id, "within5pctOfHigh")
         XCTAssertEqual(vm.miscStats[0].value, "100%")
         // SPY is an index, within 5%
@@ -1248,6 +1248,66 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[7].value, "--")
+    }
+
+    // MARK: - Misc Stats: EMA
+
+    func testMiscStats_pctAbove5WEMA() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+            "MSFT": makeQuote(symbol: "MSFT", price: 180.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "MSFT": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+        ]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[8].id, "pctAbove5WEMA")
+        XCTAssertEqual(vm.miscStats[8].value, "50%")
+    }
+
+    func testMiscStats_pctBelow5WEMA() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+            "MSFT": makeQuote(symbol: "MSFT", price: 180.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "MSFT": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+        ]
+
+        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[9].id, "pctBelow5WEMA")
+        XCTAssertEqual(vm.miscStats[9].value, "50%")
+    }
+
+    func testMiscStats_pctAbove5WEMA_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[8].id, "pctAbove5WEMA")
+        XCTAssertEqual(vm.miscStats[8].value, "--")
+    }
+
+    func testMiscStats_pctBelow5WEMA_noData() {
+        let vm = QuarterlyPanelViewModel()
+
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.switchMode(.miscStats)
+
+        XCTAssertEqual(vm.miscStats[9].id, "pctBelow5WEMA")
+        XCTAssertEqual(vm.miscStats[9].value, "--")
     }
 
     func testIsMiscStatsMode() {
