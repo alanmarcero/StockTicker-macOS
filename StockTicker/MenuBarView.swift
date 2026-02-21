@@ -168,7 +168,6 @@ class MenuBarController: NSObject, ObservableObject {
             await loadSwingLevelCache()
             await loadRSICache()
             await loadEMACache()
-            await refreshCachesFromDisk()
             await refreshAllQuotes()
             await refreshNews()
             await startBackfill()

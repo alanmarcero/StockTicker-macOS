@@ -11,39 +11,35 @@ struct DailyAnalysisResult: Sendable {
 
 // MARK: - Shared Analysis Helpers
 
-private func buildDailyAnalysisResult(closes: [Double], timestamps: [Int]) -> DailyAnalysisResult {
-    let highestClose = closes.max()
+private let swingDateFormatter: DateFormatter = {
+    let fmt = DateFormatter()
+    fmt.dateFormat = "M/d/yy"
+    return fmt
+}()
 
-    let paired = zip(timestamps, closes).map { ($0, $1) }
-    var swingEntry: SwingLevelCacheEntry?
-    if !paired.isEmpty {
-        let swingResult = SwingAnalysis.analyze(closes: closes)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "M/d/yy"
-
-        let breakoutDate = swingResult.breakoutIndex.map { idx in
-            dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamps[idx])))
-        }
-        let breakdownDate = swingResult.breakdownIndex.map { idx in
-            dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamps[idx])))
-        }
-
-        swingEntry = SwingLevelCacheEntry(
-            breakoutPrice: swingResult.breakoutPrice,
-            breakoutDate: breakoutDate,
-            breakdownPrice: swingResult.breakdownPrice,
-            breakdownDate: breakdownDate
-        )
+private func buildSwingEntry(closes: [Double], timestamps: [Int]) -> SwingLevelCacheEntry? {
+    guard !closes.isEmpty else { return nil }
+    let swingResult = SwingAnalysis.analyze(closes: closes)
+    let breakoutDate = swingResult.breakoutIndex.map { idx in
+        swingDateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamps[idx])))
     }
+    let breakdownDate = swingResult.breakdownIndex.map { idx in
+        swingDateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamps[idx])))
+    }
+    return SwingLevelCacheEntry(
+        breakoutPrice: swingResult.breakoutPrice,
+        breakoutDate: breakoutDate,
+        breakdownPrice: swingResult.breakdownPrice,
+        breakdownDate: breakdownDate
+    )
+}
 
-    let rsi = RSIAnalysis.calculate(closes: closes)
-    let dailyEMA = EMAAnalysis.calculate(closes: closes)
-
-    return DailyAnalysisResult(
-        highestClose: highestClose,
-        swingLevelEntry: swingEntry,
-        rsi: rsi,
-        dailyEMA: dailyEMA
+private func buildDailyAnalysisResult(closes: [Double], timestamps: [Int]) -> DailyAnalysisResult {
+    DailyAnalysisResult(
+        highestClose: closes.max(),
+        swingLevelEntry: buildSwingEntry(closes: closes, timestamps: timestamps),
+        rsi: RSIAnalysis.calculate(closes: closes),
+        dailyEMA: EMAAnalysis.calculate(closes: closes)
     )
 }
 
@@ -84,46 +80,23 @@ extension StockService {
                 return nil
             }
 
-            let timestamps = result.timestamp ?? []
             let validCloses = closes.compactMap { $0 }
-            let highestClose = validCloses.max()
 
+            // Swing analysis requires paired timestamps + closes
+            let timestamps = result.timestamp ?? []
             let paired = zip(timestamps, closes).compactMap { ts, close -> (Int, Double)? in
                 guard let close else { return nil }
                 return (ts, close)
             }
-            var swingEntry: SwingLevelCacheEntry?
-            if !paired.isEmpty {
-                let validTimestamps = paired.map { $0.0 }
-                let pairedCloses = paired.map { $0.1 }
-
-                let swingResult = SwingAnalysis.analyze(closes: pairedCloses)
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "M/d/yy"
-
-                let breakoutDate = swingResult.breakoutIndex.map { idx in
-                    dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
-                }
-                let breakdownDate = swingResult.breakdownIndex.map { idx in
-                    dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
-                }
-
-                swingEntry = SwingLevelCacheEntry(
-                    breakoutPrice: swingResult.breakoutPrice,
-                    breakoutDate: breakoutDate,
-                    breakdownPrice: swingResult.breakdownPrice,
-                    breakdownDate: breakdownDate
-                )
-            }
-
-            let rsi = RSIAnalysis.calculate(closes: validCloses)
-            let dailyEMA = EMAAnalysis.calculate(closes: validCloses)
+            let swingEntry = paired.isEmpty
+                ? nil
+                : buildSwingEntry(closes: paired.map { $0.1 }, timestamps: paired.map { $0.0 })
 
             return DailyAnalysisResult(
-                highestClose: highestClose,
+                highestClose: validCloses.max(),
                 swingLevelEntry: swingEntry,
-                rsi: rsi,
-                dailyEMA: dailyEMA
+                rsi: RSIAnalysis.calculate(closes: validCloses),
+                dailyEMA: EMAAnalysis.calculate(closes: validCloses)
             )
         } catch {
             print("Daily analysis fetch failed for \(symbol): \(error.localizedDescription)")
@@ -278,25 +251,7 @@ extension StockService {
 
     private func fetchSwingLevelsFromFinnhub(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry? {
         guard let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2) else { return nil }
-        guard !result.closes.isEmpty else { return nil }
-
-        let swingResult = SwingAnalysis.analyze(closes: result.closes)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "M/d/yy"
-
-        let breakoutDate = swingResult.breakoutIndex.map { idx in
-            dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(result.timestamps[idx])))
-        }
-        let breakdownDate = swingResult.breakdownIndex.map { idx in
-            dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(result.timestamps[idx])))
-        }
-
-        return SwingLevelCacheEntry(
-            breakoutPrice: swingResult.breakoutPrice,
-            breakoutDate: breakoutDate,
-            breakdownPrice: swingResult.breakdownPrice,
-            breakdownDate: breakdownDate
-        )
+        return buildSwingEntry(closes: result.closes, timestamps: result.timestamps)
     }
 
     private func fetchSwingLevelsFromYahoo(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry? {
@@ -321,27 +276,7 @@ extension StockService {
             }
             guard !paired.isEmpty else { return nil }
 
-            let validTimestamps = paired.map { $0.0 }
-            let validCloses = paired.map { $0.1 }
-
-            let swingResult = SwingAnalysis.analyze(closes: validCloses)
-
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "M/d/yy"
-
-            let breakoutDate: String? = swingResult.breakoutIndex.map { idx in
-                dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
-            }
-            let breakdownDate: String? = swingResult.breakdownIndex.map { idx in
-                dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(validTimestamps[idx])))
-            }
-
-            return SwingLevelCacheEntry(
-                breakoutPrice: swingResult.breakoutPrice,
-                breakoutDate: breakoutDate,
-                breakdownPrice: swingResult.breakdownPrice,
-                breakdownDate: breakdownDate
-            )
+            return buildSwingEntry(closes: paired.map { $0.1 }, timestamps: paired.map { $0.0 })
         } catch {
             print("Swing levels fetch failed for \(symbol): \(error.localizedDescription)")
             return nil

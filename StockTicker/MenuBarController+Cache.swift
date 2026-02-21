@@ -26,6 +26,22 @@ extension MenuBarController {
         return "\(oldest.identifier):\(newest.identifier)"
     }
 
+    private func refreshDailyAnalysisProperties() async {
+        highestClosePrices = await highestCloseCacheManager.getAllPrices()
+        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+        rsiValues = await rsiCacheManager.getAllValues()
+        emaEntries = await emaCacheManager.getAllEntries()
+    }
+
+    private func forwardPEDateRange() -> (period1: Int, period2: Int)? {
+        let now = dateProvider.now()
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
+        guard let oldest = quarters.last else { return nil }
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(now.timeIntervalSince1970)
+        return (period1, period2)
+    }
+
     // MARK: - YTD Cache
 
     func loadYTDCache() async {
@@ -126,6 +142,8 @@ extension MenuBarController {
         if await highestCloseCacheManager.needsDailyRefresh() {
             await highestCloseCacheManager.clearPricesForDailyRefresh()
         }
+
+        highestClosePrices = await highestCloseCacheManager.getAllPrices()
     }
 
     func attachHighestClosesToQuotes() {
@@ -163,18 +181,13 @@ extension MenuBarController {
             return
         }
 
-        let now = dateProvider.now()
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
-        guard let oldest = quarters.last else {
+        guard let range = forwardPEDateRange() else {
             forwardPEData = await forwardPECacheManager.getAllData()
             return
         }
 
-        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(now.timeIntervalSince1970)
-
         let fetched = await stockService.batchFetchForwardPERatios(
-            symbols: missingSymbols, period1: period1, period2: period2
+            symbols: missingSymbols, period1: range.period1, period2: range.period2
         )
         for (symbol, quarterPEs) in fetched {
             await forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs)
@@ -197,6 +210,8 @@ extension MenuBarController {
         if await swingLevelCacheManager.needsDailyRefresh() {
             await swingLevelCacheManager.clearEntriesForDailyRefresh()
         }
+
+        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
     }
 
     // MARK: - RSI Cache
@@ -207,6 +222,8 @@ extension MenuBarController {
         if await rsiCacheManager.needsDailyRefresh() {
             await rsiCacheManager.clearForDailyRefresh()
         }
+
+        rsiValues = await rsiCacheManager.getAllValues()
     }
 
     // MARK: - EMA Cache
@@ -217,6 +234,8 @@ extension MenuBarController {
         if await emaCacheManager.needsDailyRefresh() {
             await emaCacheManager.clearForDailyRefresh()
         }
+
+        emaEntries = await emaCacheManager.getAllEntries()
     }
 
     // MARK: - Cache Retry
@@ -250,16 +269,10 @@ extension MenuBarController {
         guard !missing.isEmpty else { return }
 
         let batch = Array(missing.prefix(CacheRetry.batchSize))
-
-        let now = dateProvider.now()
-        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
-        guard let oldest = quarters.last else { return }
-
-        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
-        let period2 = Int(now.timeIntervalSince1970)
+        guard let range = forwardPEDateRange() else { return }
 
         let fetched = await stockService.batchFetchForwardPERatios(
-            symbols: batch, period1: period1, period2: period2
+            symbols: batch, period1: range.period1, period2: range.period2
         )
         guard !fetched.isEmpty else { return }
 
@@ -281,20 +294,14 @@ extension MenuBarController {
         let allMissing = Array(highestCloseMissing.union(swingMissing).union(rsiMissing).union(emaMissing))
 
         guard !allMissing.isEmpty else {
-            highestClosePrices = await highestCloseCacheManager.getAllPrices()
-            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-            rsiValues = await rsiCacheManager.getAllValues()
-            emaEntries = await emaCacheManager.getAllEntries()
+            await refreshDailyAnalysisProperties()
             return
         }
 
         let now = dateProvider.now()
         let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
         guard let oldest = quarters.last else {
-            highestClosePrices = await highestCloseCacheManager.getAllPrices()
-            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-            rsiValues = await rsiCacheManager.getAllValues()
-            emaEntries = await emaCacheManager.getAllEntries()
+            await refreshDailyAnalysisProperties()
             return
         }
 
@@ -336,10 +343,7 @@ extension MenuBarController {
             await emaCacheManager.save()
         }
 
-        highestClosePrices = await highestCloseCacheManager.getAllPrices()
-        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-        rsiValues = await rsiCacheManager.getAllValues()
-        emaEntries = await emaCacheManager.getAllEntries()
+        await refreshDailyAnalysisProperties()
     }
 
     func refreshDailyAnalysisIfNeeded() async {
@@ -434,10 +438,7 @@ extension MenuBarController {
             ytdPrices = await ytdCacheManager.getAllPrices()
             attachYTDPricesToQuotes()
         case .dailyAnalysis:
-            highestClosePrices = await highestCloseCacheManager.getAllPrices()
-            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
-            rsiValues = await rsiCacheManager.getAllValues()
-            emaEntries = await emaCacheManager.getAllEntries()
+            await refreshDailyAnalysisProperties()
             attachHighestClosesToQuotes()
         case .weeklyEMA:
             emaEntries = await emaCacheManager.getAllEntries()

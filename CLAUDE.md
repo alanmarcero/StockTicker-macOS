@@ -33,17 +33,17 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (41 files, ~8,368 lines)
+## Source Files (41 files, ~8,275 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (960L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
-MenuBarController+Cache.swift    (476L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
-BackfillScheduler.swift          (263L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
+MenuBarView.swift                (959L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
+MenuBarController+Cache.swift    (477L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
+BackfillScheduler.swift          (235L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
-StockService+Historical.swift    (450L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
+StockService+Historical.swift    (385L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
 StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
 StockService+Finnhub.swift       (82L)   Extension: Finnhub candle API fetch methods (daily candles, closes, historical close) + real-time quote fetch
 StockService+EMA.swift           (215L)  Extension: 5-day/week EMA fetch + weekly crossover + below-count with Finnhub routing + Yahoo fallback
