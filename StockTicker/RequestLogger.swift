@@ -137,39 +137,48 @@ actor RequestLogger {
     static let shared = RequestLogger()
 
     private enum Constants {
-        static let maxEntryAgeSeconds: TimeInterval = 300
+        static let counterWindow: TimeInterval = 3600  // 1 hour
+        static let maxEntriesPerEndpoint = 10
+    }
+
+    private struct CountRecord {
+        let endpoint: String
+        let timestamp: Date
+        let isError: Bool
     }
 
     private var entries: [RequestLogEntry] = []
+    private var countRecords: [CountRecord] = []
 
     init() {}
 
     func log(_ entry: RequestLogEntry) {
-        pruneOldEntries()
+        let endpoint = Self.classifyEndpoint(entry.url)
+        countRecords.append(CountRecord(endpoint: endpoint, timestamp: entry.timestamp, isError: !entry.isSuccess))
+        pruneCountRecords()
+
         entries.append(entry)
+        capEntriesPerEndpoint(endpoint)
     }
 
     func getEntries() -> [RequestLogEntry] {
-        pruneOldEntries()
-        return entries.sorted { $0.timestamp > $1.timestamp }
+        entries.sorted { $0.timestamp > $1.timestamp }
     }
 
     func getErrorCount() -> Int {
-        pruneOldEntries()
-        return entries.filter { !$0.isSuccess }.count
+        pruneCountRecords()
+        return countRecords.filter { $0.isError }.count
     }
 
     func getLastError() -> RequestLogEntry? {
-        pruneOldEntries()
-        return entries.filter { !$0.isSuccess }.max { $0.timestamp < $1.timestamp }
+        entries.filter { !$0.isSuccess }.max { $0.timestamp < $1.timestamp }
     }
 
     func getEndpointCounts() -> [EndpointCount] {
-        pruneOldEntries()
+        pruneCountRecords()
         var counts: [String: Int] = [:]
-        for entry in entries {
-            let label = Self.classifyEndpoint(entry.url)
-            counts[label, default: 0] += 1
+        for record in countRecords {
+            counts[record.endpoint, default: 0] += 1
         }
         return counts
             .filter { $0.value > 0 }
@@ -177,7 +186,7 @@ actor RequestLogger {
             .map { EndpointCount(label: $0.key, count: $0.value) }
     }
 
-    private static func classifyEndpoint(_ url: URL) -> String {
+    static func classifyEndpoint(_ url: URL) -> String {
         let host = url.host ?? ""
         let path = url.path
 
@@ -199,11 +208,20 @@ actor RequestLogger {
 
     func clear() {
         entries.removeAll()
+        countRecords.removeAll()
     }
 
-    private func pruneOldEntries() {
-        let cutoff = Date().addingTimeInterval(-Constants.maxEntryAgeSeconds)
-        entries.removeAll { $0.timestamp < cutoff }
+    private func pruneCountRecords() {
+        let cutoff = Date().addingTimeInterval(-Constants.counterWindow)
+        countRecords.removeAll { $0.timestamp < cutoff }
+    }
+
+    private func capEntriesPerEndpoint(_ endpoint: String) {
+        let endpointEntries = entries.filter { Self.classifyEndpoint($0.url) == endpoint }
+        guard endpointEntries.count > Constants.maxEntriesPerEndpoint else { return }
+        guard let oldest = endpointEntries.min(by: { $0.timestamp < $1.timestamp }),
+              let idx = entries.firstIndex(where: { $0.id == oldest.id }) else { return }
+        entries.remove(at: idx)
     }
 }
 

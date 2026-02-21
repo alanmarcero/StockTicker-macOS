@@ -37,7 +37,7 @@ struct DebugView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("API Requests (Last 5m)")
+                Text("API Requests (Last 1h)")
                     .font(.headline)
                 if viewModel.errorCount > 0 {
                     HStack(spacing: 3) {
@@ -72,11 +72,26 @@ struct DebugView: View {
                     .foregroundColor(.red)
             }
             if !viewModel.endpointCounts.isEmpty {
-                HStack(spacing: 12) {
-                    ForEach(viewModel.endpointCounts) { endpoint in
-                        Text("\(endpoint.label): \(endpoint.count)")
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.endpointFilter = nil
+                    } label: {
+                        Text("All")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .fontWeight(viewModel.endpointFilter == nil ? .semibold : .regular)
+                            .foregroundColor(viewModel.endpointFilter == nil ? .accentColor : .secondary)
+                    }
+                    .buttonStyle(.borderless)
+                    ForEach(viewModel.endpointCounts) { endpoint in
+                        Button {
+                            viewModel.endpointFilter = viewModel.endpointFilter == endpoint.label ? nil : endpoint.label
+                        } label: {
+                            Text("\(endpoint.label): \(endpoint.count)")
+                                .font(.caption)
+                                .fontWeight(viewModel.endpointFilter == endpoint.label ? .semibold : .regular)
+                                .foregroundColor(viewModel.endpointFilter == endpoint.label ? .accentColor : .secondary)
+                        }
+                        .buttonStyle(.borderless)
                     }
                 }
             }
@@ -101,7 +116,7 @@ struct DebugView: View {
     private var emptyState: some View {
         VStack {
             Spacer()
-            Text("No requests in the last 5 minutes")
+            Text("No requests logged")
                 .foregroundColor(.secondary)
             Spacer()
         }
@@ -212,12 +227,19 @@ class DebugViewModel: ObservableObject {
     @Published var lastErrorMessage: String?
     @Published var endpointCounts: [EndpointCount] = []
     @Published var showErrorsOnly: Bool = false
+    @Published var endpointFilter: String?
     private let logger: RequestLogger
     private var refreshTask: Task<Void, Never>?
 
     var filteredEntries: [RequestLogEntry] {
-        guard showErrorsOnly else { return entries }
-        return entries.filter { !$0.isSuccess }
+        var result = entries
+        if let filter = endpointFilter {
+            result = result.filter { RequestLogger.classifyEndpoint($0.url) == filter }
+        }
+        if showErrorsOnly {
+            result = result.filter { !$0.isSuccess }
+        }
+        return result
     }
 
     init(logger: RequestLogger = .shared) {
@@ -241,6 +263,7 @@ class DebugViewModel: ObservableObject {
             errorCount = 0
             lastErrorMessage = nil
             endpointCounts = []
+            endpointFilter = nil
         }
     }
 

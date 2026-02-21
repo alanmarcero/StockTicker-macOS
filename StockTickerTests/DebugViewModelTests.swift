@@ -116,4 +116,56 @@ final class DebugViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.lastErrorMessage, "HTTP 404")
     }
+
+    func testEndpointFilter_filtersEntries() async {
+        let logger = RequestLogger()
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 200, responseSize: 100, duration: 0.1))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.filteredEntries.count, 3)
+
+        viewModel.endpointFilter = "Yahoo Chart"
+        XCTAssertEqual(viewModel.filteredEntries.count, 2)
+
+        viewModel.endpointFilter = "Yahoo Quote"
+        XCTAssertEqual(viewModel.filteredEntries.count, 1)
+
+        viewModel.endpointFilter = nil
+        XCTAssertEqual(viewModel.filteredEntries.count, 3)
+    }
+
+    func testEndpointFilter_combinesWithErrorsOnly() async {
+        let logger = RequestLogger()
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        viewModel.endpointFilter = "Yahoo Chart"
+        viewModel.showErrorsOnly = true
+        XCTAssertEqual(viewModel.filteredEntries.count, 1)
+    }
+
+    func testClear_resetsEndpointFilter() async {
+        let logger = RequestLogger()
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        viewModel.endpointFilter = "Yahoo Chart"
+        viewModel.clear()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertNil(viewModel.endpointFilter)
+    }
 }

@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (41 files, ~8,275 lines)
+## Source Files (41 files, ~8,318 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
@@ -51,8 +51,8 @@ StockData.swift                  (553L)  Data models: StockQuote, TradingSession
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
-RequestLogger.swift              (316L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), error queries, endpoint counts
-DebugWindow.swift                (306L)  Debug window with error indicator, errors-only filter, endpoint counts, injected RequestLogger
+RequestLogger.swift              (336L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), 1-hour counters, 10 entries per endpoint
+DebugWindow.swift                (329L)  Debug window with error indicator, errors-only filter, endpoint filter buttons, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
@@ -79,7 +79,7 @@ EMACache.swift                   (119L)  EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (36 files, ~11,909 lines)
+## Test Files (36 files, ~12,061 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
@@ -99,10 +99,10 @@ QuarterlyPanelTests.swift        (1699L) Row computation, sorting, direction tog
 ColorMappingTests.swift          (52L)   Color name mapping, case insensitivity, NSColor/SwiftUI bridge
 NewsServiceTests.swift           (712L)  RSS parsing, deduplication, multi-source fetching
 LayoutConfigTests.swift          (97L)   Layout constant validation
-RequestLoggerTests.swift         (125L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry
+RequestLoggerTests.swift         (225L)  Error count/last error queries, clear reset, 429 no-retry, 500 retry, per-endpoint cap, counters, classify
 TimerManagerTests.swift          (129L)  Timer lifecycle, delegate callbacks, start/stop
 TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, date creation)
-DebugViewModelTests.swift        (119L)  DebugViewModel refresh/clear/endpoint counts/errors-only filter with injected logger
+DebugViewModelTests.swift        (171L)  DebugViewModel refresh/clear/endpoint counts/errors-only filter/endpoint filter with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
 QuoteFetchCoordinatorTests.swift (310L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService

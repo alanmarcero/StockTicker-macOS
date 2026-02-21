@@ -103,6 +103,94 @@ final class RequestLoggerTests: XCTestCase {
         XCTAssertEqual(httpResponse.statusCode, 500)
         XCTAssertEqual(mock.callCount, 1, "500 should not retry when shouldRetry is false")
     }
+
+    func testEntriesCappedAtTenPerEndpoint() async {
+        let logger = RequestLogger()
+        let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+
+        for i in 0..<15 {
+            await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: i, duration: 0.1))
+        }
+
+        let entries = await logger.getEntries()
+        XCTAssertEqual(entries.count, 10, "Should cap at 10 entries per endpoint")
+        // Most recent entries kept (largest responseSize values)
+        let sizes = entries.compactMap { $0.responseSize }
+        XCTAssertTrue(sizes.allSatisfy { $0 >= 5 }, "Oldest entries should be pruned")
+    }
+
+    func testCountersPersistBeyondEntryCap() async {
+        let logger = RequestLogger()
+        let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+
+        for _ in 0..<15 {
+            await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: 100, duration: 0.1))
+        }
+
+        let counts = await logger.getEndpointCounts()
+        let chartCount = counts.first { $0.label == "Yahoo Chart" }
+        XCTAssertEqual(chartCount?.count, 15, "Counters should track all 15 requests")
+
+        let entries = await logger.getEntries()
+        XCTAssertEqual(entries.count, 10, "Entries capped at 10")
+    }
+
+    func testErrorCountFromCounters() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+
+        for _ in 0..<12 {
+            await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
+        }
+
+        let errorCount = await logger.getErrorCount()
+        XCTAssertEqual(errorCount, 12, "Error count should reflect all 12 errors from counters")
+    }
+
+    func testClearResetsCountersAndEntries() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+
+        for _ in 0..<5 {
+            await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+        }
+
+        await logger.clear()
+        let entries = await logger.getEntries()
+        let counts = await logger.getEndpointCounts()
+        XCTAssertTrue(entries.isEmpty)
+        XCTAssertTrue(counts.isEmpty)
+    }
+
+    func testClassifyEndpoint_allTypes() {
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!), "Yahoo Chart")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!), "Yahoo Quote")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/AAPL")!), "Yahoo Timeseries")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://fc.yahoo.com/v1/test")!), "Yahoo Auth")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://finnhub.io/api/v1/stock/candle?symbol=AAPL")!), "Finnhub Candle")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://finnhub.io/api/v1/quote?symbol=AAPL")!), "Finnhub Quote")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://www.cnbc.com/id/100003114/device/rss/rss.html")!), "CNBC RSS")
+        XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://example.com/other")!), "Other")
+    }
+
+    func testMultipleEndpoints_cappedIndependently() async {
+        let logger = RequestLogger()
+        let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+        let quoteURL = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!
+
+        for _ in 0..<12 {
+            await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: 100, duration: 0.1))
+        }
+        for _ in 0..<8 {
+            await logger.log(RequestLogEntry(url: quoteURL, statusCode: 200, responseSize: 100, duration: 0.1))
+        }
+
+        let entries = await logger.getEntries()
+        let chartEntries = entries.filter { RequestLogger.classifyEndpoint($0.url) == "Yahoo Chart" }
+        let quoteEntries = entries.filter { RequestLogger.classifyEndpoint($0.url) == "Yahoo Quote" }
+        XCTAssertEqual(chartEntries.count, 10)
+        XCTAssertEqual(quoteEntries.count, 8)
+    }
 }
 
 private final class CountingHTTPClient: HTTPClient, @unchecked Sendable {
