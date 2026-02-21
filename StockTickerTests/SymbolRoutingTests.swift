@@ -16,7 +16,7 @@ final class SymbolRoutingTests: XCTestCase {
     }
 
     func testHistoricalSource_equity_nilKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: nil)
+        let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: "")
         XCTAssertEqual(source, .yahoo)
     }
 
@@ -49,7 +49,7 @@ final class SymbolRoutingTests: XCTestCase {
 
     func testPartition_nilKey_allYahoo() {
         let symbols = ["AAPL", "^GSPC", "BTC-USD", "SPY"]
-        let (finnhub, yahoo) = SymbolRouting.partition(symbols, finnhubApiKey: nil)
+        let (finnhub, yahoo) = SymbolRouting.partition(symbols, finnhubApiKey: "")
 
         XCTAssertTrue(finnhub.isEmpty)
         XCTAssertEqual(Set(yahoo), Set(symbols))

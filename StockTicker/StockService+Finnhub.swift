@@ -5,12 +5,12 @@ import Foundation
 extension StockService {
 
     private func finnhubRequest(symbol: String, resolution: String, from period1: Int, to period2: Int) -> URLRequest? {
-        guard let key = finnhubApiKey,
+        guard !finnhubApiKey.isEmpty,
               let url = URL(string: "\(APIEndpoints.finnhubCandleBase)?symbol=\(symbol)&resolution=\(resolution)&from=\(period1)&to=\(period2)") else {
             return nil
         }
         var request = URLRequest(url: url)
-        request.setValue(key, forHTTPHeaderField: "X-Finnhub-Token")
+        request.setValue(finnhubApiKey, forHTTPHeaderField: "X-Finnhub-Token")
         return request
     }
 
@@ -54,10 +54,10 @@ extension StockService {
     // MARK: - Finnhub Real-Time Quote
 
     func fetchFinnhubQuote(symbol: String) async -> StockQuote? {
-        guard let key = finnhubApiKey,
+        guard !finnhubApiKey.isEmpty,
               let url = URL(string: "\(APIEndpoints.finnhubQuoteBase)?symbol=\(symbol)") else { return nil }
         var request = URLRequest(url: url)
-        request.setValue(key, forHTTPHeaderField: "X-Finnhub-Token")
+        request.setValue(finnhubApiKey, forHTTPHeaderField: "X-Finnhub-Token")
 
         do {
             let (data, response) = try await httpClient.data(for: request)

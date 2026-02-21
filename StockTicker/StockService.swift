@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Protocol for Dependency Injection
 
 protocol StockServiceProtocol: Sendable {
-    func updateFinnhubApiKey(_ key: String?) async
+    func updateFinnhubApiKey(_ key: String) async
     func fetchQuote(symbol: String) async -> StockQuote?
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote]
     func fetchMarketState(symbol: String) async -> String?
@@ -70,13 +70,13 @@ enum SymbolRouting {
     }
 
     /// Historical price routing — always Yahoo (Finnhub candle endpoint requires paid tier)
-    static func historicalSource(for symbol: String, finnhubApiKey: String?) -> Source {
+    static func historicalSource(for symbol: String, finnhubApiKey: String) -> Source {
         .yahoo
     }
 
     /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote)
-    static func partition(_ symbols: [String], finnhubApiKey: String?) -> (finnhub: [String], yahoo: [String]) {
-        guard finnhubApiKey != nil else { return ([], symbols) }
+    static func partition(_ symbols: [String], finnhubApiKey: String) -> (finnhub: [String], yahoo: [String]) {
+        guard !finnhubApiKey.isEmpty else { return ([], symbols) }
         var finnhub: [String] = []
         var yahoo: [String] = []
         for symbol in symbols {
@@ -95,7 +95,7 @@ enum SymbolRouting {
 actor StockService: StockServiceProtocol {
     let httpClient: HTTPClient
     var crumb: String?
-    var finnhubApiKey: String?
+    var finnhubApiKey: String
 
     enum APIEndpoints {
         static let chartBase = "https://query1.finance.yahoo.com/v8/finance/chart/"
@@ -108,12 +108,12 @@ actor StockService: StockServiceProtocol {
         static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
     }
 
-    init(httpClient: HTTPClient = LoggingHTTPClient(), finnhubApiKey: String? = nil) {
+    init(httpClient: HTTPClient = LoggingHTTPClient(), finnhubApiKey: String = "") {
         self.httpClient = httpClient
         self.finnhubApiKey = finnhubApiKey
     }
 
-    func updateFinnhubApiKey(_ key: String?) {
+    func updateFinnhubApiKey(_ key: String) {
         finnhubApiKey = key
     }
 

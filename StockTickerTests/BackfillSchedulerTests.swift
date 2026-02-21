@@ -24,7 +24,7 @@ private final class TrackingMockStockService: StockServiceProtocol, @unchecked S
         lock.unlock()
     }
 
-    func updateFinnhubApiKey(_ key: String?) async {}
+    func updateFinnhubApiKey(_ key: String) async {}
     func fetchQuote(symbol: String) async -> StockQuote? { nil }
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote] { [:] }
     func fetchMarketState(symbol: String) async -> String? { nil }

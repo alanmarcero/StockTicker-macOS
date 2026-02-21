@@ -1161,9 +1161,9 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
     func testUpdateFinnhubApiKey_changesRouting() async {
         let service = StockService(httpClient: MockHTTPClient())
 
-        // Initially nil - should route to Yahoo
+        // Initially empty - should route to Yahoo
         let source1 = await service.finnhubApiKey
-        XCTAssertNil(source1)
+        XCTAssertEqual(source1, "")
 
         // Update key
         await service.updateFinnhubApiKey("new_key")
@@ -1171,9 +1171,9 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertEqual(source2, "new_key")
 
         // Clear key
-        await service.updateFinnhubApiKey(nil)
+        await service.updateFinnhubApiKey("")
         let source3 = await service.finnhubApiKey
-        XCTAssertNil(source3)
+        XCTAssertEqual(source3, "")
     }
 
     // MARK: - Finnhub Quote Tests

@@ -21,7 +21,7 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     var fetchQuotesCalled: [[String]] = []
     var fetchMarketStateCalled: [String] = []
 
-    func updateFinnhubApiKey(_ key: String?) async {}
+    func updateFinnhubApiKey(_ key: String) async {}
 
     func fetchQuote(symbol: String) async -> StockQuote? {
         quotesToReturn[symbol]

@@ -628,14 +628,14 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(config.finnhubApiKey, "my_test_key_123")
     }
 
-    func testDecoder_missingFinnhubApiKey_defaultsToNil() throws {
+    func testDecoder_missingFinnhubApiKey_defaultsToEmpty() throws {
         let json = """
         {"watchlist":["SPY"],"menuBarRotationInterval":5,"refreshInterval":15,"sortDirection":"percentDesc","menuBarAssetWhenClosed":"BTC-USD"}
         """
         let data = json.data(using: .utf8)!
         let config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
 
-        XCTAssertNil(config.finnhubApiKey)
+        XCTAssertEqual(config.finnhubApiKey, "")
     }
 
     func testRoundTrip_finnhubApiKey_preserved() throws {
@@ -652,22 +652,21 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(decoded.finnhubApiKey, "test_key_abc")
     }
 
-    func testRoundTrip_nilFinnhubApiKey_remainsNil() throws {
+    func testRoundTrip_emptyFinnhubApiKey_remainsEmpty() throws {
         let original = WatchlistConfig(
             watchlist: ["SPY"],
             menuBarRotationInterval: 5,
-            sortDirection: "percentDesc",
-            finnhubApiKey: nil
+            sortDirection: "percentDesc"
         )
 
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
 
-        XCTAssertNil(decoded.finnhubApiKey)
+        XCTAssertEqual(decoded.finnhubApiKey, "")
     }
 
-    func testDefaultConfig_hasNilFinnhubApiKey() {
-        XCTAssertNil(WatchlistConfig.defaultConfig.finnhubApiKey)
+    func testDefaultConfig_hasEmptyFinnhubApiKey() {
+        XCTAssertEqual(WatchlistConfig.defaultConfig.finnhubApiKey, "")
     }
 }
 
