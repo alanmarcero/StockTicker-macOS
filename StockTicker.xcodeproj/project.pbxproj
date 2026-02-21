@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B4CK000001000001A0000001 /* BackfillScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000001000001A0000002 /* BackfillScheduler.swift */; };
+		B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */; };
 		0101010101010101A0000001 /* AppInfrastructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101A0000002 /* AppInfrastructure.swift */; };
 		0101010101010101B0000001 /* QuarterlyPanelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101B0000002 /* QuarterlyPanelModels.swift */; };
 		0101010101010101C0000001 /* QuarterlyPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101C0000002 /* QuarterlyPanelViewModel.swift */; };
@@ -96,6 +98,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		B4CK000001000001A0000002 /* BackfillScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillScheduler.swift; sourceTree = "<group>"; };
+		B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillSchedulerTests.swift; sourceTree = "<group>"; };
 		0101010101010101A0000002 /* AppInfrastructure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfrastructure.swift; sourceTree = "<group>"; };
 		0101010101010101B0000002 /* QuarterlyPanelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelModels.swift; sourceTree = "<group>"; };
 		0101010101010101C0000002 /* QuarterlyPanelViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelViewModel.swift; sourceTree = "<group>"; };
@@ -223,6 +227,7 @@
 				F7FB09302BBF /* DebugWindow.swift */,
 				A100000A232C5A0000000001 /* TickerConfig.swift */,
 				0101010101010101A0000002 /* AppInfrastructure.swift */,
+				B4CK000001000001A0000002 /* BackfillScheduler.swift */,
 				D1000002232C5A0000000001 /* LayoutConfig.swift */,
 				A1000020232C5A0000000001 /* MarketSchedule.swift */,
 				E1000002232C5A0000000001 /* YTDCache.swift */,
@@ -300,6 +305,7 @@
 				96171F4FC380B1D2A9C00AD5 /* EMAAnalysisTests.swift */,
 				C6E346A73683177C4D8B25E9 /* EMACacheTests.swift */,
 				U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */,
+				B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -440,6 +446,7 @@
 				DC2D4ECA92D8AE305884F775 /* EMACache.swift in Sources */,
 				BBAE7B56CF06C6BA0498CA05 /* StockService+EMA.swift in Sources */,
 				0101010101010101A0000001 /* AppInfrastructure.swift in Sources */,
+				B4CK000001000001A0000001 /* BackfillScheduler.swift in Sources */,
 				0101010101010101B0000001 /* QuarterlyPanelModels.swift in Sources */,
 				0101010101010101C0000001 /* QuarterlyPanelViewModel.swift in Sources */,
 				U1000001232C5A0000000001 /* ThrottledTaskGroup.swift in Sources */,
@@ -485,6 +492,7 @@
 				7246E05122AC2A17F8C65610 /* EMAAnalysisTests.swift in Sources */,
 				056B9B647756EF91A0612D16 /* EMACacheTests.swift in Sources */,
 				U1000003232C5A0000000001 /* ThrottledTaskGroupTests.swift in Sources */,
+				B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

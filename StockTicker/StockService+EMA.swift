@@ -147,6 +147,10 @@ extension StockService {
         return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount)
     }
 
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?) async -> EMACacheEntry? {
+        await fetchEMAEntry(symbol: symbol, precomputedDailyEMA: precomputedDailyEMA, now: Date())
+    }
+
     /// Include the current week's bar from Friday 2PM ET onward through the weekend.
     /// Before Friday 2PM, only completed prior-week bars are used. On Monday, the new week
     /// starts and the prior week naturally enters the completed set via timestamp filtering.

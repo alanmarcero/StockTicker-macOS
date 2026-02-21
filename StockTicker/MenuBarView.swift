@@ -116,6 +116,7 @@ class MenuBarController: NSObject, ObservableObject {
     var universeForwardPEs: [String: Double] = [:]
     private var refreshCycleCount = 0
     private var universeFinnhubBatchIndex = 0
+    let backfillScheduler = BackfillScheduler()
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -167,9 +168,10 @@ class MenuBarController: NSObject, ObservableObject {
             await loadSwingLevelCache()
             await loadRSICache()
             await loadEMACache()
-            await fetchMissingDailyAnalysis()
+            await refreshCachesFromDisk()
             await refreshAllQuotes()
             await refreshNews()
+            await startBackfill()
         }
     }
 
@@ -765,12 +767,11 @@ class MenuBarController: NSObject, ObservableObject {
         stopTimers()
         startTimers()
         Task {
+            await cancelBackfill()
             await stockService.updateFinnhubApiKey(config.finnhubApiKey)
-            await fetchMissingYTDPrices()
-            await fetchMissingQuarterlyPrices()
-            await fetchMissingForwardPERatios()
-            await fetchMissingDailyAnalysis()
+            await refreshCachesFromDisk()
             await refreshAllQuotes()
+            await startBackfill()
         }
     }
 
@@ -807,7 +808,9 @@ class MenuBarController: NSObject, ObservableObject {
         universeMarketCaps = [:]
         universeForwardPEs = [:]
 
+        hasCompletedInitialLoad = false
         Task {
+            await cancelBackfill()
             await ytdCacheManager.clearForNewYear()
             await quarterlyCacheManager.clearAllQuarters()
             await highestCloseCacheManager.clearForNewRange(cacheQuarterRange())
@@ -815,15 +818,8 @@ class MenuBarController: NSObject, ObservableObject {
             await swingLevelCacheManager.clearForNewRange(cacheQuarterRange())
             await rsiCacheManager.clearForDailyRefresh()
             await emaCacheManager.clearForDailyRefresh()
-        }
-
-        hasCompletedInitialLoad = false
-        Task {
-            await fetchMissingYTDPrices()
-            await fetchMissingQuarterlyPrices()
-            await fetchMissingForwardPERatios()
-            await fetchMissingDailyAnalysis()
             await refreshAllQuotes()
+            await startBackfill()
         }
     }
 

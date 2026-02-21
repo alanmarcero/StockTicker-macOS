@@ -35,7 +35,7 @@ extension MenuBarController {
             await ytdCacheManager.clearForNewYear()
         }
 
-        await fetchMissingYTDPrices()
+        ytdPrices = await ytdCacheManager.getAllPrices()
     }
 
     func fetchMissingYTDPrices() async {
@@ -60,7 +60,7 @@ extension MenuBarController {
     func loadQuarterlyCache() async {
         await quarterlyCacheManager.load()
         quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: dateProvider.now(), count: 12)
-        await fetchMissingQuarterlyPrices()
+        quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
     }
 
     func fetchMissingQuarterlyPrices() async {
@@ -152,7 +152,7 @@ extension MenuBarController {
             await forwardPECacheManager.clearForNewRange(currentRange)
         }
 
-        await fetchMissingForwardPERatios()
+        forwardPEData = await forwardPECacheManager.getAllData()
     }
 
     func fetchMissingForwardPERatios() async {
@@ -383,6 +383,78 @@ extension MenuBarController {
         }
         await emaCacheManager.save()
 
+        emaEntries = await emaCacheManager.getAllEntries()
+    }
+
+    // MARK: - Backfill Scheduler
+
+    func startBackfill() async {
+        let now = dateProvider.now()
+        let symbols = allCacheSymbols
+        let statsSymbols = extraStatsSymbols
+        let quarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 13)
+
+        guard let oldest = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12).last else { return }
+        let period1 = QuarterCalculation.quarterStartTimestamp(year: oldest.year, quarter: oldest.quarter)
+        let period2 = Int(now.timeIntervalSince1970)
+        let forwardPEPeriod1 = period1
+
+        let caches = BackfillCaches(
+            ytd: ytdCacheManager,
+            quarterly: quarterlyCacheManager,
+            highestClose: highestCloseCacheManager,
+            forwardPE: forwardPECacheManager,
+            swingLevel: swingLevelCacheManager,
+            rsi: rsiCacheManager,
+            ema: emaCacheManager
+        )
+
+        await backfillScheduler.start(
+            symbols: symbols,
+            extraStatsSymbols: statsSymbols,
+            quarterInfos: quarters,
+            period1: period1,
+            period2: period2,
+            forwardPEPeriod1: forwardPEPeriod1,
+            stockService: stockService,
+            caches: caches,
+            onBatchComplete: { [weak self] phase in
+                await self?.handleBackfillBatchComplete(phase)
+            }
+        )
+    }
+
+    func cancelBackfill() async {
+        await backfillScheduler.cancel()
+    }
+
+    private func handleBackfillBatchComplete(_ phase: BackfillScheduler.Phase) async {
+        switch phase {
+        case .ytd:
+            ytdPrices = await ytdCacheManager.getAllPrices()
+            attachYTDPricesToQuotes()
+        case .dailyAnalysis:
+            highestClosePrices = await highestCloseCacheManager.getAllPrices()
+            swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+            rsiValues = await rsiCacheManager.getAllValues()
+            emaEntries = await emaCacheManager.getAllEntries()
+            attachHighestClosesToQuotes()
+        case .weeklyEMA:
+            emaEntries = await emaCacheManager.getAllEntries()
+        case .forwardPE:
+            forwardPEData = await forwardPECacheManager.getAllData()
+        case .quarterly:
+            quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
+        }
+    }
+
+    func refreshCachesFromDisk() async {
+        ytdPrices = await ytdCacheManager.getAllPrices()
+        quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
+        highestClosePrices = await highestCloseCacheManager.getAllPrices()
+        forwardPEData = await forwardPECacheManager.getAllData()
+        swingLevelEntries = await swingLevelCacheManager.getAllEntries()
+        rsiValues = await rsiCacheManager.getAllValues()
         emaEntries = await emaCacheManager.getAllEntries()
     }
 

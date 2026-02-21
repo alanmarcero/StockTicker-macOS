@@ -37,7 +37,7 @@ struct DebugView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("API Requests (Last 60s)")
+                Text("API Requests (Last 5m)")
                     .font(.headline)
                 if viewModel.errorCount > 0 {
                     HStack(spacing: 3) {
@@ -101,7 +101,7 @@ struct DebugView: View {
     private var emptyState: some View {
         VStack {
             Spacer()
-            Text("No requests in the last 60 seconds")
+            Text("No requests in the last 5 minutes")
                 .foregroundColor(.secondary)
             Spacer()
         }

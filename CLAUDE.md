@@ -33,19 +33,20 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (40 files, ~8,105 lines)
+## Source Files (41 files, ~8,368 lines)
 
 ```
 StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
-MenuBarView.swift                (961L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
-MenuBarController+Cache.swift    (404L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, and market cap cache coordination with shared helpers
+MenuBarView.swift                (960L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
+MenuBarController+Cache.swift    (476L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
+BackfillScheduler.swift          (263L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
-StockService.swift               (248L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
+StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (88L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
 StockService+Historical.swift    (450L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
 StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
 StockService+Finnhub.swift       (82L)   Extension: Finnhub candle API fetch methods (daily candles, closes, historical close) + real-time quote fetch
-StockService+EMA.swift           (209L)  Extension: 5-day/week EMA fetch + weekly crossover + below-count with Finnhub routing + Yahoo fallback
+StockService+EMA.swift           (215L)  Extension: 5-day/week EMA fetch + weekly crossover + below-count with Finnhub routing + Yahoo fallback
 StockData.swift                  (553L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models, FinnhubCandleResponse, FinnhubQuoteResponse
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
@@ -78,7 +79,7 @@ EMACache.swift                   (119L)  EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (35 files, ~11,486 lines)
+## Test Files (36 files, ~11,909 lines)
 
 ```
 StockDataTests.swift             (749L)  Quote calculations, session detection, formatting, market cap, highest close, timeseries, yahooMarketState
@@ -104,7 +105,7 @@ TestUtilities.swift              (59L)   Shared test helpers (MockDateProvider, 
 DebugViewModelTests.swift        (119L)  DebugViewModel refresh/clear/endpoint counts/errors-only filter with injected logger
 CacheStorageTests.swift          (101L)  Generic cache load/save with MockFileSystem
 TickerDisplayBuilderTests.swift  (230L)  Menu bar title, ticker title, highlights, color helpers, highest close
-QuoteFetchCoordinatorTests.swift (306L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
+QuoteFetchCoordinatorTests.swift (310L)  Fetch modes, FetchResult correctness, market state extraction, MockStockService
 HighestCloseCacheTests.swift     (334L)  Cache load/save, invalidation, daily refresh, missing symbols
 ForwardPECacheTests.swift        (255L)  Forward P/E cache load/save, invalidation, missing symbols, empty dict handling
 SwingAnalysisTests.swift         (147L)  Swing analysis algorithm: empty, steady, threshold detection, multiple swings, index tracking
@@ -116,6 +117,7 @@ EMACacheTests.swift              (466L)  EMA cache load/save, missing symbols, d
 SymbolRoutingTests.swift         (71L)   Symbol routing: historical always Yahoo, isFinnhubCompatible, partition splits for quote routing
 FinnhubResponseTests.swift       (144L)  Finnhub candle + quote response decoding: valid, no_data, null fields, empty arrays, isValid
 ThrottledTaskGroupTests.swift    (129L)  Bounded concurrency: empty, all succeed, nil exclusion, max concurrency, single item, custom delay, Backfill + FinnhubBackfill + FinnhubQuote constants
+BackfillSchedulerTests.swift     (423L)  Phase ordering, cancellation, cached symbol skipping, batch notifications, daily analysis distribution, weekly EMA completion
 ```
 
 ## File Dependencies
@@ -146,7 +148,19 @@ MenuBarView.swift (MenuBarController)
 ├── TickerEditorView.swift (WatchlistEditorWindowController)
 ├── DebugWindow.swift (DebugWindowController)
 ├── TickerDisplayBuilder.swift (TickerDisplayBuilder, HighlightConfig)
-└── QuoteFetchCoordinator.swift (QuoteFetchCoordinator, FetchResult)
+├── QuoteFetchCoordinator.swift (QuoteFetchCoordinator, FetchResult)
+└── BackfillScheduler.swift (BackfillScheduler, BackfillCaches)
+
+BackfillScheduler.swift
+├── StockService.swift (StockServiceProtocol)
+├── YTDCache.swift (YTDCacheManager)
+├── QuarterlyCache.swift (QuarterlyCacheManager, QuarterCalculation, QuarterInfo)
+├── HighestCloseCache.swift (HighestCloseCacheManager)
+├── ForwardPECache.swift (ForwardPECacheManager)
+├── SwingLevelCache.swift (SwingLevelCacheManager)
+├── RSICache.swift (RSICacheManager)
+├── EMACache.swift (EMACacheManager)
+└── StockData.swift (DailyAnalysisResult, SwingLevelCacheEntry, EMACacheEntry)
 
 StockService.swift
 ├── StockService+MarketCap.swift (market cap + forward P/E extension)
@@ -260,6 +274,9 @@ All major components use protocols for testability:
 
 ### Bounded Concurrency (ThrottledTaskGroup)
 `ThrottledTaskGroup.map()` limits concurrent API calls (configurable concurrency and delay). Four modes: **default** (5 concurrent, 100ms delay) for real-time quote refresh, **Backfill** (1 concurrent, 2s delay) for Yahoo cache population, **FinnhubBackfill** (5 concurrent, 200ms delay) for Finnhub cache population, and **FinnhubQuote** (5 concurrent, 200ms delay, max 50 symbols/cycle) for Finnhub real-time universe quotes. Batch methods partition symbols by source via `SymbolRouting.partition()` and run both API groups in parallel. 429 responses are not retried by `LoggingHTTPClient`.
+
+### Staggered Backfill (BackfillScheduler)
+`BackfillScheduler` actor runs a single background `Task` loop that populates caches one symbol at a time with configurable delay (default 4s = ~15 req/min). Phases run in priority order: YTD → daily analysis → weekly EMA → forward P/E → quarterly. Each phase queries the relevant cache for missing symbols and skips already-cached data. Results are saved to disk after each symbol, so progress survives app restarts. `onBatchComplete` callback fires every 10 symbols to update `@Published` properties. Config reload or cache clear cancels the running backfill and restarts with the new symbol set. `BackfillCaches` struct bundles references to all 7 cache actors. First run with ~500 S&P symbols takes ~8.5 hours; subsequent runs only fetch new/missing symbols.
 
 ### Symbol Routing (Dual-API Architecture)
 `SymbolRouting` enum routes API calls between Finnhub and Yahoo Finance. **Historical data** (candles) always uses Yahoo — Finnhub's candle endpoint requires a paid tier. **Real-time universe quotes** use Finnhub `/quote` for equities/ETFs (AAPL, SPY) and Yahoo for indices (^GSPC) and crypto (BTC-USD). `isFinnhubCompatible()` checks symbol type; `partition()` splits symbol lists for quote routing. When `finnhubApiKey` is nil, all symbols route to Yahoo (graceful degradation).
@@ -406,7 +423,9 @@ Weekend handling:
 - App forces `yahooMarketState = "CLOSED"` on weekends
 - Extended hours labels (Pre/AH) not shown on weekends
 
-Config reload resets `hasCompletedInitialLoad = false`, clears universe state (`universeQuotes`, `universeMarketCaps`, `universeForwardPEs`), and calls `fetchMissingYTDPrices()`, `fetchMissingQuarterlyPrices()`, `fetchMissingForwardPERatios()`, `fetchMissingSwingLevels()`, `fetchMissingRSIValues()`, and `fetchMissingEMAValues()`.
+Config reload resets `hasCompletedInitialLoad = false`, clears universe state (`universeQuotes`, `universeMarketCaps`, `universeForwardPEs`), cancels the running backfill, refreshes `@Published` properties from disk caches, and restarts the `BackfillScheduler`.
+
+**Startup cache strategy:** All caches are loaded from disk (no API calls), then `BackfillScheduler` is started to gradually fill missing entries at ~15 req/min. This avoids the burst of hundreds of API calls that triggers Yahoo 429 rate limits with large universes (~500 S&P symbols).
 
 ### Extended Hours Calculation
 

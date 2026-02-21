@@ -137,7 +137,7 @@ actor RequestLogger {
     static let shared = RequestLogger()
 
     private enum Constants {
-        static let maxEntryAgeSeconds: TimeInterval = 60
+        static let maxEntryAgeSeconds: TimeInterval = 300
     }
 
     private var entries: [RequestLogEntry] = []

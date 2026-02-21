@@ -111,6 +111,10 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
         emaEntriesToReturn.filter { symbols.contains($0.key) }
     }
 
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?) async -> EMACacheEntry? {
+        emaEntriesToReturn[symbol]
+    }
+
     func fetchDailyAnalysis(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult? {
         dailyAnalysisToReturn[symbol]
     }
