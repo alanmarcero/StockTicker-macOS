@@ -138,7 +138,7 @@ actor RequestLogger {
 
     private enum Constants {
         static let counterWindow: TimeInterval = 3600  // 1 hour
-        static let maxEntriesPerEndpoint = 10
+        static let maxErrorEntries = 100
     }
 
     private struct CountRecord {
@@ -157,8 +157,9 @@ actor RequestLogger {
         countRecords.append(CountRecord(endpoint: endpoint, timestamp: entry.timestamp, isError: !entry.isSuccess))
         pruneCountRecords()
 
+        guard !entry.isSuccess else { return }
         entries.append(entry)
-        capEntriesPerEndpoint(endpoint)
+        capErrorEntries()
     }
 
     func getEntries() -> [RequestLogEntry] {
@@ -216,12 +217,9 @@ actor RequestLogger {
         countRecords.removeAll { $0.timestamp < cutoff }
     }
 
-    private func capEntriesPerEndpoint(_ endpoint: String) {
-        let endpointEntries = entries.filter { Self.classifyEndpoint($0.url) == endpoint }
-        guard endpointEntries.count > Constants.maxEntriesPerEndpoint else { return }
-        guard let oldest = endpointEntries.min(by: { $0.timestamp < $1.timestamp }),
-              let idx = entries.firstIndex(where: { $0.id == oldest.id }) else { return }
-        entries.remove(at: idx)
+    private func capErrorEntries() {
+        guard entries.count > Constants.maxErrorEntries else { return }
+        entries.removeFirst(entries.count - Constants.maxErrorEntries)
     }
 }
 

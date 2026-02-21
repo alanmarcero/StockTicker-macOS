@@ -225,7 +225,9 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(createConfigSubmenu())
         menu.addItem(createClosedMarketSubmenu())
         menu.addItem(createSortSubmenu())
-        menu.addItem(createDebugSubmenu())
+        let apiErrorsItem = MenuItemFactory.action(title: "API Errors...", action: #selector(showDebugWindow), target: self, keyEquivalent: "d")
+        apiErrorsItem.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(apiErrorsItem)
         menu.addItem(.separator())
         menu.addItem(MenuItemFactory.action(title: "Quit", action: #selector(quitApp), target: self, keyEquivalent: "q"))
 
@@ -260,12 +262,6 @@ class MenuBarController: NSObject, ObservableObject {
             MenuItemFactory.action(title: "Clear Cache", action: #selector(clearAllCaches), target: self)
         ]
         return MenuItemFactory.submenu(title: "Config", items: items)
-    }
-
-    private func createDebugSubmenu() -> NSMenuItem {
-        let item = MenuItemFactory.action(title: "View API Requests...", action: #selector(showDebugWindow), target: self, keyEquivalent: "d")
-        item.keyEquivalentModifierMask = [.command, .option]
-        return MenuItemFactory.submenu(title: "Debug", items: [item])
     }
 
     // MARK: - Timer Management

@@ -104,27 +104,23 @@ final class RequestLoggerTests: XCTestCase {
         XCTAssertEqual(mock.callCount, 1, "500 should not retry when shouldRetry is false")
     }
 
-    func testEntriesCappedAtTenPerEndpoint() async {
+    func testSuccessesNotStoredAsEntries() async {
         let logger = RequestLogger()
-        let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
 
-        for i in 0..<15 {
-            await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: i, duration: 0.1))
-        }
+        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 200, duration: 0.1))
 
         let entries = await logger.getEntries()
-        XCTAssertEqual(entries.count, 10, "Should cap at 10 entries per endpoint")
-        // Most recent entries kept (largest responseSize values)
-        let sizes = entries.compactMap { $0.responseSize }
-        XCTAssertTrue(sizes.allSatisfy { $0 >= 5 }, "Oldest entries should be pruned")
+        XCTAssertTrue(entries.isEmpty, "Successes should not be stored as entries")
     }
 
-    func testCountersPersistBeyondEntryCap() async {
+    func testSuccessesStillCountInCounters() async {
         let logger = RequestLogger()
-        let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
 
         for _ in 0..<15 {
-            await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: 100, duration: 0.1))
+            await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
         }
 
         let counts = await logger.getEndpointCounts()
@@ -132,7 +128,22 @@ final class RequestLoggerTests: XCTestCase {
         XCTAssertEqual(chartCount?.count, 15, "Counters should track all 15 requests")
 
         let entries = await logger.getEntries()
-        XCTAssertEqual(entries.count, 10, "Entries capped at 10")
+        XCTAssertTrue(entries.isEmpty, "No error entries from successes")
+    }
+
+    func testErrorEntriesCappedAt100() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
+
+        for i in 0..<120 {
+            await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: i, duration: 0.1, error: "fail"))
+        }
+
+        let entries = await logger.getEntries()
+        XCTAssertEqual(entries.count, 100, "Should cap at 100 error entries")
+        // Most recent entries kept (largest responseSize values)
+        let sizes = entries.compactMap { $0.responseSize }
+        XCTAssertTrue(sizes.allSatisfy { $0 >= 20 }, "Oldest entries should be pruned")
     }
 
     func testErrorCountFromCounters() async {
@@ -152,7 +163,7 @@ final class RequestLoggerTests: XCTestCase {
         let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
 
         for _ in 0..<5 {
-            await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+            await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
         }
 
         await logger.clear()
@@ -173,7 +184,7 @@ final class RequestLoggerTests: XCTestCase {
         XCTAssertEqual(RequestLogger.classifyEndpoint(URL(string: "https://example.com/other")!), "Other")
     }
 
-    func testMultipleEndpoints_cappedIndependently() async {
+    func testMixedSuccessAndErrors_onlyErrorsStored() async {
         let logger = RequestLogger()
         let chartURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!
         let quoteURL = URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!
@@ -181,15 +192,13 @@ final class RequestLoggerTests: XCTestCase {
         for _ in 0..<12 {
             await logger.log(RequestLogEntry(url: chartURL, statusCode: 200, responseSize: 100, duration: 0.1))
         }
-        for _ in 0..<8 {
-            await logger.log(RequestLogEntry(url: quoteURL, statusCode: 200, responseSize: 100, duration: 0.1))
+        for _ in 0..<3 {
+            await logger.log(RequestLogEntry(url: quoteURL, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
         }
 
         let entries = await logger.getEntries()
-        let chartEntries = entries.filter { RequestLogger.classifyEndpoint($0.url) == "Yahoo Chart" }
-        let quoteEntries = entries.filter { RequestLogger.classifyEndpoint($0.url) == "Yahoo Quote" }
-        XCTAssertEqual(chartEntries.count, 10)
-        XCTAssertEqual(quoteEntries.count, 8)
+        XCTAssertEqual(entries.count, 3, "Only error entries stored")
+        XCTAssertTrue(entries.allSatisfy { !$0.isSuccess })
     }
 }
 

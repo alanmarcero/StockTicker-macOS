@@ -7,7 +7,7 @@ final class DebugViewModelTests: XCTestCase {
     func testRefresh_populatesEntriesFromLogger() async {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!
-        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Server error"))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()
@@ -16,6 +16,21 @@ final class DebugViewModelTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 50_000_000)
 
         XCTAssertEqual(viewModel.entries.count, 1)
+        XCTAssertEqual(viewModel.errorCount, 1)
+        XCTAssertEqual(viewModel.lastErrorMessage, "Server error")
+    }
+
+    func testRefresh_successesNotInEntries() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://example.com")!
+        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.entries.count, 0)
         XCTAssertEqual(viewModel.errorCount, 0)
         XCTAssertNil(viewModel.lastErrorMessage)
     }
@@ -75,34 +90,18 @@ final class DebugViewModelTests: XCTestCase {
         XCTAssertTrue(labels.contains("CNBC RSS"))
     }
 
-    func testFilteredEntries_returnsAllWhenFilterOff() async {
+    func testFilteredEntries_returnsAllWhenNoFilter() async {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!
-        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
-        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Server error"))
-
-        let viewModel = DebugViewModel(logger: logger)
-        viewModel.refresh()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-
-        XCTAssertFalse(viewModel.showErrorsOnly)
-        XCTAssertEqual(viewModel.filteredEntries.count, 2)
-    }
-
-    func testFilteredEntries_returnsOnlyErrorsWhenFilterOn() async {
-        let logger = RequestLogger()
-        let url = URL(string: "https://example.com")!
-        await logger.log(RequestLogEntry(url: url, statusCode: 200, responseSize: 100, duration: 0.1))
-        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Server error"))
+        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Error 1"))
         await logger.log(RequestLogEntry(url: url, statusCode: 404, responseSize: 0, duration: 0.1))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        viewModel.showErrorsOnly = true
+        XCTAssertNil(viewModel.endpointFilter)
         XCTAssertEqual(viewModel.filteredEntries.count, 2)
-        XCTAssertTrue(viewModel.filteredEntries.allSatisfy { !$0.isSuccess })
     }
 
     func testRefresh_showsHTTPStatusWhenNoErrorMessage() async {
@@ -119,9 +118,9 @@ final class DebugViewModelTests: XCTestCase {
 
     func testEndpointFilter_filtersEntries() async {
         let logger = RequestLogger()
-        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
-        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
-        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()
@@ -139,24 +138,9 @@ final class DebugViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.filteredEntries.count, 3)
     }
 
-    func testEndpointFilter_combinesWithErrorsOnly() async {
-        let logger = RequestLogger()
-        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
-        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/MSFT")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
-        await logger.log(RequestLogEntry(url: URL(string: "https://query2.finance.yahoo.com/v7/finance/quote?symbols=AAPL")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
-
-        let viewModel = DebugViewModel(logger: logger)
-        viewModel.refresh()
-        try? await Task.sleep(nanoseconds: 50_000_000)
-
-        viewModel.endpointFilter = "Yahoo Chart"
-        viewModel.showErrorsOnly = true
-        XCTAssertEqual(viewModel.filteredEntries.count, 1)
-    }
-
     func testClear_resetsEndpointFilter() async {
         let logger = RequestLogger()
-        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 200, responseSize: 100, duration: 0.1))
+        await logger.log(RequestLogEntry(url: URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL")!, statusCode: 500, responseSize: 0, duration: 0.1, error: "fail"))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()

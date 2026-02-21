@@ -51,16 +51,9 @@ struct DebugView: View {
                     }
                 }
                 Spacer()
-                Text("\(viewModel.entries.count) requests")
+                Text("\(viewModel.entries.count) errors")
                     .foregroundColor(.secondary)
                     .font(.caption)
-                Button {
-                    viewModel.showErrorsOnly.toggle()
-                } label: {
-                    Text("Errors Only")
-                        .foregroundColor(viewModel.showErrorsOnly ? .red : .secondary)
-                }
-                .buttonStyle(.borderless)
                 Button("Clear") {
                     viewModel.clear()
                 }
@@ -116,7 +109,7 @@ struct DebugView: View {
     private var emptyState: some View {
         VStack {
             Spacer()
-            Text("No requests logged")
+            Text("No errors logged")
                 .foregroundColor(.secondary)
             Spacer()
         }
@@ -226,20 +219,13 @@ class DebugViewModel: ObservableObject {
     @Published var errorCount: Int = 0
     @Published var lastErrorMessage: String?
     @Published var endpointCounts: [EndpointCount] = []
-    @Published var showErrorsOnly: Bool = false
     @Published var endpointFilter: String?
     private let logger: RequestLogger
     private var refreshTask: Task<Void, Never>?
 
     var filteredEntries: [RequestLogEntry] {
-        var result = entries
-        if let filter = endpointFilter {
-            result = result.filter { RequestLogger.classifyEndpoint($0.url) == filter }
-        }
-        if showErrorsOnly {
-            result = result.filter { !$0.isSuccess }
-        }
-        return result
+        guard let filter = endpointFilter else { return entries }
+        return entries.filter { RequestLogger.classifyEndpoint($0.url) == filter }
     }
 
     init(logger: RequestLogger = .shared) {
@@ -314,7 +300,7 @@ class DebugWindowController {
             defer: false
         )
 
-        newWindow.title = "Debug - API Requests"
+        newWindow.title = "Debug - API Errors"
         newWindow.contentView = opaqueContainer
         newWindow.isOpaque = true
         newWindow.backgroundColor = .windowBackgroundColor
