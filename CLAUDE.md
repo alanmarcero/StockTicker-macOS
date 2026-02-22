@@ -757,7 +757,7 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 
 ## AWS EMA Scanner (`aws-scanner/`)
 
-Serverless weekly scanner that detects 5-week EMA crossovers across ~500 US equities. Runs autonomously on AWS every Friday at 2 PM ET. Ports `EMAAnalysis.swift` to Python.
+Serverless weekly scanner that detects 5-week EMA crossovers across ~10,000 US equities and ETFs. Runs autonomously on AWS every Friday at 2 PM ET. Ports `EMAAnalysis.swift` to Python.
 
 ### Architecture
 
@@ -770,19 +770,21 @@ EventBridge Scheduler (Friday 2 PM ET)
   → CloudFront (HTTPS access to results/*)
 ```
 
-### Files (4 source, 2 test, 9 Terraform, 1 workflow = ~1,084 lines)
+### Files (4 source, 5 test, 9 Terraform, 1 workflow = ~1,759 lines)
 
 ```
 aws-scanner/
 ├── src/
 │   ├── orchestrator/app.py      (43L)   Read symbols, chunk, enqueue to SQS
 │   └── worker/
-│       ├── app.py               (170L)  Fetch candles, detect crossovers, write S3, aggregate
-│       ├── ema.py               (81L)   Pure EMA functions (port of EMAAnalysis.swift)
-│       └── yahoo.py             (43L)   Yahoo Finance chart v8 client (stdlib urllib)
+│       ├── app.py               (165L)  Fetch candles, detect crossovers, write S3, aggregate
+│       ├── ema.py               (71L)   Pure EMA functions (port of EMAAnalysis.swift)
+│       └── yahoo.py             (44L)   Yahoo Finance chart v8 client (stdlib urllib)
 ├── tests/
 │   ├── test_ema.py              (128L)  Port of EMAAnalysisTests.swift (22 tests)
-│   ├── test_worker.py           (186L)  Worker batch processing + aggregation (11 tests)
+│   ├── test_worker.py           (523L)  Worker batch processing + aggregation (36 tests)
+│   ├── test_orchestrator.py     (123L)  Orchestrator batching + SQS dispatch (10 tests)
+│   ├── test_yahoo.py            (223L)  Yahoo Finance client + response parsing (28 tests)
 │   └── conftest.py              (3L)    sys.path setup
 ├── terraform/
 │   ├── main.tf                  (26L)   Provider, S3 backend
@@ -794,7 +796,7 @@ aws-scanner/
 │   ├── iam.tf                   (135L)  Roles + least-privilege policies
 │   ├── variables.tf             (9L)    Region, bucket prefix
 │   └── outputs.tf               (15L)   CloudFront URL, bucket name, ARNs
-├── symbols/us-equities.txt              S&P 500 symbol list (one per line)
+├── symbols/us-equities.txt              10,096 US equities + ETFs (one per line)
 └── .github/workflows/deploy-scanner.yml (64L) Test → deploy on aws-scanner/** changes
 ```
 
@@ -834,3 +836,35 @@ aws dynamodb create-table --table-name ema-scanner-tflock \
 ```
 
 **Manual trigger:** `aws lambda invoke --function-name ema-scanner-orchestrator /dev/stdout`
+
+### Symbol List Maintenance
+
+`symbols/us-equities.txt` contains ~10,096 US equities and ETFs (one per line). Updated manually, roughly monthly, to account for IPOs and delistings.
+
+**Data sources (combine all three):**
+
+1. **NASDAQ Screener API** — actively traded US stocks (~7,000 symbols)
+   ```
+   https://api.nasdaq.com/api/screener/stocks?tableType=traded&limit=25000&offset=0
+   ```
+   Returns JSON with `data.table.rows[].symbol`. Does NOT include ETFs.
+
+2. **SEC EDGAR Company Tickers** — comprehensive SEC-registered tickers (~10,000 entries)
+   ```
+   https://www.sec.gov/files/company_tickers.json
+   ```
+   Returns JSON keyed by index, each with `ticker` field. Covers stocks and ETFs. May contain stale/delisted tickers.
+
+3. **Curated ETF list** — top 50 by AUM + common sector/thematic ETFs (~90 symbols)
+   Major ETFs not covered by the above sources (SPY, QQQ, VOO, VTI, IWM, etc.).
+
+**Filtering rules:**
+- Remove warrants (symbols containing `+` or ending in `W`, `WS`, `WSA`)
+- Remove units (ending in `U`)
+- Remove rights (ending in `R`, `RT`, `RTS`)
+- Remove preferred shares (containing `-` like `BAC-PL`)
+- Remove test/placeholder symbols (containing `#`, `$`, `*`)
+- Convert `/` to `.` for Yahoo Finance compatibility (e.g., `BRK/B` → `BRK.B`)
+- Deduplicate, sort alphabetically
+
+**Worker resilience:** Dead/delisted tickers return a fetch error, get logged, and are skipped. They do not block processing.
