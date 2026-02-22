@@ -754,3 +754,83 @@ SwiftUI views in NSHostingView can have transparency issues on macOS. `OpaqueCon
 8. **Fail Fast** — Guard clauses, early returns, error logging on file I/O
 9. **KISS/YAGNI** — No premature abstraction
 10. **Write Tests** — Protocol-based DI enables comprehensive testing; 33 test files with mock doubles
+
+## AWS EMA Scanner (`aws-scanner/`)
+
+Serverless weekly scanner that detects 5-week EMA crossovers across ~500 US equities. Runs autonomously on AWS every Friday at 2 PM ET. Ports `EMAAnalysis.swift` to Python.
+
+### Architecture
+
+```
+EventBridge Scheduler (Friday 2 PM ET)
+  → Orchestrator Lambda (reads symbols from S3, chunks into batches of 50, enqueues to SQS)
+  → SQS Queue (visibility timeout 180s)
+  → Worker Lambda (reserved concurrency 1, processes batches sequentially)
+  → S3 Bucket (batch results, aggregated results/latest.json)
+  → CloudFront (HTTPS access to results/*)
+```
+
+### Files (4 source, 2 test, 9 Terraform, 1 workflow = ~1,084 lines)
+
+```
+aws-scanner/
+├── src/
+│   ├── orchestrator/app.py      (43L)   Read symbols, chunk, enqueue to SQS
+│   └── worker/
+│       ├── app.py               (170L)  Fetch candles, detect crossovers, write S3, aggregate
+│       ├── ema.py               (81L)   Pure EMA functions (port of EMAAnalysis.swift)
+│       └── yahoo.py             (43L)   Yahoo Finance chart v8 client (stdlib urllib)
+├── tests/
+│   ├── test_ema.py              (128L)  Port of EMAAnalysisTests.swift (22 tests)
+│   ├── test_worker.py           (186L)  Worker batch processing + aggregation (11 tests)
+│   └── conftest.py              (3L)    sys.path setup
+├── terraform/
+│   ├── main.tf                  (26L)   Provider, S3 backend
+│   ├── s3.tf                    (70L)   Bucket, lifecycle rules, CloudFront OAC policy
+│   ├── cloudfront.tf            (37L)   Distribution + OAC
+│   ├── sqs.tf                   (5L)    Queue config
+│   ├── lambda.tf                (53L)   Both Lambdas + SQS trigger
+│   ├── eventbridge.tf           (16L)   Friday 2 PM ET schedule
+│   ├── iam.tf                   (135L)  Roles + least-privilege policies
+│   ├── variables.tf             (9L)    Region, bucket prefix
+│   └── outputs.tf               (15L)   CloudFront URL, bucket name, ARNs
+├── symbols/us-equities.txt              S&P 500 symbol list (one per line)
+└── .github/workflows/deploy-scanner.yml (64L) Test → deploy on aws-scanner/** changes
+```
+
+### Verification Steps (AWS Scanner)
+
+```bash
+# Run Python tests
+cd aws-scanner && python3 -m pytest tests/ -v
+
+# Validate Terraform (requires AWS credentials)
+cd aws-scanner/terraform && terraform init && terraform validate
+```
+
+### Key Design Decisions
+
+- **Reserved concurrency 1** on worker Lambda = natural sequential processing = respects Yahoo rate limits
+- **1-second sleep** between symbols = ~50 symbols/min per batch
+- **No DLQ** — failed messages return to queue after visibility timeout, deleted after 1-day retention
+- **Aggregation inline** — last batch reads all prior batch files and merges into results/latest.json
+- **Sneak peek always true** — Lambda runs Friday 2 PM ET, so current week's bar is always included
+- **Below threshold = 3 weeks** — matches macOS app's 3-week minimum for meaningful signals vs chop
+- **Stdlib only** for worker (urllib, json) — no third-party dependencies, no Lambda layers needed
+
+### Deployment
+
+**GitHub Actions** triggers on push to main when `aws-scanner/**` changes. Steps: pytest → terraform init → plan → apply.
+
+**Required GitHub Secrets:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `TF_STATE_BUCKET`, `TF_LOCK_TABLE`
+
+**Bootstrap (one-time):**
+```bash
+aws s3 mb s3://ema-scanner-tfstate
+aws dynamodb create-table --table-name ema-scanner-tflock \
+  --attribute-definitions AttributeName=LockID,AttributeType=S \
+  --key-schema AttributeName=LockID,KeyType=HASH \
+  --billing-mode PAY_PER_REQUEST
+```
+
+**Manual trigger:** `aws lambda invoke --function-name ema-scanner-orchestrator /dev/stdout`
