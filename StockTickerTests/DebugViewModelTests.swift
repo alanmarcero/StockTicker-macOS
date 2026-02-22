@@ -94,7 +94,7 @@ final class DebugViewModelTests: XCTestCase {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!
         await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 0, duration: 0.1, error: "Error 1"))
-        await logger.log(RequestLogEntry(url: url, statusCode: 404, responseSize: 0, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 502, responseSize: 0, duration: 0.1))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()
@@ -107,13 +107,13 @@ final class DebugViewModelTests: XCTestCase {
     func testRefresh_showsHTTPStatusWhenNoErrorMessage() async {
         let logger = RequestLogger()
         let url = URL(string: "https://example.com")!
-        await logger.log(RequestLogEntry(url: url, statusCode: 404, responseSize: 0, duration: 0.1))
+        await logger.log(RequestLogEntry(url: url, statusCode: 502, responseSize: 0, duration: 0.1))
 
         let viewModel = DebugViewModel(logger: logger)
         viewModel.refresh()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        XCTAssertEqual(viewModel.lastErrorMessage, "HTTP 404")
+        XCTAssertEqual(viewModel.lastErrorMessage, "HTTP 502")
     }
 
     func testEndpointFilter_filtersEntries() async {

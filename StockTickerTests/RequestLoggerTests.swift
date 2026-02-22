@@ -23,7 +23,7 @@ final class RequestLoggerTests: XCTestCase {
         await logger.log(RequestLogEntry(url: url, statusCode: 404, responseSize: 0, duration: 0.1))
 
         let count = await logger.getErrorCount()
-        XCTAssertEqual(count, 3)
+        XCTAssertEqual(count, 2, "404s should be ignored")
     }
 
     func testGetLastError_returnsMostRecentError() async {

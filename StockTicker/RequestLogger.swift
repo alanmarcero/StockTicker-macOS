@@ -79,6 +79,10 @@ struct RequestLogEntry: Identifiable, Sendable {
         return (200..<300).contains(code)
     }
 
+    var isIgnoredError: Bool {
+        statusCode == 404
+    }
+
     // MARK: - Copy Helpers
 
     var formattedRequestHeaders: String {
@@ -154,10 +158,10 @@ actor RequestLogger {
 
     func log(_ entry: RequestLogEntry) {
         let endpoint = Self.classifyEndpoint(entry.url)
-        countRecords.append(CountRecord(endpoint: endpoint, timestamp: entry.timestamp, isError: !entry.isSuccess))
+        countRecords.append(CountRecord(endpoint: endpoint, timestamp: entry.timestamp, isError: !entry.isSuccess && !entry.isIgnoredError))
         pruneCountRecords()
 
-        guard !entry.isSuccess else { return }
+        guard !entry.isSuccess, !entry.isIgnoredError else { return }
         entries.append(entry)
         capErrorEntries()
     }
