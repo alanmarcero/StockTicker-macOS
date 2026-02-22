@@ -153,7 +153,7 @@ class TestFetchWeeklyCandles:
 
     @patch("src.worker.yahoo.urllib.request.urlopen")
     def test_builds_correct_url(self, mock_urlopen):
-        mock_urlopen.side_effect = Exception("stop")
+        mock_urlopen.side_effect = OSError("stop")
 
         fetch_weekly_candles("MSFT")
 
@@ -163,7 +163,7 @@ class TestFetchWeeklyCandles:
 
     @patch("src.worker.yahoo.urllib.request.urlopen")
     def test_sets_user_agent(self, mock_urlopen):
-        mock_urlopen.side_effect = Exception("stop")
+        mock_urlopen.side_effect = OSError("stop")
 
         fetch_weekly_candles("GOOG")
 
@@ -172,7 +172,7 @@ class TestFetchWeeklyCandles:
 
     @patch("src.worker.yahoo.urllib.request.urlopen")
     def test_sets_timeout(self, mock_urlopen):
-        mock_urlopen.side_effect = Exception("stop")
+        mock_urlopen.side_effect = OSError("stop")
 
         fetch_weekly_candles("TSLA")
 

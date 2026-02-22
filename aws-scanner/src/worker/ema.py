@@ -3,48 +3,45 @@ from typing import Optional
 DEFAULT_PERIOD = 5
 
 
+def _build_ema_series(closes: list[float], period: int) -> list[float]:
+    sma = sum(closes[:period]) / period
+    multiplier = 2.0 / (period + 1)
+    ema = sma
+    series = [ema]
+
+    for i in range(period, len(closes)):
+        ema = (closes[i] - ema) * multiplier + ema
+        series.append(ema)
+
+    return series
+
+
 def calculate(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[float]:
     if len(closes) < period:
         return None
 
-    sma = sum(closes[:period]) / period
-
-    if len(closes) == period:
-        return sma
-
-    multiplier = 2.0 / (period + 1)
-    ema = sma
-
-    for i in range(period, len(closes)):
-        ema = (closes[i] - ema) * multiplier + ema
-
-    return ema
+    return _build_ema_series(closes, period)[-1]
 
 
 def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
     if len(closes) < period + 1:
         return None
 
-    multiplier = 2.0 / (period + 1)
-    ema = sum(closes[:period]) / period
-    ema_values = [ema]
-
-    for i in range(period, len(closes)):
-        ema = (closes[i] - ema) * multiplier + ema
-        ema_values.append(ema)
-
-    last = len(ema_values) - 1
-    if last < 1:
+    ema_series = _build_ema_series(closes, period)
+    last_index = len(ema_series) - 1
+    if last_index < 1:
         return None
 
-    offset = period - 1
+    ema_offset = period - 1
+    current_above = closes[ema_offset + last_index] > ema_series[last_index]
+    previous_at_or_below = closes[ema_offset + last_index - 1] <= ema_series[last_index - 1]
 
-    if not (closes[offset + last] > ema_values[last] and closes[offset + last - 1] <= ema_values[last - 1]):
+    if not (current_above and previous_at_or_below):
         return None
 
     weeks_below = 1
-    for j in range(last - 2, -1, -1):
-        if closes[offset + j] > ema_values[j]:
+    for i in range(last_index - 2, -1, -1):
+        if closes[ema_offset + i] > ema_series[i]:
             break
         weeks_below += 1
 
@@ -55,26 +52,19 @@ def count_weeks_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Opti
     if len(closes) < period + 1:
         return None
 
-    multiplier = 2.0 / (period + 1)
-    ema = sum(closes[:period]) / period
-    ema_values = [ema]
-
-    for i in range(period, len(closes)):
-        ema = (closes[i] - ema) * multiplier + ema
-        ema_values.append(ema)
-
-    last = len(ema_values) - 1
-    if last < 0:
+    ema_series = _build_ema_series(closes, period)
+    last_index = len(ema_series) - 1
+    if last_index < 0:
         return None
 
-    offset = period - 1
+    ema_offset = period - 1
 
-    if closes[offset + last] > ema_values[last]:
+    if closes[ema_offset + last_index] > ema_series[last_index]:
         return None
 
     weeks_below = 1
-    for j in range(last - 1, -1, -1):
-        if closes[offset + j] > ema_values[j]:
+    for i in range(last_index - 1, -1, -1):
+        if closes[ema_offset + i] > ema_series[i]:
             break
         weeks_below += 1
 

@@ -50,6 +50,7 @@ def _process_batch(
 
         result = yahoo.fetch_weekly_candles(symbol)
         if result is None:
+            print(f"[worker] {symbol}: fetch failed")
             errors.append({"symbol": symbol, "error": "Failed to fetch weekly candles"})
             continue
 
@@ -135,23 +136,16 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     scan_date = now.strftime("%Y-%m-%d")
     scan_time = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    crossover_result = {
+    base = {
         "scanDate": scan_date,
         "scanTime": scan_time,
         "sneakPeek": True,
         "symbolsScanned": total_symbols,
         "errors": total_errors,
-        "crossovers": all_crossovers,
     }
 
-    below_result = {
-        "scanDate": scan_date,
-        "scanTime": scan_time,
-        "sneakPeek": True,
-        "symbolsScanned": total_symbols,
-        "errors": total_errors,
-        "below": all_below,
-    }
+    crossover_result = {**base, "crossovers": all_crossovers}
+    below_result = {**base, "below": all_below}
 
     _put_json(bucket, "results/latest.json", crossover_result)
     _put_json(bucket, "results/latest-below.json", below_result)
@@ -162,7 +156,8 @@ def _read_json(bucket: str, key: str) -> Any:
     try:
         resp = s3.get_object(Bucket=bucket, Key=key)
         return json.loads(resp["Body"].read())
-    except Exception:
+    except Exception as err:
+        print(f"[worker] failed to read s3://{bucket}/{key}: {err}")
         return None
 
 

@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
 from src.worker.app import (
     lambda_handler,
@@ -13,11 +13,6 @@ from src.worker.app import (
 # -- Shared test data --
 
 # Crossover: 3 weeks below then cross above
-# First 5: [100, 102, 104, 106, 108] -> SMA = 104.0
-# idx5: close=100, EMA=102.667 -> below
-# idx6: close=101, EMA=102.111 -> below
-# idx7: close=101, EMA=101.741 -> below
-# idx8: close=106, EMA=103.160 -> above (crossover, 3 weeks below)
 CROSSOVER_CLOSES = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0, 101.0, 106.0]
 
 # Steady below: 3 weeks below EMA (no crossover)
@@ -26,6 +21,9 @@ BELOW_CLOSES = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0, 101.0]
 # Uptrend: all above EMA (no crossover, no below)
 UPTREND_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 
+# Reusable empty batch for aggregation tests
+EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+
 
 def _timestamps_for(closes):
     return list(range(len(closes)))
@@ -33,10 +31,18 @@ def _timestamps_for(closes):
 
 class TestProcessBatch:
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_crossover_detected(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
+    def setup_method(self):
+        self._yahoo_patcher = patch("src.worker.app.yahoo")
+        self._time_patcher = patch("src.worker.app.time")
+        self.mock_yahoo = self._yahoo_patcher.start()
+        self.mock_time = self._time_patcher.start()
+
+    def teardown_method(self):
+        self._time_patcher.stop()
+        self._yahoo_patcher.stop()
+
+    def test_crossover_detected(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
         crossovers, below, errors = _process_batch(["TEST"])
 
@@ -47,10 +53,8 @@ class TestProcessBatch:
         assert crossovers[0]["pctAbove"] > 0
         assert len(errors) == 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_crossover_output_fields(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
+    def test_crossover_output_fields(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
         crossovers, _, _ = _process_batch(["AAPL"])
 
@@ -61,10 +65,8 @@ class TestProcessBatch:
         assert isinstance(entry["pctAbove"], float)
         assert isinstance(entry["weeksBelow"], int)
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_crossover_ema_rounded_to_4_decimals(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
+    def test_crossover_ema_rounded_to_4_decimals(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
         crossovers, _, _ = _process_batch(["X"])
 
@@ -72,20 +74,16 @@ class TestProcessBatch:
         decimals = ema_str.split(".")[-1] if "." in ema_str else ""
         assert len(decimals) <= 4
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_crossover_pct_above_rounded_to_2_decimals(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
+    def test_crossover_pct_above_rounded_to_2_decimals(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
         crossovers, _, _ = _process_batch(["X"])
 
         pct = crossovers[0]["pctAbove"]
         assert pct == round(pct, 2)
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_below_detected_with_minimum_weeks(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
+    def test_below_detected_with_minimum_weeks(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
 
         crossovers, below, errors = _process_batch(["TEST"])
 
@@ -94,42 +92,32 @@ class TestProcessBatch:
         assert below[0]["weeksBelow"] == 3
         assert below[0]["pctBelow"] > 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_below_output_fields(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
+    def test_below_output_fields(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
 
         _, below, _ = _process_batch(["X"])
 
         entry = below[0]
         assert set(entry.keys()) == {"symbol", "close", "ema", "pctBelow", "weeksBelow"}
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_below_not_detected_under_threshold(self, mock_time, mock_yahoo):
-        # Only 1 week below — under the 3-week threshold
+    def test_below_not_detected_under_threshold(self):
         closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 53.0]
-        mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
+        self.mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
 
         _, below, _ = _process_batch(["TEST"])
 
         assert len(below) == 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_below_two_weeks_not_detected(self, mock_time, mock_yahoo):
-        # 2 weeks below — still under threshold (chop)
+    def test_below_two_weeks_not_detected(self):
         closes = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0]
-        mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
+        self.mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
 
         _, below, _ = _process_batch(["TEST"])
 
         assert len(below) == 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_uptrend_no_crossover_no_below(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
+    def test_uptrend_no_crossover_no_below(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
         crossovers, below, errors = _process_batch(["BULL"])
 
@@ -137,10 +125,8 @@ class TestProcessBatch:
         assert len(below) == 0
         assert len(errors) == 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_fetch_failure_records_error(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = None
+    def test_fetch_failure_records_error(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = None
 
         crossovers, below, errors = _process_batch(["FAIL"])
 
@@ -150,10 +136,8 @@ class TestProcessBatch:
         assert errors[0]["symbol"] == "FAIL"
         assert "error" in errors[0]
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_insufficient_data_skipped_no_error(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = ([100.0, 101.0, 102.0], [1, 2, 3])
+    def test_insufficient_data_skipped_no_error(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = ([100.0, 101.0, 102.0], [1, 2, 3])
 
         crossovers, below, errors = _process_batch(["SHORT"])
 
@@ -161,35 +145,28 @@ class TestProcessBatch:
         assert len(below) == 0
         assert len(errors) == 0
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_multiple_symbols_rate_limited(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = ([50.0] * 10, list(range(10)))
+    def test_multiple_symbols_rate_limited(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = ([50.0] * 10, list(range(10)))
 
         _process_batch(["A", "B", "C"])
 
-        # sleep(1) called between symbols (not before the first)
-        assert mock_time.sleep.call_count == 2
-        mock_time.sleep.assert_called_with(1)
+        assert self.mock_time.sleep.call_count == 2
+        self.mock_time.sleep.assert_called_with(1)
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_single_symbol_no_sleep(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = ([50.0] * 10, list(range(10)))
+    def test_single_symbol_no_sleep(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = ([50.0] * 10, list(range(10)))
 
         _process_batch(["ONLY"])
 
-        mock_time.sleep.assert_not_called()
+        self.mock_time.sleep.assert_not_called()
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_mixed_success_and_failure(self, mock_time, mock_yahoo):
+    def test_mixed_success_and_failure(self):
         def side_effect(symbol):
             if symbol == "FAIL":
                 return None
             return (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        mock_yahoo.fetch_weekly_candles.side_effect = side_effect
+        self.mock_yahoo.fetch_weekly_candles.side_effect = side_effect
 
         crossovers, below, errors = _process_batch(["OK", "FAIL", "OK2"])
 
@@ -197,20 +174,16 @@ class TestProcessBatch:
         assert len(errors) == 1
         assert errors[0]["symbol"] == "FAIL"
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_empty_batch(self, mock_time, mock_yahoo):
+    def test_empty_batch(self):
         crossovers, below, errors = _process_batch([])
 
         assert crossovers == []
         assert below == []
         assert errors == []
-        mock_yahoo.fetch_weekly_candles.assert_not_called()
+        self.mock_yahoo.fetch_weekly_candles.assert_not_called()
 
-    @patch("src.worker.app.yahoo")
-    @patch("src.worker.app.time")
-    def test_all_failures(self, mock_time, mock_yahoo):
-        mock_yahoo.fetch_weekly_candles.return_value = None
+    def test_all_failures(self):
+        self.mock_yahoo.fetch_weekly_candles.return_value = None
 
         crossovers, below, errors = _process_batch(["A", "B", "C"])
 
@@ -281,6 +254,25 @@ class TestWriteErrors:
 
 class TestLambdaHandler:
 
+    def setup_method(self):
+        self._env_patcher = patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
+        self._process_patcher = patch("src.worker.app._process_batch")
+        self._write_patcher = patch("src.worker.app._write_batch_results")
+        self._errors_patcher = patch("src.worker.app._write_errors")
+        self._agg_patcher = patch("src.worker.app._aggregate_results")
+        self._env_patcher.start()
+        self.mock_process = self._process_patcher.start()
+        self.mock_write = self._write_patcher.start()
+        self.mock_errors = self._errors_patcher.start()
+        self.mock_agg = self._agg_patcher.start()
+
+    def teardown_method(self):
+        self._agg_patcher.stop()
+        self._errors_patcher.stop()
+        self._write_patcher.stop()
+        self._process_patcher.stop()
+        self._env_patcher.stop()
+
     def _sqs_event(self, messages: list[dict]) -> dict:
         return {
             "Records": [
@@ -288,13 +280,8 @@ class TestLambdaHandler:
             ]
         }
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_processes_sqs_message(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [])
+    def test_processes_sqs_message(self):
+        self.mock_process.return_value = ([], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -305,16 +292,11 @@ class TestLambdaHandler:
         result = lambda_handler(event, None)
 
         assert result["statusCode"] == 200
-        mock_process.assert_called_once_with(["AAPL", "MSFT"])
-        mock_write.assert_called_once()
+        self.mock_process.assert_called_once_with(["AAPL", "MSFT"])
+        self.mock_write.assert_called_once()
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_last_batch_triggers_aggregation(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [])
+    def test_last_batch_triggers_aggregation(self):
+        self.mock_process.return_value = ([], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 2,
@@ -324,15 +306,10 @@ class TestLambdaHandler:
 
         lambda_handler(event, None)
 
-        mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 3)
+        self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 3)
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_non_last_batch_skips_aggregation(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [])
+    def test_non_last_batch_skips_aggregation(self):
+        self.mock_process.return_value = ([], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -342,15 +319,10 @@ class TestLambdaHandler:
 
         lambda_handler(event, None)
 
-        mock_agg.assert_not_called()
+        self.mock_agg.assert_not_called()
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_errors_written_when_present(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [{"symbol": "BAD", "error": "fail"}])
+    def test_errors_written_when_present(self):
+        self.mock_process.return_value = ([], [], [{"symbol": "BAD", "error": "fail"}])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -360,15 +332,10 @@ class TestLambdaHandler:
 
         lambda_handler(event, None)
 
-        mock_errors.assert_called_once()
+        self.mock_errors.assert_called_once()
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_errors_not_written_when_empty(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [])
+    def test_errors_not_written_when_empty(self):
+        self.mock_process.return_value = ([], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -378,26 +345,16 @@ class TestLambdaHandler:
 
         lambda_handler(event, None)
 
-        mock_errors.assert_not_called()
+        self.mock_errors.assert_not_called()
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_empty_records(self, mock_process, mock_write, mock_errors, mock_agg):
+    def test_empty_records(self):
         result = lambda_handler({"Records": []}, None)
 
         assert result["statusCode"] == 200
-        mock_process.assert_not_called()
+        self.mock_process.assert_not_called()
 
-    @patch.dict("os.environ", {"BUCKET_NAME": "test-bucket"})
-    @patch("src.worker.app._aggregate_results")
-    @patch("src.worker.app._write_errors")
-    @patch("src.worker.app._write_batch_results")
-    @patch("src.worker.app._process_batch")
-    def test_single_batch_total_triggers_aggregation(self, mock_process, mock_write, mock_errors, mock_agg):
-        mock_process.return_value = ([], [], [])
+    def test_single_batch_total_triggers_aggregation(self):
+        self.mock_process.return_value = ([], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -407,15 +364,23 @@ class TestLambdaHandler:
 
         lambda_handler(event, None)
 
-        mock_agg.assert_called_once()
+        self.mock_agg.assert_called_once()
 
 
 class TestAggregateResults:
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_merges_all_batches(self, mock_read, mock_put):
-        mock_read.side_effect = [
+    def setup_method(self):
+        self._read_patcher = patch("src.worker.app._read_json")
+        self._put_patcher = patch("src.worker.app._put_json")
+        self.mock_read = self._read_patcher.start()
+        self.mock_put = self._put_patcher.start()
+
+    def teardown_method(self):
+        self._put_patcher.stop()
+        self._read_patcher.stop()
+
+    def test_merges_all_batches(self):
+        self.mock_read.side_effect = [
             {
                 "symbolsProcessed": 50,
                 "errors": 1,
@@ -432,17 +397,14 @@ class TestAggregateResults:
 
         _aggregate_results("test-bucket", "2026-02-22", 2)
 
-        assert mock_put.call_count == 3  # latest.json, latest-below.json, archive
-
-        latest_data = mock_put.call_args_list[0][0][2]
+        assert self.mock_put.call_count == 3
+        latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 100
         assert latest_data["errors"] == 1
         assert len(latest_data["crossovers"]) == 2
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_crossovers_sorted_by_weeks_below_descending(self, mock_read, mock_put):
-        mock_read.side_effect = [
+    def test_crossovers_sorted_by_weeks_below_descending(self):
+        self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 0,
              "crossovers": [{"symbol": "LOW", "weeksBelow": 3}], "below": []},
             {"symbolsProcessed": 50, "errors": 0,
@@ -451,14 +413,12 @@ class TestAggregateResults:
 
         _aggregate_results("b", "r", 2)
 
-        crossovers = mock_put.call_args_list[0][0][2]["crossovers"]
+        crossovers = self.mock_put.call_args_list[0][0][2]["crossovers"]
         assert crossovers[0]["symbol"] == "HIGH"
         assert crossovers[1]["symbol"] == "LOW"
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_below_sorted_by_weeks_below_descending(self, mock_read, mock_put):
-        mock_read.side_effect = [
+    def test_below_sorted_by_weeks_below_descending(self):
+        self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
              "below": [{"symbol": "LOW", "weeksBelow": 3}]},
             {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
@@ -467,110 +427,90 @@ class TestAggregateResults:
 
         _aggregate_results("b", "r", 2)
 
-        below = mock_put.call_args_list[1][0][2]["below"]
+        below = self.mock_put.call_args_list[1][0][2]["below"]
         assert below[0]["symbol"] == "HIGH"
         assert below[1]["symbol"] == "LOW"
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_handles_missing_batch_file(self, mock_read, mock_put):
-        mock_read.side_effect = [
+    def test_handles_missing_batch_file(self):
+        self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": []},
             None,
         ]
 
         _aggregate_results("b", "r", 2)
 
-        latest_data = mock_put.call_args_list[0][0][2]
+        latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 50
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_all_batches_missing(self, mock_read, mock_put):
-        mock_read.return_value = None
+    def test_all_batches_missing(self):
+        self.mock_read.return_value = None
 
         _aggregate_results("b", "r", 3)
 
-        latest_data = mock_put.call_args_list[0][0][2]
+        latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 0
         assert latest_data["errors"] == 0
         assert latest_data["crossovers"] == []
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_writes_latest_json(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_writes_latest_json(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("mybucket", "2026-02-22", 1)
 
-        assert mock_put.call_args_list[0][0][1] == "results/latest.json"
+        assert self.mock_put.call_args_list[0][0][1] == "results/latest.json"
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_writes_latest_below_json(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_writes_latest_below_json(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("mybucket", "2026-02-22", 1)
 
-        assert mock_put.call_args_list[1][0][1] == "results/latest-below.json"
+        assert self.mock_put.call_args_list[1][0][1] == "results/latest-below.json"
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_writes_archive_with_date(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_writes_archive_with_date(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("b", "2026-02-22", 1)
 
-        archive_key = mock_put.call_args_list[2][0][1]
+        archive_key = self.mock_put.call_args_list[2][0][1]
         assert archive_key.startswith("results/")
         assert ".json" in archive_key
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_sneak_peek_always_true(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_sneak_peek_always_true(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("b", "r", 1)
 
-        latest_data = mock_put.call_args_list[0][0][2]
+        latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["sneakPeek"] is True
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_latest_json_has_required_fields(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 1, "crossovers": [], "below": []}
+    def test_latest_json_has_required_fields(self):
+        self.mock_read.return_value = {"symbolsProcessed": 10, "errors": 1, "crossovers": [], "below": []}
 
         _aggregate_results("b", "r", 1)
 
-        data = mock_put.call_args_list[0][0][2]
+        data = self.mock_put.call_args_list[0][0][2]
         assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "crossovers"}
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_latest_below_json_has_required_fields(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_latest_below_json_has_required_fields(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("b", "r", 1)
 
-        data = mock_put.call_args_list[1][0][2]
+        data = self.mock_put.call_args_list[1][0][2]
         assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "below"}
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_reads_correct_batch_keys(self, mock_read, mock_put):
-        mock_read.return_value = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "below": []}
+    def test_reads_correct_batch_keys(self):
+        self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("mybucket", "2026-02-22", 3)
 
-        read_calls = mock_read.call_args_list
+        read_calls = self.mock_read.call_args_list
         assert read_calls[0][0] == ("mybucket", "batches/2026-02-22/batch-000.json")
         assert read_calls[1][0] == ("mybucket", "batches/2026-02-22/batch-001.json")
         assert read_calls[2][0] == ("mybucket", "batches/2026-02-22/batch-002.json")
 
-    @patch("src.worker.app._put_json")
-    @patch("src.worker.app._read_json")
-    def test_error_counts_accumulate(self, mock_read, mock_put):
-        mock_read.side_effect = [
+    def test_error_counts_accumulate(self):
+        self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 3, "crossovers": [], "below": []},
             {"symbolsProcessed": 50, "errors": 7, "crossovers": [], "below": []},
             {"symbolsProcessed": 50, "errors": 5, "crossovers": [], "below": []},
@@ -578,6 +518,6 @@ class TestAggregateResults:
 
         _aggregate_results("b", "r", 3)
 
-        latest_data = mock_put.call_args_list[0][0][2]
+        latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["errors"] == 15
         assert latest_data["symbolsScanned"] == 150
