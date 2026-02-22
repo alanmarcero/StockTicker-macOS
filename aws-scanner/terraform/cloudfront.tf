@@ -5,6 +5,19 @@ resource "aws_cloudfront_origin_access_control" "scanner" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_cache_policy" "fifteen_min" {
+  name        = "ema-scanner-15min"
+  default_ttl = 900
+  min_ttl     = 0
+  max_ttl     = 900
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    cookies_config { cookie_behavior = "none" }
+    headers_config { header_behavior = "none" }
+    query_strings_config { query_string_behavior = "none" }
+  }
+}
+
 resource "aws_cloudfront_distribution" "results" {
   comment         = "EMA Scanner results"
   enabled         = true
@@ -22,7 +35,7 @@ resource "aws_cloudfront_distribution" "results" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-scanner"
     viewer_protocol_policy = "redirect-to-https"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    cache_policy_id        = aws_cloudfront_cache_policy.fifteen_min.id
   }
 
   restrictions {
