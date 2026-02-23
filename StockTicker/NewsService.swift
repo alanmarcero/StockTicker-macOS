@@ -60,6 +60,7 @@ actor NewsService: NewsServiceProtocol {
             let parser = RSSParser(source: source.displayName)
             return parser.parse(data: data)
         } catch {
+            print("News fetch failed for \(source.displayName): \(error.localizedDescription)")
             return []
         }
     }

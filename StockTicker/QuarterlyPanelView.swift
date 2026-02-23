@@ -12,7 +12,7 @@ struct QuarterlyPanelView: View {
             Divider()
             if viewModel.isMiscStatsMode {
                 miscStatsView
-            } else if viewModel.isPriceBreaksMode ? (viewModel.breakoutRows.isEmpty && viewModel.breakdownRows.isEmpty) : viewModel.isEMAsMode ? (viewModel.emaDayRows.isEmpty && viewModel.emaWeekRows.isEmpty && viewModel.emaCrossRows.isEmpty && viewModel.emaBelowRows.isEmpty) : viewModel.rows.isEmpty {
+            } else if viewModel.shouldShowEmptyState {
                 emptyState
             } else {
                 scrollableContent
@@ -571,20 +571,12 @@ class QuarterlyPanelWindowController {
 
     func showWindow(
         watchlist: [String],
-        quotes: [String: StockQuote],
-        quarterPrices: [String: [String: Double]],
         quarterInfos: [QuarterInfo],
         highlightedSymbols: Set<String> = [],
         highlightColor: String = "yellow",
         highlightOpacity: Double = 0.25,
-        highestClosePrices: [String: Double] = [:],
-        forwardPEData: [String: [String: Double]] = [:],
-        currentForwardPEs: [String: Double] = [:],
-        swingLevelEntries: [String: SwingLevelCacheEntry] = [:],
-        rsiValues: [String: Double] = [:],
-        emaEntries: [String: EMACacheEntry] = [:],
-        isUniverseActive: Bool = false,
-        scannerEMAData: ScannerEMAData? = nil
+        data: QuarterlyPanelData,
+        isUniverseActive: Bool = false
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -594,7 +586,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quotes: quotes, quarterPrices: quarterPrices, quarterInfos: quarterInfos, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries, isUniverseActive: isUniverseActive, scannerEMAData: scannerEMAData)
+        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)
@@ -629,8 +621,8 @@ class QuarterlyPanelWindowController {
         window = newWindow
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:], scannerEMAData: ScannerEMAData? = nil) {
+    func refresh(data: QuarterlyPanelData) {
         guard let window = window, window.isVisible else { return }
-        viewModel?.refresh(quotes: quotes, quarterPrices: quarterPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs, swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries, scannerEMAData: scannerEMAData)
+        viewModel?.refresh(data: data)
     }
 }

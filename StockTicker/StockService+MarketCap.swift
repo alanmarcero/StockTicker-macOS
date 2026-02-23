@@ -21,20 +21,27 @@ extension StockService {
             let chunk = Array(symbols[batch..<end])
 
             if let result = await performQuoteFieldsFetch(symbols: chunk) {
-                allCaps.merge(result.marketCaps) { _, new in new }
-                allPEs.merge(result.forwardPEs) { _, new in new }
+                mergeResults(result, into: &allCaps, and: &allPEs)
                 continue
             }
 
             // Crumb may have expired, refresh and retry once
             await refreshCrumb()
             if let result = await performQuoteFieldsFetch(symbols: chunk) {
-                allCaps.merge(result.marketCaps) { _, new in new }
-                allPEs.merge(result.forwardPEs) { _, new in new }
+                mergeResults(result, into: &allCaps, and: &allPEs)
             }
         }
 
         return (allCaps, allPEs)
+    }
+
+    private func mergeResults(
+        _ result: (marketCaps: [String: Double], forwardPEs: [String: Double]),
+        into caps: inout [String: Double],
+        and pes: inout [String: Double]
+    ) {
+        caps.merge(result.marketCaps) { _, new in new }
+        pes.merge(result.forwardPEs) { _, new in new }
     }
 
     func refreshCrumb() async {
@@ -65,7 +72,7 @@ extension StockService {
         do {
             var request = URLRequest(url: url)
             request.setValue(APIEndpoints.userAgent, forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await httpClient.data(for: request)
             guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)

@@ -66,6 +66,7 @@ extension StockService {
             guard decoded.isValid else { return nil }
             return StockQuote(symbol: symbol, price: decoded.c, previousClose: decoded.pc, session: .regular)
         } catch {
+            print("Finnhub quote fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
         }
     }

@@ -52,6 +52,20 @@ struct MiscStat: Identifiable {
     let value: String
 }
 
+// MARK: - Panel Data DTO
+
+struct QuarterlyPanelData {
+    let quotes: [String: StockQuote]
+    let quarterPrices: [String: [String: Double]]
+    var highestClosePrices: [String: Double] = [:]
+    var forwardPEData: [String: [String: Double]] = [:]
+    var currentForwardPEs: [String: Double] = [:]
+    var swingLevelEntries: [String: SwingLevelCacheEntry] = [:]
+    var rsiValues: [String: Double] = [:]
+    var emaEntries: [String: EMACacheEntry] = [:]
+    var scannerEMAData: ScannerEMAData? = nil
+}
+
 // MARK: - Sort Column
 
 enum QuarterlySortColumn: Equatable {

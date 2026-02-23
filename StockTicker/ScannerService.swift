@@ -94,6 +94,7 @@ actor ScannerService: ScannerServiceProtocol {
             guard response.isSuccessfulHTTP else { return nil }
             return try JSONDecoder().decode(type, from: data)
         } catch {
+            print("Scanner fetch failed for \(url): \(error.localizedDescription)")
             return nil
         }
     }

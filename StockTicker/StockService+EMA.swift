@@ -138,12 +138,12 @@ extension StockService {
 
         // Crossover uses only completed weekly bars — filter by timestamp, not dropLast
         let crossoverCloses: [Double]?
-        if let w = weekly {
+        if let weeklyData = weekly {
             if isCurrentWeekSneakPeek(now: now) {
-                crossoverCloses = w.closes
+                crossoverCloses = weeklyData.closes
             } else {
-                let count = completedWeeklyBarCount(timestamps: w.timestamps, now: now)
-                crossoverCloses = count > 0 ? Array(w.closes[0..<count]) : nil
+                let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
+                crossoverCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
             }
         } else {
             crossoverCloses = nil

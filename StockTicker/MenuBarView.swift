@@ -89,7 +89,7 @@ class MenuBarController: NSObject, ObservableObject {
     private var marqueeView: MarqueeView?
     private var editorWindowController: WatchlistEditorWindowController?
     private var debugWindowController: DebugWindowController?
-    private var lastRefreshTime = Date()
+    private var lastRefreshTime: Date
     private var countdownMenuItem: NSMenuItem?
     private var highlightIntensity: [String: CGFloat] = [:]
     private var tickerMenuItems: [String: NSMenuItem] = [:]
@@ -154,6 +154,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.swingLevelCacheManager = swingLevelCacheManager
         self.rsiCacheManager = rsiCacheManager
         self.emaCacheManager = emaCacheManager
+        self.lastRefreshTime = dateProvider.now()
 
         let loadedConfig = configManager.load()
         self.config = loadedConfig
@@ -350,7 +351,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.yahooMarketState = result.yahooMarketState
         if result.isInitialLoadComplete { hasCompletedInitialLoad = true }
 
-        self.lastRefreshTime = Date()
+        self.lastRefreshTime = dateProvider.now()
         refreshCycleCount += 1
         attachYTDPricesToQuotes()
 
@@ -372,8 +373,7 @@ class MenuBarController: NSObject, ObservableObject {
 
         await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
 
-        let combinedQuotes = mergedQuotes()
-        quarterlyWindowController?.refresh(quotes: combinedQuotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: mergedForwardPEs(), swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries, scannerEMAData: scannerEMAData)
+        quarterlyWindowController?.refresh(data: makeQuarterlyPanelData())
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -583,7 +583,7 @@ class MenuBarController: NSObject, ObservableObject {
     // MARK: - UI Updates
 
     private func updateCountdown() {
-        let elapsed = Date().timeIntervalSince(lastRefreshTime)
+        let elapsed = dateProvider.now().timeIntervalSince(lastRefreshTime)
         let remaining = max(0, Int(TimeInterval(config.refreshInterval) - elapsed))
 
         let formatter = DateFormatter()
@@ -877,19 +877,25 @@ class MenuBarController: NSObject, ObservableObject {
     private func showQuarterlyWindow() {
         quarterlyWindowController?.showWindow(
             watchlist: extraStatsSymbols,
-            quotes: mergedQuotes(),
-            quarterPrices: quarterlyPrices,
             quarterInfos: quarterInfos,
             highlightedSymbols: Set(config.highlightedSymbols),
             highlightColor: config.highlightColor,
             highlightOpacity: config.highlightOpacity,
+            data: makeQuarterlyPanelData(),
+            isUniverseActive: !config.universe.isEmpty
+        )
+    }
+
+    private func makeQuarterlyPanelData() -> QuarterlyPanelData {
+        QuarterlyPanelData(
+            quotes: mergedQuotes(),
+            quarterPrices: quarterlyPrices,
             highestClosePrices: highestClosePrices,
             forwardPEData: forwardPEData,
             currentForwardPEs: mergedForwardPEs(),
             swingLevelEntries: swingLevelEntries,
             rsiValues: rsiValues,
             emaEntries: emaEntries,
-            isUniverseActive: !config.universe.isEmpty,
             scannerEMAData: scannerEMAData
         )
     }

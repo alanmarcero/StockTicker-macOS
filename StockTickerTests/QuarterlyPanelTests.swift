@@ -30,7 +30,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q2-2025": ["AAPL": 200.0],  // (200-200)/200 * 100 = 0.0%
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         XCTAssertEqual(vm.rows.count, 1)
 
@@ -60,7 +60,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": [:],  // No price for NEW
         ]
 
-        vm.update(watchlist: ["NEW"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["NEW"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         let row = vm.rows[0]
         let q4Change = row.quarterChanges["Q4-2025"] ?? nil
@@ -75,7 +75,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["MISSING": 100.0],
         ]
 
-        vm.update(watchlist: ["MISSING"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["MISSING"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         let row = vm.rows[0]
         let q4Change = row.quarterChanges["Q4-2025"] ?? nil
@@ -92,7 +92,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["BAD": 100.0],
         ]
 
-        vm.update(watchlist: ["BAD"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["BAD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         let row = vm.rows[0]
         let q4Change = row.quarterChanges["Q4-2025"] ?? nil
@@ -110,7 +110,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["AAPL": 180.0, "SPY": 450.0],
         ]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         XCTAssertEqual(vm.rows.count, 2)
     }
@@ -128,7 +128,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         let quarterPrices: [String: [String: Double]] = [:]
 
         // Default sort is .symbol ascending — applied during update()
-        vm.update(watchlist: ["SPY", "AAPL", "MSFT"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["SPY", "AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         XCTAssertEqual(vm.rows[0].symbol, "AAPL")
         XCTAssertEqual(vm.rows[1].symbol, "MSFT")
@@ -144,7 +144,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "SPY": makeQuote(symbol: "SPY", price: 500.0),
         ]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
 
         // Default is .symbol ascending; first click toggles to descending
         vm.sort(by: .symbol)
@@ -170,7 +170,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["AAPL": 180.0, "SPY": 550.0],  // AAPL +11.11%, SPY -9.09%
         ]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         vm.sort(by: .quarter("Q4-2025"))
 
@@ -187,7 +187,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "SPY": makeQuote(symbol: "SPY", price: 500.0),
         ]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
 
         // Default is .symbol ascending; first click toggles to descending
         vm.sort(by: .symbol)
@@ -209,7 +209,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["AAPL": 180.0],  // NEW has no Q4 price
         ]
 
-        vm.update(watchlist: ["AAPL", "NEW"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "NEW"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         vm.sort(by: .quarter("Q4-2025"))
 
@@ -228,7 +228,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
 
         let row = vm.rows[0]
         // (150-200)/200 * 100 = -25%
@@ -243,7 +243,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 150.0),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
 
         let row = vm.rows[0]
         XCTAssertNil(row.highestCloseChangePercent)
@@ -259,7 +259,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         // AAPL: (150-200)/200 = -25%, SPY: (500-450)/450 = +11.11%
         let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 450.0]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
 
         vm.sort(by: .highestClose)
 
@@ -282,7 +282,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL", "NEW"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL", "NEW"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
 
         vm.sort(by: .highestClose)
 
@@ -299,13 +299,13 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
 
         // Refresh with updated prices
         let updatedQuotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 180.0),
         ]
-        vm.refresh(quotes: updatedQuotes, quarterPrices: [:], highestClosePrices: highestClosePrices)
+        vm.refresh(data: QuarterlyPanelData(quotes: updatedQuotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
 
         let row = vm.rows[0]
         // (180-200)/200 * 100 = -10%
@@ -325,7 +325,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q4-2025": ["AAPL": 180.0],
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: initialQuotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: initialQuotes, quarterPrices: quarterPrices))
 
         let initialChange = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
         XCTAssertEqual(initialChange!, 11.11, accuracy: 0.01)
@@ -335,7 +335,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
 
-        vm.refresh(quotes: updatedQuotes, quarterPrices: quarterPrices)
+        vm.refresh(data: QuarterlyPanelData(quotes: updatedQuotes, quarterPrices: quarterPrices))
 
         let updatedChange = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
         // (220-180)/180 * 100 = 22.22%
@@ -346,7 +346,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         let vm = QuarterlyPanelViewModel()
         // No update() called, quarters is empty
 
-        vm.refresh(quotes: [:], quarterPrices: [:])
+        vm.refresh(data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
 
         XCTAssertTrue(vm.rows.isEmpty)
     }
@@ -356,7 +356,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testUpdate_emptyWatchlist_producesNoRows() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
 
         XCTAssertTrue(vm.rows.isEmpty)
     }
@@ -418,7 +418,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q2-2025": ["AAPL": 150.0],  // oldest, no prior → nil
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         // Since-quarter mode: (200-200)/200 = 0%
         let sinceQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
@@ -450,7 +450,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q2-2025": ["SPY": 160.0],
         ]
 
-        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
         vm.switchMode(.duringQuarter)
 
         let q4Change = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
@@ -476,7 +476,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q1-2025": ["AAPL": 120.0],  // prior quarter data
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
         vm.switchMode(.duringQuarter)
 
         // Q2-2025 during: (150-120)/120 = 25.0%
@@ -498,7 +498,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q2-2025": ["AAPL": 150.0],
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
         vm.switchMode(.duringQuarter)
 
         // Oldest quarter (Q2-2025) has no prior quarter data → nil
@@ -520,7 +520,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "BTC-USD": [:]  // No P/E data for crypto
         ]
 
-        vm.update(watchlist: ["AAPL", "BTC-USD"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL", "BTC-USD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], forwardPEData: forwardPEData))
         vm.switchMode(.forwardPE)
 
         // BTC-USD filtered out because empty dict
@@ -535,7 +535,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": ["Q4-2025": 28.5, "Q3-2025": 30.2, "Q2-2025": 26.0]
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], forwardPEData: forwardPEData))
         vm.switchMode(.forwardPE)
 
         let row = vm.rows[0]
@@ -555,7 +555,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let currentForwardPEs: [String: Double] = ["AAPL": 27.3]
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs))
         vm.switchMode(.forwardPE)
 
         XCTAssertEqual(vm.rows[0].currentForwardPE, 27.3)
@@ -568,7 +568,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": ["Q4-2025": 28.5]  // Only Q4 has data
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], forwardPEData: forwardPEData))
         vm.switchMode(.forwardPE)
 
         let row = vm.rows[0]
@@ -589,7 +589,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": ["Q4-2025": 28.5]
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices, forwardPEData: forwardPEData))
 
         // In sinceQuarter mode, quarterChanges has percent values
         let sinceQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
@@ -610,7 +610,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL"], quotes: ["AAPL": makeQuote(symbol: "AAPL", price: 150.0)], quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: ["AAPL": makeQuote(symbol: "AAPL", price: 150.0)], quarterPrices: [:], highestClosePrices: highestClosePrices, forwardPEData: forwardPEData))
         vm.switchMode(.forwardPE)
 
         XCTAssertNil(vm.rows[0].highestCloseChangePercent)
@@ -625,7 +625,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let currentForwardPEs: [String: Double] = ["AAPL": 28.5, "MSFT": 32.1]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], forwardPEData: forwardPEData, currentForwardPEs: currentForwardPEs))
         vm.switchMode(.forwardPE)
 
         vm.sort(by: .currentPE)
@@ -648,7 +648,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": ["Q4-2025": 32.1],
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, forwardPEData: forwardPEData)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], forwardPEData: forwardPEData))
         vm.switchMode(.forwardPE)
 
         vm.sort(by: .quarter("Q4-2025"))
@@ -670,7 +670,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "Q2-2025": ["AAPL": 150.0],
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: quarterPrices, quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: quarterPrices))
 
         let originalQ4 = vm.rows[0].quarterChanges["Q4-2025"] ?? nil
         XCTAssertEqual(originalQ4!, 11.11, accuracy: 0.01)
@@ -695,7 +695,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertEqual(vm.breakoutRows.count, 1)
@@ -714,7 +714,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertTrue(vm.breakoutRows.isEmpty)
@@ -727,7 +727,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
         vm.switchMode(.priceBreaks)
 
         XCTAssertTrue(vm.breakoutRows.isEmpty)
@@ -746,7 +746,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertTrue(vm.breakoutRows.isEmpty)
@@ -765,7 +765,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertTrue(vm.breakdownRows.isEmpty)
@@ -783,7 +783,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: 250.0, breakdownDate: "6/10/24"),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertEqual(vm.breakoutRows.count, 1)
@@ -809,7 +809,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakoutDate: "2/20/25", breakdownPrice: nil, breakdownDate: nil),  // +20%
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
         vm.sort(by: .priceBreakPercent)
 
@@ -835,7 +835,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": SwingLevelCacheEntry(breakoutPrice: nil, breakoutDate: nil, breakdownPrice: 100.0, breakdownDate: "6/10/24"),  // -20%
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
         vm.sort(by: .priceBreakPercent)
 
@@ -861,7 +861,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": SwingLevelCacheEntry(breakoutPrice: 300.0, breakoutDate: "6/20/24", breakdownPrice: nil, breakdownDate: nil),
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
         vm.sort(by: .date)
 
@@ -879,20 +879,20 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
     func testIsPriceBreaksMode_priceBreaks_true() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.priceBreaks)
         XCTAssertTrue(vm.isPriceBreaksMode)
     }
 
     func testIsPriceBreaksMode_sinceQuarter_false() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         XCTAssertFalse(vm.isPriceBreaksMode)
     }
 
     func testIsPriceBreaksMode_forwardPE_false() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.forwardPE)
         XCTAssertFalse(vm.isPriceBreaksMode)
     }
@@ -910,7 +910,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let rsiValues: [String: Double] = ["AAPL": 65.2]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries, rsiValues: rsiValues))
         vm.switchMode(.priceBreaks)
 
         XCTAssertEqual(vm.breakoutRows.count, 1)
@@ -928,7 +928,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let rsiValues: [String: Double] = ["AAPL": 28.5]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries, rsiValues: rsiValues))
         vm.switchMode(.priceBreaks)
 
         XCTAssertEqual(vm.breakdownRows.count, 1)
@@ -945,7 +945,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": SwingLevelCacheEntry(breakoutPrice: 200.0, breakoutDate: "1/15/25", breakdownPrice: nil, breakdownDate: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries))
         vm.switchMode(.priceBreaks)
 
         XCTAssertEqual(vm.breakoutRows.count, 1)
@@ -964,7 +964,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         // AAPL: (198-200)/200 = -1%, SPY: (500-500)/500 = 0% — both within 5%
         let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats.count, 10)
@@ -985,7 +985,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         // AAPL: (100-200)/200 = -50%, SPY: (300-500)/500 = -40%
         let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[0].value, "0%")
@@ -1000,7 +1000,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0, "SPY": 500.0]
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         // 1 out of 2 = 50%
@@ -1010,7 +1010,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_percentWithin5PercentOfHigh_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[0].value, "--")
@@ -1019,7 +1019,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_rowsAreEmpty() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         // Misc stats mode returns empty rows array
@@ -1037,7 +1037,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["SPY": 500.0, "QQQ": 400.0, "DIA": 400.0, "IWM": 200.0]
 
-        vm.update(watchlist: ["SPY", "QQQ", "DIA", "IWM"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["SPY", "QQQ", "DIA", "IWM"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         // 2 of 4 indexes within 5%
@@ -1053,7 +1053,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[1].id, "indexesWithin5pctOfHigh")
@@ -1070,7 +1070,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["XLK": 200.0, "XLF": 100.0, "SMH": 300.0]
 
-        vm.update(watchlist: ["XLK", "XLF", "SMH"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["XLK", "XLF", "SMH"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         // 2 of 3 sectors within 5%
@@ -1086,7 +1086,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let highestClosePrices: [String: Double] = ["AAPL": 200.0]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: highestClosePrices)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: highestClosePrices))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[2].id, "sectorsWithin5pctOfHigh")
@@ -1103,7 +1103,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         var q2 = makeQuote(symbol: "SPY", price: 450.0)
         q2 = q2.withYTDStartPrice(500.0)  // -10%
 
-        vm.update(watchlist: ["AAPL", "SPY"], quotes: ["AAPL": q1, "SPY": q2], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: ["AAPL": q1, "SPY": q2], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         // Average of +10% and -10% = 0%
@@ -1118,7 +1118,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 200.0),  // no YTD start price
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[3].value, "--")
@@ -1134,7 +1134,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         var q3 = makeQuote(symbol: "MSFT", price: 350.0)
         q3 = q3.withYTDStartPrice(300.0)  // +16.7%
 
-        vm.update(watchlist: ["AAPL", "SPY", "MSFT"], quotes: ["AAPL": q1, "SPY": q2, "MSFT": q3], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL", "SPY", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: ["AAPL": q1, "SPY": q2, "MSFT": q3], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         // 2 of 3 positive
@@ -1145,7 +1145,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_percentPositiveYTD_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[4].value, "--")
@@ -1161,7 +1161,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         var q3 = makeQuote(symbol: "XLV", price: 110.0)
         q3 = q3.withYTDStartPrice(100.0)  // +10%
 
-        vm.update(watchlist: ["XLK", "XLF", "XLV"], quotes: ["XLK": q1, "XLF": q2, "XLV": q3], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["XLK", "XLF", "XLV"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: ["XLK": q1, "XLF": q2, "XLV": q3], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         // 2 of 3 sectors positive
@@ -1175,7 +1175,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         var q1 = makeQuote(symbol: "AAPL", price: 220.0)
         q1 = q1.withYTDStartPrice(200.0)
 
-        vm.update(watchlist: ["AAPL"], quotes: ["AAPL": q1], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: ["AAPL": q1], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[5].id, "sectorsPositiveYTD")
@@ -1189,7 +1189,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         let currentForwardPEs: [String: Double] = ["AAPL": 30.0, "MSFT": 40.0]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], currentForwardPEs: currentForwardPEs))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[6].id, "avgForwardPE")
@@ -1201,7 +1201,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         let currentForwardPEs: [String: Double] = ["AAPL": 30.0, "MSFT": 40.0, "BAD": -500.0]
 
-        vm.update(watchlist: ["AAPL", "MSFT", "BAD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL", "MSFT", "BAD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], currentForwardPEs: currentForwardPEs))
         vm.switchMode(.miscStats)
 
         // Negative P/E excluded, average of 30 and 40
@@ -1211,7 +1211,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_averageForwardPE_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["BTC-USD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["BTC-USD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[7].value, "--")
@@ -1222,7 +1222,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         let currentForwardPEs: [String: Double] = ["AAPL": 20.0, "MSFT": 40.0, "GOOGL": 30.0]
 
-        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], currentForwardPEs: currentForwardPEs))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[7].id, "medianForwardPE")
@@ -1234,7 +1234,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         let currentForwardPEs: [String: Double] = ["AAPL": 20.0, "MSFT": 40.0, "GOOGL": 30.0, "META": 25.0]
 
-        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL", "META"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, currentForwardPEs: currentForwardPEs)
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL", "META"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], currentForwardPEs: currentForwardPEs))
         vm.switchMode(.miscStats)
 
         // Sorted: 20, 25, 30, 40 → median = (25+30)/2 = 27.5
@@ -1244,7 +1244,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_medianForwardPE_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["BTC-USD"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["BTC-USD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[7].value, "--")
@@ -1264,7 +1264,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[8].id, "pctAbove5WEMA")
@@ -1283,7 +1283,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "MSFT": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[9].id, "pctBelow5WEMA")
@@ -1293,7 +1293,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_pctAbove5WEMA_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[8].id, "pctAbove5WEMA")
@@ -1303,7 +1303,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testMiscStats_pctBelow5WEMA_noData() {
         let vm = QuarterlyPanelViewModel()
 
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
         XCTAssertEqual(vm.miscStats[9].id, "pctBelow5WEMA")
@@ -1312,7 +1312,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
     func testIsMiscStatsMode() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
 
         XCTAssertFalse(vm.isMiscStatsMode)
         vm.switchMode(.miscStats)
@@ -1332,7 +1332,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         ]
         let rsiValues: [String: Double] = ["AAPL": 72.0, "MSFT": 45.0]
 
-        vm.update(watchlist: ["AAPL", "MSFT"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, swingLevelEntries: swingEntries, rsiValues: rsiValues)
+        vm.update(watchlist: ["AAPL", "MSFT"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], swingLevelEntries: swingEntries, rsiValues: rsiValues))
         vm.switchMode(.priceBreaks)
 
         vm.sort(by: .rsi)
@@ -1356,7 +1356,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
@@ -1374,7 +1374,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
@@ -1388,7 +1388,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:]))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
@@ -1405,7 +1405,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: nil, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
@@ -1422,7 +1422,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 3, weekAboveCount: 2),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
@@ -1439,7 +1439,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 3, weekAboveCount: 2),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows[0].id, "AAPL-ema-day")
@@ -1456,7 +1456,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 100.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 12),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 12.0, accuracy: 0.01)
@@ -1472,7 +1472,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: nil, weekAboveCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
@@ -1481,14 +1481,14 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
     func testIsEMAsMode_emas_true() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.emas)
         XCTAssertTrue(vm.isEMAsMode)
     }
 
     func testIsEMAsMode_sinceQuarter_false() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         XCTAssertFalse(vm.isEMAsMode)
     }
 
@@ -1502,7 +1502,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, weekAboveCount: 4),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
@@ -1522,7 +1522,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: 3, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaCrossRows.count, 1)
@@ -1541,7 +1541,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaCrossRows.isEmpty)
@@ -1561,7 +1561,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "GOOGL": EMACacheEntry(day: 160.0, week: 165.0, weekCrossoverWeeksBelow: 5, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL", "MSFT", "GOOGL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaCrossRows.count, 1, "Only GOOGL (5 weeks) should appear; AAPL (2 weeks) filtered out")
@@ -1580,7 +1580,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 4),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaBelowRows.count, 1)
@@ -1597,7 +1597,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 2),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaBelowRows.isEmpty)
@@ -1613,7 +1613,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaBelowRows.isEmpty)
@@ -1629,7 +1629,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 3),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaBelowRows[0].id, "AAPL-ema-below")
@@ -1645,7 +1645,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 5),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaBelowRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
@@ -1661,7 +1661,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             crossovers: [],
             below: []
         )
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], scannerEMAData: scannerData))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
@@ -1678,7 +1678,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             crossovers: [],
             below: []
         )
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], scannerEMAData: scannerData))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaWeekRows.count, 1)
@@ -1694,7 +1694,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             crossovers: [ScannerCrossoverItem(symbol: "NVDA", close: 900.0, ema: 880.0, pctAbove: 2.27, weeksBelow: 7)],
             below: []
         )
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], scannerEMAData: scannerData))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaCrossRows.count, 1)
@@ -1710,7 +1710,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             crossovers: [],
             below: [ScannerBelowItem(symbol: "NVDA", close: 880.0, ema: 900.0, pctBelow: 2.22, weeksBelow: 5)]
         )
-        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], scannerEMAData: scannerData))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaBelowRows.count, 1)
@@ -1733,7 +1733,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             below: []
         )
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries, scannerEMAData: scannerData)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries, scannerEMAData: scannerData))
         vm.switchMode(.emas)
 
         // AAPL should appear once (from local cache), not duplicated from scanner
@@ -1750,7 +1750,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
         ]
 
-        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
@@ -1760,14 +1760,14 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     func testHasScannerData_withData_returnsTrue() {
         let vm = QuarterlyPanelViewModel()
         let scannerData = ScannerEMAData(dayAbove: [], weekAbove: [], crossovers: [], below: [])
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:], scannerEMAData: scannerData))
 
         XCTAssertTrue(vm.hasScannerData)
     }
 
     func testHasScannerData_withoutData_returnsFalse() {
         let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
 
         XCTAssertFalse(vm.hasScannerData)
     }
@@ -1779,7 +1779,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         let quotes: [String: StockQuote] = [
             "SPY": makeQuote(symbol: "SPY", price: 500.0),
         ]
-        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: ["SPY": 510.0])
+        vm.update(watchlist: ["SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: ["SPY": 510.0]))
         vm.switchMode(.miscStats)
 
         XCTAssertFalse(vm.isUniverseActive)
@@ -1791,7 +1791,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         let quotes: [String: StockQuote] = [
             "SPY": makeQuote(symbol: "SPY", price: 500.0),
         ]
-        vm.update(watchlist: ["SPY"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, highestClosePrices: ["SPY": 510.0], isUniverseActive: true)
+        vm.update(watchlist: ["SPY"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], highestClosePrices: ["SPY": 510.0]), isUniverseActive: true)
         vm.switchMode(.miscStats)
 
         XCTAssertTrue(vm.isUniverseActive)

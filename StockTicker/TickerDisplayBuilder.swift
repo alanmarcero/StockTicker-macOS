@@ -87,6 +87,14 @@ struct HighlightConfig {
 
 enum TickerDisplayBuilder {
 
+    private static func padded(_ string: String, toLength length: Int) -> String {
+        string.count >= length ? string : string.padding(toLength: length, withPad: " ", startingAt: 0)
+    }
+
+    private static func emptyPadding(width: Int) -> String {
+        String(repeating: " ", count: width + 2)
+    }
+
     static func menuBarTitle(
         for quote: StockQuote, showExtendedHours: Bool = false
     ) -> NSAttributedString {
@@ -107,11 +115,9 @@ enum TickerDisplayBuilder {
     static func tickerTitle(quote: StockQuote, highlight: HighlightConfig, date: Date = Date()) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
-        let symbolStr = quote.symbol.padding(toLength: LayoutConfig.Ticker.symbolWidth, withPad: " ", startingAt: 0)
-        let marketCapStr = quote.formattedMarketCap.padding(toLength: LayoutConfig.Ticker.marketCapWidth, withPad: " ", startingAt: 0)
-        let percentStr = quote.formattedChangePercent.padding(
-            toLength: LayoutConfig.Ticker.percentWidth, withPad: " ", startingAt: 0
-        )
+        let symbolStr = padded(quote.symbol, toLength: LayoutConfig.Ticker.symbolWidth)
+        let marketCapStr = padded(quote.formattedMarketCap, toLength: LayoutConfig.Ticker.marketCapWidth)
+        let percentStr = padded(quote.formattedChangePercent, toLength: LayoutConfig.Ticker.percentWidth)
 
         let mainHighlight = quote.isInExtendedHoursPeriod(at: date)
             ? highlight.withPingDisabled()
@@ -131,9 +137,7 @@ enum TickerDisplayBuilder {
     static func appendYTDSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
         guard let ytdPercent = quote.formattedYTDChangePercent else { return }
         let ytdContent = "YTD: \(ytdPercent)"
-        let paddedContent = ytdContent.count >= LayoutConfig.Ticker.ytdWidth
-            ? ytdContent
-            : ytdContent.padding(toLength: LayoutConfig.Ticker.ytdWidth, withPad: " ", startingAt: 0)
+        let paddedContent = padded(ytdContent, toLength: LayoutConfig.Ticker.ytdWidth)
         let (ytdColor, ytdBgColor) = highlight.resolve(defaultColor: quote.ytdColor)
         result.append(.styled("  \(paddedContent)",
                               font: MenuItemFactory.monoFont, color: ytdColor, backgroundColor: ytdBgColor))
@@ -142,9 +146,7 @@ enum TickerDisplayBuilder {
     static func appendHighestCloseSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
         guard let highPercent = quote.formattedHighestCloseChangePercent else { return }
         let highContent = "High: \(highPercent)"
-        let paddedContent = highContent.count >= LayoutConfig.Ticker.highWidth
-            ? highContent
-            : highContent.padding(toLength: LayoutConfig.Ticker.highWidth, withPad: " ", startingAt: 0)
+        let paddedContent = padded(highContent, toLength: LayoutConfig.Ticker.highWidth)
         let (highColor, highBgColor) = highlight.resolve(defaultColor: quote.highestCloseColor)
         result.append(.styled("  \(paddedContent)",
                               font: MenuItemFactory.monoFont, color: highColor, backgroundColor: highBgColor))
@@ -156,12 +158,10 @@ enum TickerDisplayBuilder {
         guard quote.isInExtendedHoursPeriod(at: date), let periodLabel = quote.extendedHoursPeriodLabel(at: date) else { return }
 
         if quote.formattedYTDChangePercent == nil {
-            let emptyPadding = String(repeating: " ", count: LayoutConfig.Ticker.ytdWidth + 2)
-            result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
+            result.append(.styled(emptyPadding(width: LayoutConfig.Ticker.ytdWidth), font: MenuItemFactory.monoFont))
         }
         if quote.formattedHighestCloseChangePercent == nil {
-            let emptyPadding = String(repeating: " ", count: LayoutConfig.Ticker.highWidth + 2)
-            result.append(.styled(emptyPadding, font: MenuItemFactory.monoFont))
+            result.append(.styled(emptyPadding(width: LayoutConfig.Ticker.highWidth), font: MenuItemFactory.monoFont))
         }
 
         if quote.shouldShowExtendedHours(at: date), let extPercent = quote.formattedExtendedHoursChangePercent {
