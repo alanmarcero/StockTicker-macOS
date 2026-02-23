@@ -36,7 +36,7 @@ pgrep -x Stonks && echo "App is running"
 ## Source Files (41 files, ~8,298 lines)
 
 ```
-StockTickerApp.swift             (12L)   Entry point, creates MenuBarController
+StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
 MenuBarView.swift                (955L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
 MenuBarController+Cache.swift    (477L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
 BackfillScheduler.swift          (235L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
