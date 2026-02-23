@@ -160,7 +160,7 @@ actor BackfillScheduler {
                 await caches.rsi.save()
             }
             if emaMissing.contains(symbol), let ema = result.dailyEMA {
-                await caches.ema.setEntry(for: symbol, entry: EMACacheEntry(day: ema, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil))
+                await caches.ema.setEntry(for: symbol, entry: EMACacheEntry(day: ema, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: result.dailyAboveCount))
                 await caches.ema.save()
             }
         }
@@ -185,7 +185,8 @@ actor BackfillScheduler {
 
         await processSymbols(toFetch, phase: .weeklyEMA, onBatchComplete: onBatchComplete) { symbol in
             let existingDaily = allEntries[symbol]?.day
-            if let entry = await stockService.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: existingDaily) {
+            let existingDailyAbove = allEntries[symbol]?.dayAboveCount
+            if let entry = await stockService.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: existingDaily, precomputedDailyAboveCount: existingDailyAbove) {
                 await caches.ema.setEntry(for: symbol, entry: entry)
                 await caches.ema.save()
             }

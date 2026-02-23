@@ -138,6 +138,64 @@ final class EMAAnalysisTests: XCTestCase {
         XCTAssertEqual(result, 1)
     }
 
+    // MARK: - Count Periods Above
+
+    func testCountPeriodsAbove_noData_returnsNil() {
+        let result = EMAAnalysis.countPeriodsAbove(closes: [])
+        XCTAssertNil(result)
+    }
+
+    func testCountPeriodsAbove_insufficientData_returnsNil() {
+        let result = EMAAnalysis.countPeriodsAbove(closes: [100.0, 101.0, 102.0, 103.0, 104.0])
+        XCTAssertNil(result)
+    }
+
+    func testCountPeriodsAbove_belowEMA_returnsNil() {
+        // Strong downtrend — last close below EMA
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]
+        let result = EMAAnalysis.countPeriodsAbove(closes: closes)
+        XCTAssertNil(result)
+    }
+
+    func testCountPeriodsAbove_oneAbove() {
+        // Downtrend then one period jump above EMA
+        // First 5: [100, 90, 80, 70, 60] → SMA = 80.0
+        // idx5: close=50, EMA = (50-80)*0.3333+80 = 70.0 → 50 <= 70 (below)
+        // idx6: close=85, EMA = (85-70)*0.3333+70 = 75.0 → 85 > 75 (above)
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 85.0]
+        let result = EMAAnalysis.countPeriodsAbove(closes: closes)
+        XCTAssertEqual(result, 1)
+    }
+
+    func testCountPeriodsAbove_uptrend() {
+        // Strong uptrend — all closes above EMA after setup
+        // First 5: [10, 20, 30, 40, 50] → SMA = 30.0
+        // offset=4: close=50 > ema=30 (above)
+        // idx5: close=60, EMA = 40.0 → above
+        // idx6: close=70, EMA = 50.0 → above
+        // idx7: close=80, EMA = 60.0 → above
+        let closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0]
+        let result = EMAAnalysis.countPeriodsAbove(closes: closes)
+        XCTAssertEqual(result, 4)
+    }
+
+    func testCountPeriodsAbove_atBoundary() {
+        // Minimum data: period+1 = 6 closes
+        // First 5: [50, 52, 54, 56, 58] → SMA = 54.0
+        // offset=4: close=58 > ema=54 (above)
+        // idx5: close=60, EMA = (60-54)*0.3333+54 = 56.0 → 60 > 56 (above)
+        let closes = [50.0, 52.0, 54.0, 56.0, 58.0, 60.0]
+        let result = EMAAnalysis.countPeriodsAbove(closes: closes)
+        XCTAssertEqual(result, 2)
+    }
+
+    func testCountPeriodsAbove_equalToEMA_returnsNil() {
+        // When last close equals EMA, not strictly above → returns nil
+        let closes = Array(repeating: 50.0, count: 10)
+        let result = EMAAnalysis.countPeriodsAbove(closes: closes)
+        XCTAssertNil(result)
+    }
+
     // MARK: - Count Weeks Below
 
     func testCountWeeksBelow_noData_returnsNil() {

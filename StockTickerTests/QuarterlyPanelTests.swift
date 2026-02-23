@@ -1353,14 +1353,14 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
         vm.switchMode(.emas)
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
-        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 10.0, accuracy: 0.01)
+        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
         XCTAssertTrue(vm.emaWeekRows.isEmpty)
     }
 
@@ -1419,7 +1419,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 3, weekAboveCount: 2),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
@@ -1436,7 +1436,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 3, weekAboveCount: 2),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
@@ -1446,20 +1446,37 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.emaWeekRows[0].id, "AAPL-ema-week")
     }
 
-    func testEMAs_percentCalculation() {
+    func testEMAs_countCalculation() {
         let vm = QuarterlyPanelViewModel()
 
         let quotes: [String: StockQuote] = [
             "AAPL": makeQuote(symbol: "AAPL", price: 110.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 100.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "AAPL": EMACacheEntry(day: 100.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 12),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
         vm.switchMode(.emas)
 
-        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 10.0, accuracy: 0.01)
+        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 12.0, accuracy: 0.01)
+    }
+
+    func testEMAs_nilAboveCount_excluded() {
+        let vm = QuarterlyPanelViewModel()
+
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: 200.0, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: nil, weekAboveCount: nil),
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.switchMode(.emas)
+
+        XCTAssertTrue(vm.emaDayRows.isEmpty)
+        XCTAssertTrue(vm.emaWeekRows.isEmpty)
     }
 
     func testIsEMAsMode_emas_true() {
@@ -1482,7 +1499,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
             "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
         ]
         let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil),
+            "AAPL": EMACacheEntry(day: nil, week: 200.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, weekAboveCount: 4),
         ]
 
         vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
@@ -1490,6 +1507,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         XCTAssertTrue(vm.emaDayRows.isEmpty)
         XCTAssertEqual(vm.emaWeekRows.count, 1)
+        XCTAssertEqual(vm.emaWeekRows[0].breakoutPercent!, 4.0, accuracy: 0.01)
     }
 
     // MARK: - 5W Cross (Weekly Crossover)

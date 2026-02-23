@@ -115,7 +115,7 @@ extension StockService {
         await fetchEMA(symbol: symbol, range: "6mo", interval: "1wk")
     }
 
-    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, now: Date = Date()) async -> EMACacheEntry? {
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, precomputedDailyAboveCount: Int? = nil, now: Date = Date()) async -> EMACacheEntry? {
         async let weeklyData = fetchWeeklyClosesWithTimestamps(symbol: symbol)
 
         let day: Double?
@@ -125,8 +125,16 @@ extension StockService {
             day = await fetchDailyEMA(symbol: symbol)
         }
 
+        let dayAbove: Int?
+        if let precomputed = precomputedDailyAboveCount {
+            dayAbove = precomputed
+        } else {
+            dayAbove = nil
+        }
+
         let weekly = await weeklyData
         let weekEMA = weekly.flatMap { EMAAnalysis.calculate(closes: $0.closes) }
+        let weekAbove = weekly.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0.closes) }
 
         // Crossover uses only completed weekly bars — filter by timestamp, not dropLast
         let crossoverCloses: [Double]?
@@ -144,11 +152,11 @@ extension StockService {
         let belowCount = weekly.flatMap { EMAAnalysis.countWeeksBelow(closes: $0.closes) }
 
         guard day != nil || weekEMA != nil else { return nil }
-        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount)
+        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekBelowCount: belowCount, dayAboveCount: dayAbove, weekAboveCount: weekAbove)
     }
 
-    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?) async -> EMACacheEntry? {
-        await fetchEMAEntry(symbol: symbol, precomputedDailyEMA: precomputedDailyEMA, now: Date())
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?, precomputedDailyAboveCount: Int? = nil) async -> EMACacheEntry? {
+        await fetchEMAEntry(symbol: symbol, precomputedDailyEMA: precomputedDailyEMA, precomputedDailyAboveCount: precomputedDailyAboveCount, now: Date())
     }
 
     /// Include the current week's bar from Friday 2PM ET onward through the weekend.
@@ -189,7 +197,7 @@ extension StockService {
         return fResults.merging(yResults) { f, _ in f }
     }
 
-    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] {
+    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double], dailyAboveCounts: [String: Int] = [:]) async -> [String: EMACacheEntry] {
         let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
 
         async let finnhubResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
@@ -197,7 +205,7 @@ extension StockService {
             maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
             delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
         ) { symbol in
-            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
+            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol], precomputedDailyAboveCount: dailyAboveCounts[symbol])
         }
 
         async let yahooResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
@@ -205,7 +213,7 @@ extension StockService {
             maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
             delay: ThrottledTaskGroup.Backfill.delayNanoseconds
         ) { symbol in
-            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol])
+            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol], precomputedDailyAboveCount: dailyAboveCounts[symbol])
         }
 
         let fResults = await finnhubResults

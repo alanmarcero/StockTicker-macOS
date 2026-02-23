@@ -59,9 +59,9 @@ private final class TrackingMockStockService: StockServiceProtocol, @unchecked S
     func fetchDailyEMA(symbol: String) async -> Double? { nil }
     func fetchWeeklyEMA(symbol: String) async -> Double? { nil }
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] { [:] }
-    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double]) async -> [String: EMACacheEntry] { [:] }
+    func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double], dailyAboveCounts: [String: Int]) async -> [String: EMACacheEntry] { [:] }
 
-    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?) async -> EMACacheEntry? {
+    func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?, precomputedDailyAboveCount: Int?) async -> EMACacheEntry? {
         log("weeklyEMA", symbol)
         return emaEntriesToReturn[symbol]
     }
@@ -106,7 +106,7 @@ final class BackfillSchedulerTests: XCTestCase {
         let service = TrackingMockStockService()
         service.ytdPricesToReturn = ["AAPL": 150.0]
         service.dailyAnalysisToReturn = ["AAPL": DailyAnalysisResult(
-            highestClose: 200.0, swingLevelEntry: nil, rsi: 55.0, dailyEMA: 160.0
+            highestClose: 200.0, swingLevelEntry: nil, rsi: 55.0, dailyEMA: 160.0, dailyAboveCount: 5
         )]
         service.emaEntriesToReturn = ["AAPL": EMACacheEntry(day: 160.0, week: 155.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
         service.forwardPERatiosToReturn = ["AAPL": ["Q4-2025": 28.0]]
@@ -282,7 +282,8 @@ final class BackfillSchedulerTests: XCTestCase {
             highestClose: 250.0,
             swingLevelEntry: SwingLevelCacheEntry(breakoutPrice: 240.0, breakoutDate: "1/15/26", breakdownPrice: 180.0, breakdownDate: "6/15/25"),
             rsi: 62.5,
-            dailyEMA: 195.0
+            dailyEMA: 195.0,
+            dailyAboveCount: 8
         )]
 
         let caches = makeCaches()

@@ -198,13 +198,11 @@ class QuarterlyPanelViewModel: ObservableObject {
         for symbol in storedWatchlist {
             guard let entry = storedEMAEntries[symbol],
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            if let ema = entry.day, quote.price > ema, ema > 0 {
-                let pct = ((quote.price - ema) / ema) * 100
-                dayRows.append(QuarterlyRow(id: "\(symbol)-ema-day", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            if let ema = entry.day, quote.price > ema, ema > 0, let aboveCount = entry.dayAboveCount {
+                dayRows.append(QuarterlyRow(id: "\(symbol)-ema-day", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(aboveCount), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
             }
-            if let ema = entry.week, quote.price > ema, ema > 0 {
-                let pct = ((quote.price - ema) / ema) * 100
-                weekRows.append(QuarterlyRow(id: "\(symbol)-ema-week", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            if let ema = entry.week, quote.price > ema, ema > 0, let aboveCount = entry.weekAboveCount {
+                weekRows.append(QuarterlyRow(id: "\(symbol)-ema-week", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(aboveCount), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
             }
         }
         emaDayRows = dayRows

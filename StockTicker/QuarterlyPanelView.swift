@@ -65,9 +65,9 @@ struct QuarterlyPanelView: View {
     private var scrollableContent: some View {
         if viewModel.isEMAsMode {
             HStack(alignment: .top, spacing: 0) {
-                emaTable("5-Day", rows: viewModel.emaDayRows)
+                emaTable("5-Day", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
                 Divider()
-                emaTable("5-Week", rows: viewModel.emaWeekRows)
+                emaTable("5-Week", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
                 Divider()
                 emaCrossTable("5W Cross", rows: viewModel.emaCrossRows)
                 Divider()
@@ -181,12 +181,12 @@ struct QuarterlyPanelView: View {
         }
     }
 
-    private func emaTable(_ title: String, rows: [QuarterlyRow]) -> some View {
+    private func emaTable(_ title: String, rows: [QuarterlyRow], columnLabel: String, suffix: String) -> some View {
         ScrollView([.vertical]) {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section(header: emaPinnedHeaders(title)) {
+                Section(header: emaPinnedHeaders(title, columnLabel: columnLabel)) {
                     ForEach(rows) { row in
-                        emaRowView(row)
+                        emaRowView(row, suffix: suffix)
                         Divider().opacity(0.3)
                     }
                 }
@@ -196,7 +196,7 @@ struct QuarterlyPanelView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func emaPinnedHeaders(_ title: String) -> some View {
+    private func emaPinnedHeaders(_ title: String, columnLabel: String) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text(title)
@@ -208,7 +208,7 @@ struct QuarterlyPanelView: View {
             .padding(.top, 4)
             HStack(spacing: 0) {
                 sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
-                sortableHeader("%", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                sortableHeader(columnLabel, column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
@@ -217,15 +217,24 @@ struct QuarterlyPanelView: View {
         .background(.background)
     }
 
-    private func emaRowView(_ row: QuarterlyRow) -> some View {
+    private func emaRowView(_ row: QuarterlyRow, suffix: String) -> some View {
         HStack(spacing: 0) {
             Text(row.symbol)
                 .font(.system(.body, design: .monospaced))
                 .fontWeight(.medium)
                 .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
 
-            cellView(row.breakoutPercent)
-                .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+            Group {
+                if let count = row.breakoutPercent {
+                    Text("\(Int(count))\(suffix)")
+                        .foregroundColor(.green)
+                } else {
+                    Text(QuarterlyFormatting.noData)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .font(.system(.body, design: .monospaced))
+            .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
 
             Spacer(minLength: 0)
         }
@@ -491,7 +500,7 @@ struct QuarterlyPanelView: View {
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
-            return "Symbols whose current price is above the 5-period EMA. 5W Cross: weekly close crossed above 5-week EMA."
+            return "Consecutive days/weeks above the 5-period EMA. 5W Cross: weekly close crossed above 5-week EMA."
         case .miscStats:
             return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
         }

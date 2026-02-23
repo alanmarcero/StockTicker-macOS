@@ -7,6 +7,7 @@ struct DailyAnalysisResult: Sendable {
     let swingLevelEntry: SwingLevelCacheEntry?
     let rsi: Double?
     let dailyEMA: Double?
+    let dailyAboveCount: Int?
 }
 
 // MARK: - Shared Analysis Helpers
@@ -39,7 +40,8 @@ private func buildDailyAnalysisResult(closes: [Double], timestamps: [Int]) -> Da
         highestClose: closes.max(),
         swingLevelEntry: buildSwingEntry(closes: closes, timestamps: timestamps),
         rsi: RSIAnalysis.calculate(closes: closes),
-        dailyEMA: EMAAnalysis.calculate(closes: closes)
+        dailyEMA: EMAAnalysis.calculate(closes: closes),
+        dailyAboveCount: EMAAnalysis.countPeriodsAbove(closes: closes)
     )
 }
 
@@ -96,7 +98,8 @@ extension StockService {
                 highestClose: validCloses.max(),
                 swingLevelEntry: swingEntry,
                 rsi: RSIAnalysis.calculate(closes: validCloses),
-                dailyEMA: EMAAnalysis.calculate(closes: validCloses)
+                dailyEMA: EMAAnalysis.calculate(closes: validCloses),
+                dailyAboveCount: EMAAnalysis.countPeriodsAbove(closes: validCloses)
             )
         } catch {
             print("Daily analysis fetch failed for \(symbol): \(error.localizedDescription)")

@@ -7,6 +7,17 @@ struct EMACacheEntry: Codable, Equatable {
     let week: Double?
     let weekCrossoverWeeksBelow: Int?
     let weekBelowCount: Int?
+    let dayAboveCount: Int?
+    let weekAboveCount: Int?
+
+    init(day: Double?, week: Double?, weekCrossoverWeeksBelow: Int?, weekBelowCount: Int?, dayAboveCount: Int? = nil, weekAboveCount: Int? = nil) {
+        self.day = day
+        self.week = week
+        self.weekCrossoverWeeksBelow = weekCrossoverWeeksBelow
+        self.weekBelowCount = weekBelowCount
+        self.dayAboveCount = dayAboveCount
+        self.weekAboveCount = weekAboveCount
+    }
 }
 
 // MARK: - EMA Cache Data Model

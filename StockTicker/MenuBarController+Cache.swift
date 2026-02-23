@@ -314,6 +314,7 @@ extension MenuBarController {
 
         // Distribute results to individual caches
         var dailyEMAs: [String: Double] = [:]
+        var dailyAboveCounts: [String: Int] = [:]
         for (symbol, result) in results {
             if highestCloseMissing.contains(symbol), let highest = result.highestClose {
                 await highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
@@ -324,8 +325,13 @@ extension MenuBarController {
             if rsiMissing.contains(symbol), let rsi = result.rsi {
                 await rsiCacheManager.setRSI(for: symbol, value: rsi)
             }
-            if emaMissing.contains(symbol), let ema = result.dailyEMA {
-                dailyEMAs[symbol] = ema
+            if emaMissing.contains(symbol) {
+                if let ema = result.dailyEMA {
+                    dailyEMAs[symbol] = ema
+                }
+                if let aboveCount = result.dailyAboveCount {
+                    dailyAboveCounts[symbol] = aboveCount
+                }
             }
         }
 
@@ -336,7 +342,7 @@ extension MenuBarController {
         // Fetch remaining EMA timeframes (weekly + monthly) with pre-computed daily values
         let emaMissingArray = Array(emaMissing)
         if !emaMissingArray.isEmpty {
-            let fetched = await stockService.batchFetchEMAValues(symbols: emaMissingArray, dailyEMAs: dailyEMAs)
+            let fetched = await stockService.batchFetchEMAValues(symbols: emaMissingArray, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
             for (symbol, entry) in fetched {
                 await emaCacheManager.setEntry(for: symbol, entry: entry)
             }
@@ -377,11 +383,14 @@ extension MenuBarController {
     func refreshEMAForSneakPeek() async {
         let existingEntries = await emaCacheManager.getAllEntries()
         let dailyEMAs = existingEntries.compactMapValues { $0.day }
+        let dailyAboveCounts: [String: Int] = existingEntries.reduce(into: [:]) { dict, pair in
+            if let count = pair.value.dayAboveCount { dict[pair.key] = count }
+        }
 
         await emaCacheManager.clearForDailyRefresh()
 
         let symbols = allCacheSymbols
-        let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs)
+        let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
         for (symbol, entry) in fetched {
             await emaCacheManager.setEntry(for: symbol, entry: entry)
         }
