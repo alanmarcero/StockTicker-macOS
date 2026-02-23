@@ -406,7 +406,7 @@ Individual request retry — if fetching AAPL, MSFT, GOOGL and MSFT fails, only 
 |--------------|-----------|----------|---------------|----------|
 | Closed | Skip | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
 | Pre-Market | Fetch | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
-| Open | Fetch (15s) | Fetch (~60s) | `indexSymbols` | Cycle through watchlist |
+| Open | Fetch (30s) | Fetch (~120s) | `indexSymbols` | Cycle through watchlist |
 | After-Hours | Fetch | Skip | `alwaysOpenMarkets` | `menuBarAssetWhenClosed` |
 
 Universe refresh only runs while Extra Stats window is visible, every 4th refresh cycle (~60s). Universe equity symbols route to Finnhub `/quote` (max 50/cycle); indices, crypto, and overflow equities use Yahoo chart v8.
@@ -416,7 +416,7 @@ Universe refresh only runs while Extra Stats window is visible, every 4th refres
 Two-phase strategy controlled by `hasCompletedInitialLoad`:
 
 1. **Initial load** — Fetches ALL symbols (watchlist + universe) regardless of market state. Ensures users see data on weekends. Universe quotes fetched via `ThrottledTaskGroup` (max 20 concurrent).
-2. **Subsequent refreshes** — Smart fetching based on market state. Watchlist every 15s, universe every ~60s (4th cycle) while Extra Stats is open and market is open. Only crypto refreshes when closed.
+2. **Subsequent refreshes** — Smart fetching based on market state. Watchlist every 30s, universe every ~120s (4th cycle) while Extra Stats is open and market is open. Only crypto refreshes when closed.
 
 Weekend handling:
 - Yahoo API may return "POST" on weekends (from Friday's after-hours)
@@ -576,7 +576,7 @@ Both fetched concurrently via `async let`. Batch fetch via `ThrottledTaskGroup` 
 
 **Failure resilience:** `fetchEMAEntry` returns `nil` when both EMA values (day, week) are nil (total API failure). `ThrottledTaskGroup.map` excludes nil results, so failed symbols remain "missing" and are retried on the next fetch cycle. Partial success (e.g., daily succeeds but weekly fails) is stored with non-nil fields.
 
-**Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~60s). This produces ~15 API calls per cycle (5 EMA × 2 timeframes + 5 Forward P/E) = 0.25 req/sec sustained rate.
+**Cache retry:** Missing EMA and Forward P/E entries are retried in batches of 5 every 4th refresh cycle (~120s). This produces ~15 API calls per cycle (5 EMA × 2 timeframes + 5 Forward P/E) = 0.25 req/sec sustained rate.
 
 **Sneak peek refresh:** On Friday 2-4 PM ET, `needsSneakPeekRefresh()` triggers a re-fetch of weekly EMA data every 5 minutes. This ensures crossover/below-count detection includes the current week's incomplete bar during the sneak peek window (`isCurrentWeekSneakPeek` in StockService+EMA.swift) and stays current as prices move. Daily EMAs are preserved from the existing cache to avoid redundant API calls.
 
@@ -596,7 +596,7 @@ Four per-symbol daily-interval API calls (highest close, swing levels, RSI, dail
 
 **`refreshDailyAnalysisIfNeeded()`** checks all 4 caches for daily staleness, clears whichever need it, then calls `fetchMissingDailyAnalysis()`.
 
-**Market state optimization:** `QuoteFetchCoordinator.extractMarketState(from:symbol:)` extracts `yahooMarketState` from the SPY quote already being fetched, eliminating a redundant `fetchMarketState("SPY")` call every 15s refresh. `StockQuote.yahooMarketState` stores the raw Yahoo market state string from the chart v8 meta response.
+**Market state optimization:** `QuoteFetchCoordinator.extractMarketState(from:symbol:)` extracts `yahooMarketState` from the SPY quote already being fetched, eliminating a redundant `fetchMarketState("SPY")` call every 30s refresh. `StockQuote.yahooMarketState` stores the raw Yahoo market state string from the chart v8 meta response.
 
 Key methods: `fetchDailyAnalysis()`, `batchFetchDailyAnalysis()`, `fetchMissingDailyAnalysis()`, `refreshDailyAnalysisIfNeeded()`, `extractMarketState()`
 
@@ -622,7 +622,7 @@ Standalone window with six view modes (segmented picker): **Since Quarter** show
 
 **View modes:** `QuarterlyViewMode` enum (in `QuarterlyPanelModels`) — `.sinceQuarter` computes `(currentPrice - Q_end) / Q_end`, `.duringQuarter` computes `(Q_end - Q_prev_end) / Q_prev_end`, `.forwardPE` shows raw P/E values per quarter end, `.priceBreaks` shows two independently sorted tables (breakoutRows and breakdownRows) with Symbol, Date, and % columns, `.emas` shows two independently sorted tables (emaDayRows, emaWeekRows) with Symbol and % columns plus a crossover table, `.miscStats` shows non-sortable aggregate statistics (e.g., % of symbols within 5% of High). A 13th quarter is fetched as a reference price so during-quarter yields data for all 12 displayed quarters. View model (`QuarterlyPanelViewModel`) stores data (`storedWatchlist`, `storedQuotes`, `storedQuarterPrices`, `storedForwardPEData`, `storedCurrentForwardPEs`, `storedSwingLevelEntries`, `storedRSIValues`, `storedEMAEntries`) so rows recompute when toggling modes via `switchMode()`.
 
-**Live updates:** During market hours, percent changes update each refresh cycle (~15s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
+**Live updates:** During market hours, percent changes update each refresh cycle (~30s) using `quote.price` (regular market price, never pre/post). Format: `+12.34%` / `-5.67%` / `--` (missing). Color-coded green/red/secondary.
 
 **Sortable columns:** Symbol, High/Current (% from highest close in price modes, current forward P/E in P/E mode), and each quarter column. Click header to sort ascending; click again to toggle descending. Switching columns resets to ascending. Nil values sort before any value. Column headers are pinned during vertical scrolling via `LazyVStack(pinnedViews: [.sectionHeaders])`.
 
@@ -674,7 +674,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 |-------|------|---------|
 | `watchlist` | `[String]` (max 128) | 40+ symbols |
 | `menuBarRotationInterval` | `Int` (seconds) | `5` |
-| `refreshInterval` | `Int` (seconds) | `15` |
+| `refreshInterval` | `Int` (seconds) | `30` |
 | `sortDirection` | `String` | `"percentDesc"` |
 | `menuBarAssetWhenClosed` | `String` | `"BTC-USD"` |
 | `indexSymbols` | `[IndexSymbol]` | SPX, DJI, NDX, VIX, RUT, BTC |

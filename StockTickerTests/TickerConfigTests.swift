@@ -73,7 +73,7 @@ final class WatchlistConfigTests: XCTestCase {
             "SSK", "XRPR", "DOJE", "TMUS"
         ])
         XCTAssertEqual(config.menuBarRotationInterval, 5)
-        XCTAssertEqual(config.refreshInterval, 15)
+        XCTAssertEqual(config.refreshInterval, 30)
         XCTAssertEqual(config.sortDirection, "percentDesc")
         XCTAssertEqual(config.menuBarAssetWhenClosed, .bitcoin)
         XCTAssertEqual(config.indexSymbols.count, 6)
@@ -150,7 +150,7 @@ final class WatchlistConfigTests: XCTestCase {
 
         let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
 
-        XCTAssertEqual(config.refreshInterval, 15)
+        XCTAssertEqual(config.refreshInterval, 30)
         XCTAssertEqual(config.menuBarAssetWhenClosed, .bitcoin)
         XCTAssertEqual(config.indexSymbols, WatchlistConfig.defaultIndexSymbols)
     }

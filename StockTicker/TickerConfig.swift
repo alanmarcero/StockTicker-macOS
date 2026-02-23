@@ -96,7 +96,7 @@ struct WatchlistConfig: Codable, Equatable {
             "SSK", "XRPR", "DOJE", "TMUS"
         ],
         menuBarRotationInterval: 5,
-        refreshInterval: 15,
+        refreshInterval: 30,
         sortDirection: "percentDesc",
         menuBarAssetWhenClosed: .bitcoin,
         indexSymbols: defaultIndexSymbols,
@@ -135,7 +135,7 @@ struct WatchlistConfig: Codable, Equatable {
         highlightedSymbols = try container.decodeLegacy([String].self, primary: .highlightedSymbols, legacy: .highlightedTickers, default: ["SPY"])
 
         // Fields without legacy keys
-        refreshInterval = try container.decodeIfPresent(Int.self, forKey: .refreshInterval) ?? 15
+        refreshInterval = try container.decodeIfPresent(Int.self, forKey: .refreshInterval) ?? 30
         alwaysOpenMarkets = try container.decodeIfPresent([IndexSymbol].self, forKey: .alwaysOpenMarkets) ?? WatchlistConfig.defaultAlwaysOpenMarkets
         highlightColor = try container.decodeIfPresent(String.self, forKey: .highlightColor) ?? "yellow"
         highlightOpacity = try container.decodeIfPresent(Double.self, forKey: .highlightOpacity) ?? 0.25
@@ -166,7 +166,7 @@ struct WatchlistConfig: Codable, Equatable {
     init(
         watchlist: [String],
         menuBarRotationInterval: Int,
-        refreshInterval: Int = 15,
+        refreshInterval: Int = 30,
         sortDirection: String,
         menuBarAssetWhenClosed: MenuBarAsset = .bitcoin,
         indexSymbols: [IndexSymbol] = defaultIndexSymbols,
