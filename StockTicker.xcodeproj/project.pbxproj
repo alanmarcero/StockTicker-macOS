@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B4CK000001000001A0000001 /* BackfillScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000001000001A0000002 /* BackfillScheduler.swift */; };
-		B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */; };
 		0101010101010101A0000001 /* AppInfrastructure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101A0000002 /* AppInfrastructure.swift */; };
 		0101010101010101B0000001 /* QuarterlyPanelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101B0000002 /* QuarterlyPanelModels.swift */; };
 		0101010101010101C0000001 /* QuarterlyPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0101010101010101C0000002 /* QuarterlyPanelViewModel.swift */; };
 		056B9B647756EF91A0612D16 /* EMACacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6E346A73683177C4D8B25E9 /* EMACacheTests.swift */; };
 		31996A1742E7842AC37D33B9 /* SwingAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CAC8094CE0FD32414BA4C0 /* SwingAnalysisTests.swift */; };
+		42C253478E3759C5E185D852 /* ScannerServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CFD6907FB6F0044614689A5 /* ScannerServiceTests.swift */; };
 		492F8130D7D6F36BDDF5A428 /* SwingAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7617310EDF068AF6DEDEE2F /* SwingAnalysis.swift */; };
+		6475FBBDFA00C9B46040D108 /* ScannerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09832F562C5F76DC26553BB3 /* ScannerService.swift */; };
 		69D8111D3DF339FAA362648B /* HighestCloseCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8E6A4B9EAD659CB2CC72C19 /* HighestCloseCacheTests.swift */; };
 		7246E05122AC2A17F8C65610 /* EMAAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96171F4FC380B1D2A9C00AD5 /* EMAAnalysisTests.swift */; };
 		7440B79A21A13F2BE1B5DE0B /* SwingLevelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861AE7343DEEE398A04F177D /* SwingLevelCache.swift */; };
@@ -34,12 +34,12 @@
 		B1000005232C5A0000000001 /* TickerEditorStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006232C5A0000000001 /* TickerEditorStateTests.swift */; };
 		B1000007232C5A0000000001 /* TickerValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008232C5A0000000001 /* TickerValidatorTests.swift */; };
 		B1000009232C5A0000000001 /* StockServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000A232C5A0000000001 /* StockServiceTests.swift */; };
-		O9D1CA5D4B41C01FB057CA37 /* FinnhubResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */; };
-		O1E0BAFB36527D7D26960729 /* SymbolRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */; };
 		B100000B232C5A0000000001 /* StockDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000C232C5A0000000001 /* StockDataTests.swift */; };
 		B100000D232C5A0000000001 /* MarketScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000E232C5A0000000001 /* MarketScheduleTests.swift */; };
 		B100000F232C5A0000000001 /* TickerConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010232C5A0000000001 /* TickerConfigTests.swift */; };
 		B1000011232C5A0000000001 /* MenuBarViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000012232C5A0000000001 /* MenuBarViewTests.swift */; };
+		B4CK000001000001A0000001 /* BackfillScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000001000001A0000002 /* BackfillScheduler.swift */; };
+		B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */; };
 		BBAE7B56CF06C6BA0498CA05 /* StockService+EMA.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDC0820F7BA53E2357E0003F /* StockService+EMA.swift */; };
 		C1000001232C5A0000000001 /* NewsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002232C5A0000000001 /* NewsData.swift */; };
 		C1000003232C5A0000000001 /* NewsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004232C5A0000000001 /* NewsService.swift */; };
@@ -70,8 +70,10 @@
 		N1000001232C5A0000000001 /* CacheStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000002232C5A0000000001 /* CacheStorage.swift */; };
 		N1000003232C5A0000000001 /* CacheStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N1000004232C5A0000000001 /* CacheStorageTests.swift */; };
 		O1000001232C5A0000000001 /* StockService+MarketCap.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000002232C5A0000000001 /* StockService+MarketCap.swift */; };
-		O9B9C55A3EB0997D72E72E7D /* StockService+Finnhub.swift in Sources */ = {isa = PBXBuildFile; fileRef = O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */; };
 		O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1000004232C5A0000000001 /* StockService+Historical.swift */; };
+		O1E0BAFB36527D7D26960729 /* SymbolRoutingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */; };
+		O9B9C55A3EB0997D72E72E7D /* StockService+Finnhub.swift in Sources */ = {isa = PBXBuildFile; fileRef = O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */; };
+		O9D1CA5D4B41C01FB057CA37 /* FinnhubResponseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */; };
 		P1000001232C5A0000000001 /* TickerDisplayBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */; };
 		P1000003232C5A0000000001 /* TickerDisplayBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */; };
 		Q1000001232C5A0000000001 /* QuoteFetchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */; };
@@ -98,12 +100,12 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		B4CK000001000001A0000002 /* BackfillScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillScheduler.swift; sourceTree = "<group>"; };
-		B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillSchedulerTests.swift; sourceTree = "<group>"; };
 		0101010101010101A0000002 /* AppInfrastructure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInfrastructure.swift; sourceTree = "<group>"; };
 		0101010101010101B0000002 /* QuarterlyPanelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelModels.swift; sourceTree = "<group>"; };
 		0101010101010101C0000002 /* QuarterlyPanelViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelViewModel.swift; sourceTree = "<group>"; };
+		09832F562C5F76DC26553BB3 /* ScannerService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerService.swift; sourceTree = "<group>"; };
 		63FBB50A666BA159D154609A /* EMACache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EMACache.swift; sourceTree = "<group>"; };
+		6CFD6907FB6F0044614689A5 /* ScannerServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerServiceTests.swift; sourceTree = "<group>"; };
 		861AE7343DEEE398A04F177D /* SwingLevelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingLevelCache.swift; sourceTree = "<group>"; };
 		8C29186FAEA57A1B6F14F793 /* HighestCloseCache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HighestCloseCache.swift; sourceTree = "<group>"; };
 		8D729CD03F3A4931C3B52D68 /* EMAAnalysis.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EMAAnalysis.swift; sourceTree = "<group>"; };
@@ -123,13 +125,13 @@
 		B1000006232C5A0000000001 /* TickerEditorStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerEditorStateTests.swift; sourceTree = "<group>"; };
 		B1000008232C5A0000000001 /* TickerValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerValidatorTests.swift; sourceTree = "<group>"; };
 		B100000A232C5A0000000001 /* StockServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockServiceTests.swift; sourceTree = "<group>"; };
-		OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinnhubResponseTests.swift; sourceTree = "<group>"; };
-		O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolRoutingTests.swift; sourceTree = "<group>"; };
 		B100000C232C5A0000000001 /* StockDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDataTests.swift; sourceTree = "<group>"; };
 		B100000E232C5A0000000001 /* MarketScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketScheduleTests.swift; sourceTree = "<group>"; };
 		B1000010232C5A0000000001 /* TickerConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerConfigTests.swift; sourceTree = "<group>"; };
 		B1000012232C5A0000000001 /* MenuBarViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewTests.swift; sourceTree = "<group>"; };
 		B1000013232C5A0000000001 /* StockTickerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StockTickerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4CK000001000001A0000002 /* BackfillScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillScheduler.swift; sourceTree = "<group>"; };
+		B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillSchedulerTests.swift; sourceTree = "<group>"; };
 		B8E6A4B9EAD659CB2CC72C19 /* HighestCloseCacheTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HighestCloseCacheTests.swift; sourceTree = "<group>"; };
 		C1000002232C5A0000000001 /* NewsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsData.swift; sourceTree = "<group>"; };
 		C1000004232C5A0000000001 /* NewsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsService.swift; sourceTree = "<group>"; };
@@ -164,8 +166,10 @@
 		N1000002232C5A0000000001 /* CacheStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorage.swift; sourceTree = "<group>"; };
 		N1000004232C5A0000000001 /* CacheStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheStorageTests.swift; sourceTree = "<group>"; };
 		O1000002232C5A0000000001 /* StockService+MarketCap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+MarketCap.swift"; sourceTree = "<group>"; };
-		O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Finnhub.swift"; sourceTree = "<group>"; };
 		O1000004232C5A0000000001 /* StockService+Historical.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Historical.swift"; sourceTree = "<group>"; };
+		O3878D6E7EC87A2E659060F7 /* StockService+Finnhub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StockService+Finnhub.swift"; sourceTree = "<group>"; };
+		O6BB1E4ECB4C348559EFE884 /* SymbolRoutingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbolRoutingTests.swift; sourceTree = "<group>"; };
+		OA0C0669BF678B7D8A0AF8AE /* FinnhubResponseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinnhubResponseTests.swift; sourceTree = "<group>"; };
 		P1000002232C5A0000000001 /* TickerDisplayBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilder.swift; sourceTree = "<group>"; };
 		P1000004232C5A0000000001 /* TickerDisplayBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerDisplayBuilderTests.swift; sourceTree = "<group>"; };
 		Q1000002232C5A0000000001 /* QuoteFetchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuoteFetchCoordinator.swift; sourceTree = "<group>"; };
@@ -254,6 +258,7 @@
 				63FBB50A666BA159D154609A /* EMACache.swift */,
 				EDC0820F7BA53E2357E0003F /* StockService+EMA.swift */,
 				U1000002232C5A0000000001 /* ThrottledTaskGroup.swift */,
+				09832F562C5F76DC26553BB3 /* ScannerService.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -306,6 +311,7 @@
 				C6E346A73683177C4D8B25E9 /* EMACacheTests.swift */,
 				U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */,
 				B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */,
+				6CFD6907FB6F0044614689A5 /* ScannerServiceTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -450,6 +456,7 @@
 				0101010101010101B0000001 /* QuarterlyPanelModels.swift in Sources */,
 				0101010101010101C0000001 /* QuarterlyPanelViewModel.swift in Sources */,
 				U1000001232C5A0000000001 /* ThrottledTaskGroup.swift in Sources */,
+				6475FBBDFA00C9B46040D108 /* ScannerService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -493,6 +500,7 @@
 				056B9B647756EF91A0612D16 /* EMACacheTests.swift in Sources */,
 				U1000003232C5A0000000001 /* ThrottledTaskGroupTests.swift in Sources */,
 				B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */,
+				42C253478E3759C5E185D852 /* ScannerServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

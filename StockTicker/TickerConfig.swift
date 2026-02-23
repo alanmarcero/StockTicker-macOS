@@ -69,6 +69,7 @@ struct WatchlistConfig: Codable, Equatable {
     var newsRefreshInterval: Int
     var universe: [String]
     var finnhubApiKey: String
+    var scannerBaseURL: String
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -121,6 +122,7 @@ struct WatchlistConfig: Codable, Equatable {
         case showNewsHeadlines, newsRefreshInterval
         case universe
         case finnhubApiKey
+        case scannerBaseURL
     }
 
     init(from decoder: Decoder) throws {
@@ -143,6 +145,7 @@ struct WatchlistConfig: Codable, Equatable {
         newsRefreshInterval = try container.decodeIfPresent(Int.self, forKey: .newsRefreshInterval) ?? 300
         universe = try container.decodeIfPresent([String].self, forKey: .universe) ?? []
         finnhubApiKey = try container.decodeIfPresent(String.self, forKey: .finnhubApiKey) ?? ""
+        scannerBaseURL = try container.decodeIfPresent(String.self, forKey: .scannerBaseURL) ?? ""
     }
 
     func encode(to encoder: Encoder) throws {
@@ -161,6 +164,7 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(newsRefreshInterval, forKey: .newsRefreshInterval)
         try container.encode(universe, forKey: .universe)
         try container.encode(finnhubApiKey, forKey: .finnhubApiKey)
+        try container.encode(scannerBaseURL, forKey: .scannerBaseURL)
     }
 
     init(
@@ -177,7 +181,8 @@ struct WatchlistConfig: Codable, Equatable {
         showNewsHeadlines: Bool = true,
         newsRefreshInterval: Int = 300,
         universe: [String] = [],
-        finnhubApiKey: String = ""
+        finnhubApiKey: String = "",
+        scannerBaseURL: String = ""
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -193,6 +198,7 @@ struct WatchlistConfig: Codable, Equatable {
         self.newsRefreshInterval = newsRefreshInterval
         self.universe = universe
         self.finnhubApiKey = finnhubApiKey
+        self.scannerBaseURL = scannerBaseURL
     }
 }
 

@@ -1651,6 +1651,127 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.emaBelowRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
     }
 
+    // MARK: - Scanner EMA Data Merge
+
+    func testEMAs_scannerOnlySymbols_appendedToDayRows() {
+        let vm = QuarterlyPanelViewModel()
+        let scannerData = ScannerEMAData(
+            dayAbove: [ScannerAboveItem(symbol: "NVDA", close: 900.0, ema: 880.0, pctAbove: 2.27, count: 15)],
+            weekAbove: [],
+            crossovers: [],
+            below: []
+        )
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaDayRows.count, 1)
+        XCTAssertEqual(vm.emaDayRows[0].symbol, "NVDA")
+        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 15.0, accuracy: 0.01)
+        XCTAssertEqual(vm.emaDayRows[0].id, "NVDA-ema-day")
+    }
+
+    func testEMAs_scannerOnlySymbols_appendedToWeekRows() {
+        let vm = QuarterlyPanelViewModel()
+        let scannerData = ScannerEMAData(
+            dayAbove: [],
+            weekAbove: [ScannerAboveItem(symbol: "NVDA", close: 900.0, ema: 880.0, pctAbove: 2.27, count: 8)],
+            crossovers: [],
+            below: []
+        )
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaWeekRows.count, 1)
+        XCTAssertEqual(vm.emaWeekRows[0].symbol, "NVDA")
+        XCTAssertEqual(vm.emaWeekRows[0].breakoutPercent!, 8.0, accuracy: 0.01)
+    }
+
+    func testEMAs_scannerOnlySymbols_appendedToCrossRows() {
+        let vm = QuarterlyPanelViewModel()
+        let scannerData = ScannerEMAData(
+            dayAbove: [],
+            weekAbove: [],
+            crossovers: [ScannerCrossoverItem(symbol: "NVDA", close: 900.0, ema: 880.0, pctAbove: 2.27, weeksBelow: 7)],
+            below: []
+        )
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaCrossRows.count, 1)
+        XCTAssertEqual(vm.emaCrossRows[0].symbol, "NVDA")
+        XCTAssertEqual(vm.emaCrossRows[0].breakoutPercent!, 7.0, accuracy: 0.01)
+    }
+
+    func testEMAs_scannerOnlySymbols_appendedToBelowRows() {
+        let vm = QuarterlyPanelViewModel()
+        let scannerData = ScannerEMAData(
+            dayAbove: [],
+            weekAbove: [],
+            crossovers: [],
+            below: [ScannerBelowItem(symbol: "NVDA", close: 880.0, ema: 900.0, pctBelow: 2.22, weeksBelow: 5)]
+        )
+        vm.update(watchlist: ["AAPL"], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaBelowRows.count, 1)
+        XCTAssertEqual(vm.emaBelowRows[0].symbol, "NVDA")
+        XCTAssertEqual(vm.emaBelowRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
+    }
+
+    func testEMAs_scannerDuplicate_notAdded() {
+        let vm = QuarterlyPanelViewModel()
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
+        ]
+        let scannerData = ScannerEMAData(
+            dayAbove: [ScannerAboveItem(symbol: "AAPL", close: 225.0, ema: 220.0, pctAbove: 2.27, count: 99)],
+            weekAbove: [],
+            crossovers: [],
+            below: []
+        )
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries, scannerEMAData: scannerData)
+        vm.switchMode(.emas)
+
+        // AAPL should appear once (from local cache), not duplicated from scanner
+        XCTAssertEqual(vm.emaDayRows.count, 1)
+        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
+    }
+
+    func testEMAs_nilScannerData_noRegression() {
+        let vm = QuarterlyPanelViewModel()
+        let quotes: [String: StockQuote] = [
+            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
+        ]
+        let emaEntries: [String: EMACacheEntry] = [
+            "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
+        ]
+
+        vm.update(watchlist: ["AAPL"], quotes: quotes, quarterPrices: [:], quarterInfos: testQuarters, emaEntries: emaEntries)
+        vm.switchMode(.emas)
+
+        XCTAssertEqual(vm.emaDayRows.count, 1)
+        XCTAssertEqual(vm.emaDayRows[0].symbol, "AAPL")
+    }
+
+    func testHasScannerData_withData_returnsTrue() {
+        let vm = QuarterlyPanelViewModel()
+        let scannerData = ScannerEMAData(dayAbove: [], weekAbove: [], crossovers: [], below: [])
+        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters, scannerEMAData: scannerData)
+
+        XCTAssertTrue(vm.hasScannerData)
+    }
+
+    func testHasScannerData_withoutData_returnsFalse() {
+        let vm = QuarterlyPanelViewModel()
+        vm.update(watchlist: [], quotes: [:], quarterPrices: [:], quarterInfos: testQuarters)
+
+        XCTAssertFalse(vm.hasScannerData)
+    }
+
     // MARK: - Universe Label Tests
 
     func testMiscStats_watchlistLabel_whenUniverseInactive() {

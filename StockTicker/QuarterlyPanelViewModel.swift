@@ -28,6 +28,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     var isPriceBreaksMode: Bool { viewMode == .priceBreaks }
     var isEMAsMode: Bool { viewMode == .emas }
     var isMiscStatsMode: Bool { viewMode == .miscStats }
+    var hasScannerData: Bool { storedScannerEMAData != nil }
 
     private(set) var isUniverseActive = false
     private var storedWatchlist: [String] = []
@@ -39,6 +40,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     private var storedSwingLevelEntries: [String: SwingLevelCacheEntry] = [:]
     private var storedRSIValues: [String: Double] = [:]
     private var storedEMAEntries: [String: EMACacheEntry] = [:]
+    private var storedScannerEMAData: ScannerEMAData?
 
     func setupHighlights(symbols: Set<String>, color: String, opacity: Double) {
         configSymbols = symbols
@@ -56,7 +58,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:], isUniverseActive: Bool = false) {
+    func update(watchlist: [String], quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], quarterInfos: [QuarterInfo], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:], isUniverseActive: Bool = false, scannerEMAData: ScannerEMAData? = nil) {
         self.quarters = quarterInfos
         self.isUniverseActive = isUniverseActive
         self.storedWatchlist = watchlist
@@ -68,12 +70,13 @@ class QuarterlyPanelViewModel: ObservableObject {
         self.storedSwingLevelEntries = swingLevelEntries
         self.storedRSIValues = rsiValues
         self.storedEMAEntries = emaEntries
+        self.storedScannerEMAData = scannerEMAData
 
         rows = buildRows(for: viewMode)
         applySorting()
     }
 
-    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:]) {
+    func refresh(quotes: [String: StockQuote], quarterPrices: [String: [String: Double]], highestClosePrices: [String: Double] = [:], forwardPEData: [String: [String: Double]] = [:], currentForwardPEs: [String: Double] = [:], swingLevelEntries: [String: SwingLevelCacheEntry] = [:], rsiValues: [String: Double] = [:], emaEntries: [String: EMACacheEntry] = [:], scannerEMAData: ScannerEMAData? = nil) {
         guard !quarters.isEmpty else { return }
 
         self.storedQuotes = quotes
@@ -84,6 +87,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         self.storedSwingLevelEntries = swingLevelEntries
         self.storedRSIValues = rsiValues
         self.storedEMAEntries = emaEntries
+        self.storedScannerEMAData = scannerEMAData
 
         rows = buildRows(for: viewMode)
         applySorting()
@@ -205,8 +209,6 @@ class QuarterlyPanelViewModel: ObservableObject {
                 weekRows.append(QuarterlyRow(id: "\(symbol)-ema-week", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(aboveCount), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
             }
         }
-        emaDayRows = dayRows
-        emaWeekRows = weekRows
 
         var crossRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
@@ -215,7 +217,6 @@ class QuarterlyPanelViewModel: ObservableObject {
                   weeksBelow >= 3 else { continue }
             crossRows.append(QuarterlyRow(id: "\(symbol)-ema-cross", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
         }
-        emaCrossRows = crossRows
 
         var belowRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
@@ -226,6 +227,27 @@ class QuarterlyPanelViewModel: ObservableObject {
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
             belowRows.append(QuarterlyRow(id: "\(symbol)-ema-below", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
         }
+
+        // Merge scanner-only symbols (skip any already in local data)
+        if let scanner = storedScannerEMAData {
+            let localSymbols = Set(storedWatchlist)
+            for item in scanner.dayAbove where !localSymbols.contains(item.symbol) {
+                dayRows.append(QuarterlyRow(id: "\(item.symbol)-ema-day", symbol: item.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(item.count), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+            for item in scanner.weekAbove where !localSymbols.contains(item.symbol) {
+                weekRows.append(QuarterlyRow(id: "\(item.symbol)-ema-week", symbol: item.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(item.count), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+            for item in scanner.crossovers where !localSymbols.contains(item.symbol) {
+                crossRows.append(QuarterlyRow(id: "\(item.symbol)-ema-cross", symbol: item.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(item.weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+            for item in scanner.below where !localSymbols.contains(item.symbol) {
+                belowRows.append(QuarterlyRow(id: "\(item.symbol)-ema-below", symbol: item.symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: Double(item.weeksBelow), breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil))
+            }
+        }
+
+        emaDayRows = dayRows
+        emaWeekRows = weekRows
+        emaCrossRows = crossRows
         emaBelowRows = belowRows
 
         return dayRows + weekRows + crossRows + belowRows

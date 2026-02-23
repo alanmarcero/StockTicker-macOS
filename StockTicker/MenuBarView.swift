@@ -66,6 +66,7 @@ class MenuBarController: NSObject, ObservableObject {
 
     let stockService: StockServiceProtocol
     private let newsService: NewsServiceProtocol
+    private let scannerService: ScannerServiceProtocol
     private let configManager: WatchlistConfigManager
     private let marketSchedule: MarketSchedule
     private let urlOpener: URLOpener
@@ -117,6 +118,7 @@ class MenuBarController: NSObject, ObservableObject {
     private var refreshCycleCount = 0
     private var universeFinnhubBatchIndex = 0
     let backfillScheduler = BackfillScheduler()
+    var scannerEMAData: ScannerEMAData?
     private var quarterlyWindowController: QuarterlyPanelWindowController?
 
     // MARK: - Initialization
@@ -124,6 +126,7 @@ class MenuBarController: NSObject, ObservableObject {
     init(
         stockService: StockServiceProtocol = StockService(),
         newsService: NewsServiceProtocol = NewsService(),
+        scannerService: ScannerServiceProtocol = ScannerService(),
         configManager: WatchlistConfigManager = .shared,
         marketSchedule: MarketSchedule = .shared,
         urlOpener: URLOpener = NSWorkspace.shared,
@@ -138,6 +141,7 @@ class MenuBarController: NSObject, ObservableObject {
     ) {
         self.stockService = stockService
         self.newsService = newsService
+        self.scannerService = scannerService
         self.configManager = configManager
         self.marketSchedule = marketSchedule
         self.urlOpener = urlOpener
@@ -365,7 +369,7 @@ class MenuBarController: NSObject, ObservableObject {
         await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
 
         let combinedQuotes = mergedQuotes()
-        quarterlyWindowController?.refresh(quotes: combinedQuotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: mergedForwardPEs(), swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries)
+        quarterlyWindowController?.refresh(quotes: combinedQuotes, quarterPrices: quarterlyPrices, highestClosePrices: highestClosePrices, forwardPEData: forwardPEData, currentForwardPEs: mergedForwardPEs(), swingLevelEntries: swingLevelEntries, rsiValues: rsiValues, emaEntries: emaEntries, scannerEMAData: scannerEMAData)
 
         updateMenuBarDisplay()
         updateMenuItems()
@@ -759,6 +763,7 @@ class MenuBarController: NSObject, ObservableObject {
         universeQuotes = [:]
         universeMarketCaps = [:]
         universeForwardPEs = [:]
+        scannerEMAData = nil
         stopTimers()
         startTimers()
         Task {
@@ -855,6 +860,17 @@ class MenuBarController: NSObject, ObservableObject {
         if quarterlyWindowController == nil {
             quarterlyWindowController = QuarterlyPanelWindowController()
         }
+        if !config.scannerBaseURL.isEmpty, scannerEMAData == nil {
+            Task {
+                scannerEMAData = await scannerService.fetchEMAData(baseURL: config.scannerBaseURL)
+                showQuarterlyWindow()
+            }
+        } else {
+            showQuarterlyWindow()
+        }
+    }
+
+    private func showQuarterlyWindow() {
         quarterlyWindowController?.showWindow(
             watchlist: extraStatsSymbols,
             quotes: mergedQuotes(),
@@ -869,7 +885,8 @@ class MenuBarController: NSObject, ObservableObject {
             swingLevelEntries: swingLevelEntries,
             rsiValues: rsiValues,
             emaEntries: emaEntries,
-            isUniverseActive: !config.universe.isEmpty
+            isUniverseActive: !config.universe.isEmpty,
+            scannerEMAData: scannerEMAData
         )
     }
 

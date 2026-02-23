@@ -668,6 +668,59 @@ final class WatchlistConfigTests: XCTestCase {
     func testDefaultConfig_hasEmptyFinnhubApiKey() {
         XCTAssertEqual(WatchlistConfig.defaultConfig.finnhubApiKey, "")
     }
+
+    // MARK: - scannerBaseURL tests
+
+    func testDecoder_scannerBaseURL_decodesCorrectly() throws {
+        let json = """
+        {"watchlist":["SPY"],"menuBarRotationInterval":5,"refreshInterval":15,"sortDirection":"percentDesc","menuBarAssetWhenClosed":"BTC-USD","scannerBaseURL":"https://abc123.cloudfront.net"}
+        """
+        let data = json.data(using: .utf8)!
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(config.scannerBaseURL, "https://abc123.cloudfront.net")
+    }
+
+    func testDecoder_missingScannerBaseURL_defaultsToEmpty() throws {
+        let json = """
+        {"watchlist":["SPY"],"menuBarRotationInterval":5,"refreshInterval":15,"sortDirection":"percentDesc","menuBarAssetWhenClosed":"BTC-USD"}
+        """
+        let data = json.data(using: .utf8)!
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(config.scannerBaseURL, "")
+    }
+
+    func testRoundTrip_scannerBaseURL_preserved() throws {
+        let original = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            scannerBaseURL: "https://abc123.cloudfront.net"
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.scannerBaseURL, "https://abc123.cloudfront.net")
+    }
+
+    func testRoundTrip_emptyScannerBaseURL_remainsEmpty() throws {
+        let original = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc"
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.scannerBaseURL, "")
+    }
+
+    func testDefaultConfig_hasEmptyScannerBaseURL() {
+        XCTAssertEqual(WatchlistConfig.defaultConfig.scannerBaseURL, "")
+    }
 }
 
 // MARK: - WatchlistConfigManager Tests

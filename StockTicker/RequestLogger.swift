@@ -208,6 +208,7 @@ actor RequestLogger {
             return "Yahoo Other"
         }
         if host.contains("cnbc.com") { return "CNBC RSS" }
+        if host.contains("cloudfront.net") { return "Scanner" }
         return "Other"
     }
 

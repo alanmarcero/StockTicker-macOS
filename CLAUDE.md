@@ -33,11 +33,11 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (41 files, ~8,451 lines)
+## Source Files (42 files, ~8,598 lines)
 
 ```
 StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
-MenuBarView.swift                (955L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing
+MenuBarView.swift                (972L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing, scanner data fetch trigger
 MenuBarController+Cache.swift    (486L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
 BackfillScheduler.swift          (236L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
@@ -49,20 +49,21 @@ StockService+Finnhub.swift       (82L)   Extension: Finnhub candle API fetch met
 StockService+EMA.swift           (223L)  Extension: 5-day/week EMA fetch + weekly crossover + below-count + above-count with Finnhub routing + Yahoo fallback
 StockData.swift                  (553L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models, FinnhubCandleResponse, FinnhubQuoteResponse
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
-TickerConfig.swift               (312L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey
+TickerConfig.swift               (318L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey, scannerBaseURL
 TickerEditorView.swift           (541L)  SwiftUI watchlist editor, symbol validation, pure operations
-RequestLogger.swift              (334L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), 1-hour counters, errors-only entries (last 100)
+RequestLogger.swift              (339L)  API request logging (actor), LoggingHTTPClient with retry (skips 429), 1-hour counters, errors-only entries (last 100), Scanner endpoint classification
 DebugWindow.swift                (315L)  API errors window with endpoint filter buttons, injected RequestLogger
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
+ScannerService.swift             (100L)  AWS scanner API client (actor), fetches EMA crossover/above/below data from CloudFront, feature-flagged via scannerBaseURL
 NewsService.swift                (134L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (148L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
 QuarterlyPanelModels.swift        (65L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn
-QuarterlyPanelView.swift         (635L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (428L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels
+QuarterlyPanelView.swift         (636L)  Extra Stats window: SwiftUI view, controller
+QuarterlyPanelViewModel.swift     (450L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels, scanner data merge
 LayoutConfig.swift               (80L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
@@ -79,9 +80,9 @@ EMACache.swift                   (130L)  EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (36 files, ~12,158 lines)
+## Test Files (37 files, ~12,564 lines)
 
-All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1717L), `TickerConfigTests.swift` (829L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (466L), `QuarterlyCacheTests.swift` (481L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
+All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (466L), `QuarterlyCacheTests.swift` (481L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
 
 ## Design Patterns
 
@@ -89,6 +90,7 @@ All source files have corresponding test files. Key test files: `StockServiceTes
 All major components use protocols for testability:
 - `StockServiceProtocol` / `HTTPClient` — network layer
 - `NewsServiceProtocol` — news fetching
+- `ScannerServiceProtocol` — scanner API data fetching
 - `TimerManagerDelegate` — timer lifecycle callbacks
 - `FileSystemProtocol` / `WorkspaceProtocol` — file operations
 - `SymbolValidator` — symbol validation
@@ -111,6 +113,7 @@ All major components use protocols for testability:
 ### Actors for Thread Safety
 - `StockService` — concurrent quote fetching via ThrottledTaskGroup
 - `NewsService` — concurrent RSS fetching via TaskGroup
+- `ScannerService` — parallel fetch of 3 scanner API endpoints via async let
 - `RequestLogger` — thread-safe request log storage
 - `YTDCacheManager` — thread-safe YTD price cache
 - `QuarterlyCacheManager` — thread-safe quarterly price cache
@@ -143,6 +146,7 @@ All magic numbers extracted into private namespaced enums (e.g., `Layout`, `Timi
 - **Yahoo Chart v8** — `GET /v8/finance/chart/{SYM}?interval=1m&range=1d&includePrePost=true`. Price data for watchlist + indices + crypto.
 - **Yahoo Quote v7** — `GET /v7/finance/quote?symbols={SYMS}&crumb={CRUMB}`. Market cap + forward P/E. Requires crumb/cookie auth (auto-managed). Batched in chunks of 50.
 - **Yahoo Timeseries** — `GET /ws/fundamentals-timeseries/v1/finance/timeseries/{SYM}?type=quarterlyForwardPeRatio`. Historical forward P/E ratios. No auth required.
+- **Scanner** — `GET {scannerBaseURL}/results/latest.json` (crossovers), `latest-below.json` (below 3+wks), `latest-above.json` (day/week above counts). Feature-flagged: only fetched when `scannerBaseURL` is non-empty. Fetched in parallel via `ScannerService`.
 
 ### HTTP Client
 `LoggingHTTPClient` wraps `HTTPClient` protocol (conformed by URLSession). Logs all requests to `RequestLogger` actor. Retry: 1 retry after 0.5s on non-2xx (skips 429, skips during pre/after-hours). Body capped at 50KB.
@@ -201,6 +205,8 @@ Standalone window with six view modes via segmented picker. Uses 12 most recent 
 
 View model stores data so rows recompute on mode toggle via `switchMode()`. Live updates every ~30s using `quote.price` (never pre/post).
 
+**Scanner integration:** When `scannerBaseURL` is set, the 5 EMAs tab merges ~10K scanner symbols alongside local data. Scanner-only symbols (not in watchlist+universe) are appended to each EMA table. Local symbols always take precedence (no duplicates). Data fetched once on first Extra Stats open; cleared on config reload.
+
 ## Menu Bar Features
 
 Rotates watchlist symbols at `menuBarRotationInterval` during regular hours; shows `menuBarAssetWhenClosed` otherwise. Dropdown: market status dot, countdown timer, index marquee (`MarqueeView` ~32px/sec), news headlines (CNBC RSS, Jaccard dedup), ticker list with `HighlightConfig`, submenus (Edit Watchlist, Extra Stats, Config, Sort By, API Errors).
@@ -225,6 +231,7 @@ Location: `~/.stockticker/config.json` (auto-created on first launch)
 | `highlightOpacity` | `Double` | `0.25` |
 | `universe` | `[String]` | `[]` |
 | `finnhubApiKey` | `String?` | `nil` |
+| `scannerBaseURL` | `String` | `""` (empty = disabled) |
 | `showNewsHeadlines` | `Bool` | `true` |
 | `newsRefreshInterval` | `Int` (seconds) | `300` |
 
