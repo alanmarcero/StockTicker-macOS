@@ -1,6 +1,6 @@
 import pytest
 
-from src.worker.ema import DEFAULT_PERIOD, calculate, count_weeks_below, detect_weekly_crossover
+from src.worker.ema import DEFAULT_PERIOD, calculate, count_periods_above, count_weeks_below, detect_weekly_crossover
 
 
 def test_calculate_empty_closes_returns_none():
@@ -126,3 +126,43 @@ def test_count_weeks_below_at_boundary():
     closes = [50.0, 52.0, 54.0, 56.0, 58.0, 50.0]
     result = count_weeks_below(closes=closes)
     assert result == 1
+
+
+def test_count_periods_above_empty_closes_returns_none():
+    result = count_periods_above(closes=[])
+    assert result is None
+
+
+def test_count_periods_above_insufficient_data_returns_none():
+    result = count_periods_above(closes=[100.0, 101.0, 102.0, 103.0, 104.0])
+    assert result is None
+
+
+def test_count_periods_above_below_ema_returns_none():
+    closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]
+    result = count_periods_above(closes=closes)
+    assert result is None
+
+
+def test_count_periods_above_one_above():
+    closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 53.0, 56.0]
+    result = count_periods_above(closes=closes)
+    assert result == 1
+
+
+def test_count_periods_above_uptrend():
+    closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+    result = count_periods_above(closes=closes)
+    assert result == 6
+
+
+def test_count_periods_above_boundary():
+    closes = [50.0, 48.0, 46.0, 44.0, 42.0, 48.0]
+    result = count_periods_above(closes=closes)
+    assert result == 1
+
+
+def test_count_periods_above_equal_to_ema_returns_none():
+    closes = [50.0] * 10
+    result = count_periods_above(closes=closes)
+    assert result is None

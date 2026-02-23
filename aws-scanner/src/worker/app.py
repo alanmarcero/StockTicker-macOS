@@ -24,9 +24,9 @@ def lambda_handler(event: dict, context) -> dict:
         total_batches: int = message["totalBatches"]
         symbols: list[str] = message["symbols"]
 
-        crossovers, below, errors = _process_batch(symbols)
+        crossovers, below, day_above, week_above, errors = _process_batch(symbols)
 
-        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, below)
+        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, below, day_above, week_above)
 
         if errors:
             _write_errors(bucket, run_id, batch_index, errors)
@@ -39,52 +39,81 @@ def lambda_handler(event: dict, context) -> dict:
 
 def _process_batch(
     symbols: list[str],
-) -> tuple[list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
     crossovers: list[dict] = []
     below: list[dict] = []
+    day_above: list[dict] = []
+    week_above: list[dict] = []
     errors: list[dict] = []
 
     for i, symbol in enumerate(symbols):
         if i > 0:
             time.sleep(1)
 
-        result = yahoo.fetch_weekly_candles(symbol)
-        if result is None:
+        daily_result = yahoo.fetch_daily_candles(symbol)
+        weekly_result = yahoo.fetch_weekly_candles(symbol)
+
+        if daily_result is None and weekly_result is None:
             print(f"[worker] {symbol}: fetch failed")
-            errors.append({"symbol": symbol, "error": "Failed to fetch weekly candles"})
+            errors.append({"symbol": symbol, "error": "Failed to fetch candles"})
             continue
 
-        closes, _timestamps = result
+        if daily_result is not None:
+            daily_closes = daily_result[0]
+            daily_ema_value = ema.calculate(daily_closes)
+            if daily_ema_value is not None:
+                daily_above_count = ema.count_periods_above(daily_closes)
+                if daily_above_count is not None:
+                    last_close = daily_closes[-1]
+                    pct = round((last_close - daily_ema_value) / daily_ema_value * 100, 2)
+                    day_above.append({
+                        "symbol": symbol,
+                        "close": last_close,
+                        "ema": round(daily_ema_value, 4),
+                        "pctAbove": pct,
+                        "count": daily_above_count,
+                    })
 
-        ema_value = ema.calculate(closes)
-        if ema_value is None:
-            continue
+        if weekly_result is not None:
+            closes = weekly_result[0]
+            ema_value = ema.calculate(closes)
+            if ema_value is not None:
+                last_close = closes[-1]
 
-        last_close = closes[-1]
+                crossover_weeks = ema.detect_weekly_crossover(closes)
+                if crossover_weeks is not None:
+                    pct_above = round((last_close - ema_value) / ema_value * 100, 2)
+                    crossovers.append({
+                        "symbol": symbol,
+                        "close": last_close,
+                        "ema": round(ema_value, 4),
+                        "pctAbove": pct_above,
+                        "weeksBelow": crossover_weeks,
+                    })
 
-        crossover_weeks = ema.detect_weekly_crossover(closes)
-        if crossover_weeks is not None:
-            pct_above = round((last_close - ema_value) / ema_value * 100, 2)
-            crossovers.append({
-                "symbol": symbol,
-                "close": last_close,
-                "ema": round(ema_value, 4),
-                "pctAbove": pct_above,
-                "weeksBelow": crossover_weeks,
-            })
+                below_count = ema.count_weeks_below(closes)
+                if below_count is not None and below_count >= 3:
+                    pct_below = round((ema_value - last_close) / ema_value * 100, 2)
+                    below.append({
+                        "symbol": symbol,
+                        "close": last_close,
+                        "ema": round(ema_value, 4),
+                        "pctBelow": pct_below,
+                        "weeksBelow": below_count,
+                    })
 
-        below_count = ema.count_weeks_below(closes)
-        if below_count is not None and below_count >= 3:
-            pct_below = round((ema_value - last_close) / ema_value * 100, 2)
-            below.append({
-                "symbol": symbol,
-                "close": last_close,
-                "ema": round(ema_value, 4),
-                "pctBelow": pct_below,
-                "weeksBelow": below_count,
-            })
+                weekly_above_count = ema.count_periods_above(closes)
+                if weekly_above_count is not None:
+                    pct = round((last_close - ema_value) / ema_value * 100, 2)
+                    week_above.append({
+                        "symbol": symbol,
+                        "close": last_close,
+                        "ema": round(ema_value, 4),
+                        "pctAbove": pct,
+                        "count": weekly_above_count,
+                    })
 
-    return crossovers, below, errors
+    return crossovers, below, day_above, week_above, errors
 
 
 def _write_batch_results(
@@ -95,6 +124,8 @@ def _write_batch_results(
     error_count: int,
     crossovers: list[dict],
     below: list[dict],
+    day_above: list[dict],
+    week_above: list[dict],
 ) -> None:
     body = {
         "batchIndex": batch_index,
@@ -102,6 +133,8 @@ def _write_batch_results(
         "errors": error_count,
         "crossovers": crossovers,
         "below": below,
+        "dayAbove": day_above,
+        "weekAbove": week_above,
     }
     key = f"batches/{run_id}/batch-{batch_index:03d}.json"
     s3.put_object(Bucket=bucket, Key=key, Body=json.dumps(body))
@@ -115,6 +148,8 @@ def _write_errors(bucket: str, run_id: str, batch_index: int, errors: list[dict]
 def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     all_crossovers: list[dict] = []
     all_below: list[dict] = []
+    all_day_above: list[dict] = []
+    all_week_above: list[dict] = []
     total_symbols = 0
     total_errors = 0
 
@@ -126,11 +161,15 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
 
         all_crossovers.extend(batch.get("crossovers", []))
         all_below.extend(batch.get("below", []))
+        all_day_above.extend(batch.get("dayAbove", []))
+        all_week_above.extend(batch.get("weekAbove", []))
         total_symbols += batch.get("symbolsProcessed", 0)
         total_errors += batch.get("errors", 0)
 
     all_crossovers.sort(key=lambda x: x.get("weeksBelow", 0), reverse=True)
     all_below.sort(key=lambda x: x.get("weeksBelow", 0), reverse=True)
+    all_day_above.sort(key=lambda x: x.get("count", 0), reverse=True)
+    all_week_above.sort(key=lambda x: x.get("count", 0), reverse=True)
 
     now = datetime.now(timezone.utc)
     scan_date = now.strftime("%Y-%m-%d")
@@ -146,9 +185,11 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
 
     crossover_result = {**base, "crossovers": all_crossovers}
     below_result = {**base, "below": all_below}
+    above_result = {**base, "dayAbove": all_day_above, "weekAbove": all_week_above}
 
     _put_json(bucket, "results/latest.json", crossover_result)
     _put_json(bucket, "results/latest-below.json", below_result)
+    _put_json(bucket, "results/latest-above.json", above_result)
     _put_json(bucket, f"results/{scan_date}.json", crossover_result)
 
 

@@ -69,3 +69,26 @@ def count_weeks_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Opti
         weeks_below += 1
 
     return weeks_below
+
+
+def count_periods_above(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+    if len(closes) < period + 1:
+        return None
+
+    ema_series = _build_ema_series(closes, period)
+    last_index = len(ema_series) - 1
+    if last_index < 0:
+        return None
+
+    ema_offset = period - 1
+
+    if closes[ema_offset + last_index] <= ema_series[last_index]:
+        return None
+
+    periods_above = 1
+    for i in range(last_index - 1, -1, -1):
+        if closes[ema_offset + i] <= ema_series[i]:
+            break
+        periods_above += 1
+
+    return periods_above

@@ -247,11 +247,17 @@ Editing: menu bar → Edit Watchlist (Cmd+,), Config → Edit Config / Reload Co
 
 ## AWS EMA Scanner (`aws-scanner/`)
 
-Serverless weekly scanner: detects 5-week EMA crossovers across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~1,759 lines (4 source, 5 test, 9 Terraform, 1 workflow).
+Serverless weekly scanner: detects 5-week EMA crossovers and counts consecutive days/weeks above EMA across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~2,101 lines (4 source, 5 test, 9 Terraform, 1 workflow).
 
-**Architecture:** EventBridge (Friday 2 PM ET) → Orchestrator Lambda (chunks 50, enqueues SQS) → Worker Lambda (reserved concurrency 1, sequential) → S3 (batch + aggregated results/latest.json) → CloudFront.
+**Architecture:** EventBridge (Friday 2 PM ET) → Orchestrator Lambda (chunks 50, enqueues SQS) → Worker Lambda (reserved concurrency 1, sequential, 180s timeout) → S3 (batch + aggregated results) → CloudFront.
+
+**Worker flow:** Per symbol: fetch daily candles (`range=1mo&interval=1d`) + weekly candles (`range=6mo&interval=1wk`), compute crossover/below/above counts. Partial success OK (daily fail still processes weekly and vice versa). Both fail → error. Returns 5-tuple: `(crossovers, below, dayAbove, weekAbove, errors)`.
+
+**Output files:** `results/latest.json` (crossovers), `results/latest-below.json` (below 3+ weeks), `results/latest-above.json` (day/week above counts sorted by count desc), `results/{date}.json` (archive).
 
 **Key decisions:** Reserved concurrency 1 respects Yahoo rate limits. 1s sleep between symbols. Stdlib only (urllib, json). Below threshold = 3 weeks. Sneak peek always true (runs Friday 2 PM).
+
+**Key functions:** `ema.count_periods_above()` — consecutive periods where close > EMA (strict), from most recent bar backwards. `yahoo.fetch_daily_candles()` — daily chart data for above-count computation.
 
 **Verification:** `cd aws-scanner && python3 -m pytest tests/ -v`
 
