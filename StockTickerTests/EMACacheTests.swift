@@ -437,6 +437,160 @@ final class EMACacheTests: XCTestCase {
         XCTAssertFalse(needs)
     }
 
+    // MARK: - Market Close Refresh Tests
+
+    func testNeedsMarketCloseRefresh_before4pmET_returnsFalse() async {
+        let mockFS = MockFileSystem()
+        let et = MarketSchedule.easternTimeZone
+        // Wednesday Feb 18 2026, 3:30 PM ET — before 4 PM
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 15, minute: 30, timeZone: et)
+
+        let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 10, minute: 0, timeZone: et)
+        let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
+
+        let cacheData = EMACacheData(
+            lastUpdated: cacheTimestamp,
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            dateProvider: mockDateProvider,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+
+        let needs = await cacheManager.needsMarketCloseRefresh()
+        XCTAssertFalse(needs)
+    }
+
+    func testNeedsMarketCloseRefresh_after4pmCacheUpdatedBefore4pm_returnsTrue() async {
+        let mockFS = MockFileSystem()
+        let et = MarketSchedule.easternTimeZone
+        // Wednesday Feb 18 2026, 4:30 PM ET
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 16, minute: 30, timeZone: et)
+
+        // Cache updated at 2 PM ET same day — before 4 PM
+        let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 14, minute: 0, timeZone: et)
+        let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
+
+        let cacheData = EMACacheData(
+            lastUpdated: cacheTimestamp,
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            dateProvider: mockDateProvider,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+
+        let needs = await cacheManager.needsMarketCloseRefresh()
+        XCTAssertTrue(needs)
+    }
+
+    func testNeedsMarketCloseRefresh_after4pmCacheUpdatedAfter4pm_returnsFalse() async {
+        let mockFS = MockFileSystem()
+        let et = MarketSchedule.easternTimeZone
+        // Wednesday Feb 18 2026, 5:00 PM ET
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 17, minute: 0, timeZone: et)
+
+        // Cache updated at 4:15 PM ET same day — after 4 PM
+        let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 18, hour: 16, minute: 15, timeZone: et)
+        let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
+
+        let cacheData = EMACacheData(
+            lastUpdated: cacheTimestamp,
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            dateProvider: mockDateProvider,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+
+        let needs = await cacheManager.needsMarketCloseRefresh()
+        XCTAssertFalse(needs)
+    }
+
+    func testNeedsMarketCloseRefresh_weekend_returnsFalse() async {
+        let mockFS = MockFileSystem()
+        let et = MarketSchedule.easternTimeZone
+        // Saturday Feb 21 2026, 5:00 PM ET
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 21, hour: 17, minute: 0, timeZone: et)
+
+        let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 10, minute: 0, timeZone: et)
+        let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
+
+        let cacheData = EMACacheData(
+            lastUpdated: cacheTimestamp,
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            dateProvider: mockDateProvider,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+
+        let needs = await cacheManager.needsMarketCloseRefresh()
+        XCTAssertFalse(needs)
+    }
+
+    // MARK: - Clear Daily Fields Tests
+
+    func testClearDailyFields_preservesWeeklyData() async {
+        let mockFS = MockFileSystem()
+
+        let cacheData = EMACacheData(
+            lastUpdated: "2026-02-18T12:00:00Z",
+            entries: [
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: 3, weekBelowCount: 2, dayAboveCount: 5, weekAboveCount: 10),
+                "SPY": EMACacheEntry(day: 500.0, week: 495.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 8, weekAboveCount: nil),
+            ]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+        await cacheManager.clearDailyFields()
+
+        let aaplEntry = await cacheManager.getEntry(for: "AAPL")
+        XCTAssertNil(aaplEntry?.day)
+        XCTAssertNil(aaplEntry?.dayAboveCount)
+        XCTAssertEqual(aaplEntry?.week, 148.0)
+        XCTAssertEqual(aaplEntry?.weekCrossoverWeeksBelow, 3)
+        XCTAssertEqual(aaplEntry?.weekBelowCount, 2)
+        XCTAssertEqual(aaplEntry?.weekAboveCount, 10)
+
+        let spyEntry = await cacheManager.getEntry(for: "SPY")
+        XCTAssertNil(spyEntry?.day)
+        XCTAssertNil(spyEntry?.dayAboveCount)
+        XCTAssertEqual(spyEntry?.week, 495.0)
+        XCTAssertNil(spyEntry?.weekCrossoverWeeksBelow)
+        XCTAssertNil(spyEntry?.weekAboveCount)
+
+        // Entries still exist (not removed, just daily fields cleared)
+        let allEntries = await cacheManager.getAllEntries()
+        XCTAssertEqual(allEntries.count, 2)
+    }
+
     func testLoad_withCrossoverField_decodesCorrectly() async {
         let mockFS = MockFileSystem()
 

@@ -376,6 +376,11 @@ extension MenuBarController {
             needsRefresh = true
         }
 
+        if await emaCacheManager.needsMarketCloseRefresh() {
+            await emaCacheManager.clearDailyFields()
+            needsRefresh = true
+        }
+
         if await emaCacheManager.needsSneakPeekRefresh() {
             await refreshEMAForSneakPeek()
         }

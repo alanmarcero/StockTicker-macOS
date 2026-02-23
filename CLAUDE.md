@@ -33,12 +33,12 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (42 files, ~8,638 lines)
+## Source Files (42 files, ~8,681 lines)
 
 ```
 StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
 MenuBarView.swift                (982L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing, scanner data fetch trigger
-MenuBarController+Cache.swift    (490L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis (watchlist-scoped, re-entrancy guarded), sneak peek EMA refresh (watchlist-scoped), backfill scheduler coordination, and market cap cache coordination with shared helpers
+MenuBarController+Cache.swift    (495L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis (watchlist-scoped, re-entrancy guarded), sneak peek EMA refresh (watchlist-scoped), market close daily EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
 BackfillScheduler.swift          (236L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
@@ -76,13 +76,13 @@ SwingLevelCache.swift            (110L)  Swing level cache manager (actor), dail
 RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothing method)
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
 EMAAnalysis.swift                (97L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection + weeks-below counting + periods-above counting
-EMACache.swift                   (130L)  EMA cache manager (actor), daily refresh, sneak peek refresh, 2 timeframes + crossover + below-count + above-count per symbol
+EMACache.swift                   (168L)  EMA cache manager (actor), daily refresh, market close refresh, sneak peek refresh, 2 timeframes + crossover + below-count + above-count per symbol
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (37 files, ~12,564 lines)
+## Test Files (37 files, ~12,718 lines)
 
-All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (466L), `QuarterlyCacheTests.swift` (481L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
+All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (620L), `QuarterlyCacheTests.swift` (481L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
 
 ## Design Patterns
 

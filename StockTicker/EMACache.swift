@@ -93,6 +93,44 @@ actor EMACacheManager {
         cache = EMACacheData(lastUpdated: "", entries: [:])
     }
 
+    func clearDailyFields() {
+        guard let currentCache = cache else { return }
+        var updated: [String: EMACacheEntry] = [:]
+        for (symbol, entry) in currentCache.entries {
+            updated[symbol] = EMACacheEntry(
+                day: nil, week: entry.week,
+                weekCrossoverWeeksBelow: entry.weekCrossoverWeeksBelow,
+                weekBelowCount: entry.weekBelowCount,
+                dayAboveCount: nil, weekAboveCount: entry.weekAboveCount
+            )
+        }
+        cache = EMACacheData(lastUpdated: "", entries: updated)
+    }
+
+    func needsMarketCloseRefresh() -> Bool {
+        guard let cache = cache, !cache.entries.isEmpty else { return false }
+
+        let now = dateProvider.now()
+        let calendar = MarketSchedule.easternCalendar
+        let components = calendar.dateComponents([.weekday, .hour], from: now)
+
+        // Only on weekdays (Mon=2 through Fri=6), at or after 4 PM ET
+        guard let weekday = components.weekday, weekday >= 2, weekday <= 6,
+              let hour = components.hour, hour >= 16 else { return false }
+
+        // True if cache was last updated before today's 4 PM ET
+        let formatter = ISO8601DateFormatter()
+        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return false }
+
+        let todayComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        guard let today4pm = calendar.date(from: DateComponents(
+            year: todayComponents.year, month: todayComponents.month,
+            day: todayComponents.day, hour: 16, minute: 0
+        )) else { return false }
+
+        return lastDate < today4pm
+    }
+
     func needsSneakPeekRefresh() -> Bool {
         guard let cache = cache, !cache.entries.isEmpty else { return false }
 
