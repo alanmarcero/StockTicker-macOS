@@ -286,10 +286,14 @@ extension MenuBarController {
     // MARK: - Consolidated Daily Analysis
 
     func fetchMissingDailyAnalysis() async {
-        let highestCloseMissing = Set(await highestCloseCacheManager.getMissingSymbols(from: allCacheSymbols))
-        let swingMissing = Set(await swingLevelCacheManager.getMissingSymbols(from: allCacheSymbols))
-        let rsiMissing = Set(await rsiCacheManager.getMissingSymbols(from: allCacheSymbols))
-        let emaMissing = Set(await emaCacheManager.getMissingSymbols(from: allCacheSymbols))
+        guard !isFetchingDailyAnalysis else { return }
+        isFetchingDailyAnalysis = true
+        defer { isFetchingDailyAnalysis = false }
+
+        let highestCloseMissing = Set(await highestCloseCacheManager.getMissingSymbols(from: allWatchlistSymbols))
+        let swingMissing = Set(await swingLevelCacheManager.getMissingSymbols(from: allWatchlistSymbols))
+        let rsiMissing = Set(await rsiCacheManager.getMissingSymbols(from: allWatchlistSymbols))
+        let emaMissing = Set(await emaCacheManager.getMissingSymbols(from: allWatchlistSymbols))
 
         let allMissing = Array(highestCloseMissing.union(swingMissing).union(rsiMissing).union(emaMissing))
 
@@ -389,7 +393,7 @@ extension MenuBarController {
 
         await emaCacheManager.clearForDailyRefresh()
 
-        let symbols = allCacheSymbols
+        let symbols = allWatchlistSymbols
         let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
         for (symbol, entry) in fetched {
             await emaCacheManager.setEntry(for: symbol, entry: entry)

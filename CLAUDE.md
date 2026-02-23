@@ -33,12 +33,12 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (42 files, ~8,598 lines)
+## Source Files (42 files, ~8,606 lines)
 
 ```
 StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
-MenuBarView.swift                (972L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing, scanner data fetch trigger
-MenuBarController+Cache.swift    (486L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis, sneak peek EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
+MenuBarView.swift                (976L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing, scanner data fetch trigger
+MenuBarController+Cache.swift    (490L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis (watchlist-scoped, re-entrancy guarded), sneak peek EMA refresh (watchlist-scoped), backfill scheduler coordination, and market cap cache coordination with shared helpers
 BackfillScheduler.swift          (236L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
@@ -183,13 +183,13 @@ All caches are actor-based, use `CacheStorage<T>` for file I/O, and inject `Date
 
 **Algorithm:** `EMAAnalysis.calculate()` — SMA seed + iterative EMA (multiplier `2/(period+1)`). `detectWeeklyCrossover()` — cross above 5W EMA after 3+ weeks below. `countWeeksBelow()` — consecutive weeks at/below EMA. `countPeriodsAbove()` — consecutive periods strictly above EMA. Crossover uses completed weekly bars only; `isCurrentWeekSneakPeek(now:)` allows Friday 2-4 PM ET preview.
 
-**Sneak peek:** Friday 2-4 PM ET, `needsSneakPeekRefresh()` re-fetches weekly EMA every 5 min. Daily EMAs preserved from cache.
+**Sneak peek:** Friday 2-4 PM ET, `needsSneakPeekRefresh()` re-fetches weekly EMA every 5 min for watchlist symbols only (~50). Daily EMAs preserved from cache. Universe symbols get sneak peek via BackfillScheduler.
 
-**Retry:** Missing EMA/Forward P/E retried in batches of 5 every ~120s. `fetchEMAEntry` returns nil on total failure (retried next cycle).
+**Retry:** Missing EMA/Forward P/E retried in batches of 5 every ~120s, skipped while BackfillScheduler is running to avoid rate limit contention. `fetchEMAEntry` returns nil on total failure (retried next cycle).
 
 ## Consolidated Daily Analysis
 
-One chart v8 call (`interval=1d`, 3yr range) per symbol produces `DailyAnalysisResult` with 5 data points: `highestClose`, `swingLevelEntry`, `rsi`, `dailyEMA`, `dailyAboveCount`. Reduces ~1,500 API calls to ~500 for universe symbols. `fetchMissingDailyAnalysis()` unions missing symbols across 4 caches, fetches once, distributes results. Daily EMA values + above counts passed to `batchFetchEMAValues()` to skip redundant daily fetch during weekly EMA phase. Market state extracted from SPY quote via `QuoteFetchCoordinator.extractMarketState()`.
+One chart v8 call (`interval=1d`, 3yr range) per symbol produces `DailyAnalysisResult` with 5 data points: `highestClose`, `swingLevelEntry`, `rsi`, `dailyEMA`, `dailyAboveCount`. `fetchMissingDailyAnalysis()` is scoped to watchlist+index symbols only (~50-60) and guarded against re-entrancy via `isFetchingDailyAnalysis` flag. Universe symbols (~500) are handled by BackfillScheduler at ~15 req/min. Daily EMA values + above counts passed to `batchFetchEMAValues()` to skip redundant daily fetch during weekly EMA phase. Market state extracted from SPY quote via `QuoteFetchCoordinator.extractMarketState()`.
 
 ## Extra Stats (Cmd+Opt+Q)
 

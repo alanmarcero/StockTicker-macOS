@@ -115,6 +115,7 @@ class MenuBarController: NSObject, ObservableObject {
     var universeQuotes: [String: StockQuote] = [:]
     var universeMarketCaps: [String: Double] = [:]
     var universeForwardPEs: [String: Double] = [:]
+    var isFetchingDailyAnalysis = false
     private var refreshCycleCount = 0
     private var universeFinnhubBatchIndex = 0
     let backfillScheduler = BackfillScheduler()
@@ -361,7 +362,10 @@ class MenuBarController: NSObject, ObservableObject {
         attachMarketCapsToQuotes()
         await refreshDailyAnalysisIfNeeded()
         if refreshCycleCount % Timing.cacheRetryCadence == 0 {
-            await retryMissingCacheEntries()
+            let backfillRunning = await backfillScheduler.isRunning
+            if !backfillRunning {
+                await retryMissingCacheEntries()
+            }
         }
         attachHighestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
