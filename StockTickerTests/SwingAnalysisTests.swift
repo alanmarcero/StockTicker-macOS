@@ -57,13 +57,24 @@ final class SwingAnalysisTests: XCTestCase {
         XCTAssertNil(result.breakoutIndex)
     }
 
-    func testAnalyze_multipleSwingHighs_returnsHighest() {
+    func testAnalyze_multipleSwingHighs_returnsMostRecent() {
         // First peak 100 → drops to 89 (11% decline) — significant high at 100 (index 0)
         // Second peak 150 → drops to 130 (13.3% decline) — significant high at 150 (index 3)
+        // Most recent significant high is 150 (also highest here)
         let closes = [100.0, 89.0, 120.0, 150.0, 130.0]
         let result = SwingAnalysis.analyze(closes: closes)
         XCTAssertEqual(result.breakoutPrice, 150.0)
         XCTAssertEqual(result.breakoutIndex, 3)
+    }
+
+    func testAnalyze_multipleSwingHighs_returnsMostRecent_notHighest() {
+        // First peak 200 → drops to 170 (15% decline) — significant high at 200 (index 0)
+        // Second peak 190 → drops to 160 (15.8% decline) — significant high at 190 (index 2)
+        // Most recent significant high is 190 (not the highest 200)
+        let closes = [200.0, 170.0, 190.0, 160.0]
+        let result = SwingAnalysis.analyze(closes: closes)
+        XCTAssertEqual(result.breakoutPrice, 190.0)
+        XCTAssertEqual(result.breakoutIndex, 2)
     }
 
     // MARK: - Breakdown Detection
@@ -100,14 +111,14 @@ final class SwingAnalysisTests: XCTestCase {
         XCTAssertNil(result.breakdownIndex)
     }
 
-    func testAnalyze_multipleSwingLows_returnsHighest() {
+    func testAnalyze_multipleSwingLows_returnsMostRecent() {
         // First trough 80 → rises to 90 (12.5% rise) — significant low at 80 (index 1)
         // Second trough 70 → rises to 80 (14.3% rise) — significant low at 70 (index 3)
-        // Highest significant low is 80 (strongest support level)
+        // Most recent significant low is 70 (not the highest 80)
         let closes = [100.0, 80.0, 90.0, 70.0, 80.0]
         let result = SwingAnalysis.analyze(closes: closes)
-        XCTAssertEqual(result.breakdownPrice, 80.0)
-        XCTAssertEqual(result.breakdownIndex, 1)
+        XCTAssertEqual(result.breakdownPrice, 70.0)
+        XCTAssertEqual(result.breakdownIndex, 3)
     }
 
     // MARK: - Combined Detection

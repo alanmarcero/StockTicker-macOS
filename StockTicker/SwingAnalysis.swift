@@ -46,7 +46,7 @@ enum SwingAnalysis {
             }
         }
 
-        return significantHighs.max(by: { $0.price < $1.price })
+        return significantHighs.last
     }
 
     private static func findBreakdownPrice(closes: [Double]) -> (price: Double, index: Int)? {
@@ -68,6 +68,6 @@ enum SwingAnalysis {
             }
         }
 
-        return significantLows.max(by: { $0.price < $1.price })
+        return significantLows.last
     }
 }

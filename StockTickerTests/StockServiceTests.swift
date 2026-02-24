@@ -430,8 +430,8 @@ final class StockServiceTests: XCTestCase {
 
     func testFetchSwingLevels_validResponse_returnsCacheEntry() async {
         let mockClient = MockHTTPClient()
-        // Peak at 150 (index 2) → drops to 80 (46.7% decline) — significant high at 150
-        // Significant lows at 100 (index 0), 120 (index 1), 80 (index 5) — highest is 120
+        // Significant highs at 150 (index 2), 130 (index 3) — most recent is 130
+        // Significant lows at 100 (index 0), 120 (index 1), 80 (index 5) — most recent is 80
         let json = """
         {
             "chart": {
@@ -459,9 +459,9 @@ final class StockServiceTests: XCTestCase {
         let result = await service.fetchSwingLevels(symbol: "AAPL", period1: 100, period2: 200)
 
         XCTAssertNotNil(result)
-        XCTAssertEqual(result?.breakoutPrice, 150.0)
+        XCTAssertEqual(result?.breakoutPrice, 130.0)
         XCTAssertNotNil(result?.breakoutDate)
-        XCTAssertEqual(result?.breakdownPrice, 120.0)
+        XCTAssertEqual(result?.breakdownPrice, 80.0)
         XCTAssertNotNil(result?.breakdownDate)
     }
 
