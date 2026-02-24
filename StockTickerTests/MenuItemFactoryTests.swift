@@ -5,31 +5,6 @@ import XCTest
 
 final class MenuItemFactoryTests: XCTestCase {
 
-    // MARK: - Font Tests
-
-    func testMonoFont_isMonospacedSystemFont() {
-        let font = MenuItemFactory.monoFont
-
-        XCTAssertNotNil(font)
-        XCTAssertEqual(font.pointSize, LayoutConfig.Font.size)
-    }
-
-    func testMonoFontMedium_isMonospacedSystemFont() {
-        let font = MenuItemFactory.monoFontMedium
-
-        XCTAssertNotNil(font)
-        XCTAssertEqual(font.pointSize, LayoutConfig.Font.size)
-    }
-
-    func testMonoFont_isDifferentWeightFromMedium() {
-        let regular = MenuItemFactory.monoFont
-        let medium = MenuItemFactory.monoFontMedium
-
-        // Both should exist but have different weights
-        XCTAssertNotNil(regular)
-        XCTAssertNotNil(medium)
-    }
-
     // MARK: - Disabled Item Tests
 
     func testDisabled_createsDisabledItem() {

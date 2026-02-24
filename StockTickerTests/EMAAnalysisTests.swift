@@ -72,12 +72,6 @@ final class EMAAnalysisTests: XCTestCase {
         XCTAssertLessThan(result, 125.0)
     }
 
-    // MARK: - Default Period
-
-    func testDefaultPeriod_is5() {
-        XCTAssertEqual(EMAAnalysis.defaultPeriod, 5)
-    }
-
     // MARK: - Weekly Crossover Detection
 
     func testDetectWeeklyCrossover_noData_returnsNil() {

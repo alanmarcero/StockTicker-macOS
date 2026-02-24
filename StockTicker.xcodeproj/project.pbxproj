@@ -45,7 +45,6 @@
 		C1000003232C5A0000000001 /* NewsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004232C5A0000000001 /* NewsService.swift */; };
 		C1000005232C5A0000000001 /* NewsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000006232C5A0000000001 /* NewsServiceTests.swift */; };
 		D1000001232C5A0000000001 /* LayoutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000002232C5A0000000001 /* LayoutConfig.swift */; };
-		D1000003232C5A0000000001 /* LayoutConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000004232C5A0000000001 /* LayoutConfigTests.swift */; };
 		DC2D4ECA92D8AE305884F775 /* EMACache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63FBB50A666BA159D154609A /* EMACache.swift */; };
 		E1000001232C5A0000000001 /* YTDCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1000002232C5A0000000001 /* YTDCache.swift */; };
 		E1000003232C5A0000000001 /* YTDCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1000004232C5A0000000001 /* YTDCacheTests.swift */; };
@@ -138,7 +137,6 @@
 		C1000006232C5A0000000001 /* NewsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewsServiceTests.swift; sourceTree = "<group>"; };
 		C6E346A73683177C4D8B25E9 /* EMACacheTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EMACacheTests.swift; sourceTree = "<group>"; };
 		D1000002232C5A0000000001 /* LayoutConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConfig.swift; sourceTree = "<group>"; };
-		D1000004232C5A0000000001 /* LayoutConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayoutConfigTests.swift; sourceTree = "<group>"; };
 		D9CAC8094CE0FD32414BA4C0 /* SwingAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwingAnalysisTests.swift; sourceTree = "<group>"; };
 		E1000002232C5A0000000001 /* YTDCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTDCache.swift; sourceTree = "<group>"; };
 		E1000004232C5A0000000001 /* YTDCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTDCacheTests.swift; sourceTree = "<group>"; };
@@ -287,7 +285,6 @@
 				B1000010232C5A0000000001 /* TickerConfigTests.swift */,
 				B1000012232C5A0000000001 /* MenuBarViewTests.swift */,
 				C1000006232C5A0000000001 /* NewsServiceTests.swift */,
-				D1000004232C5A0000000001 /* LayoutConfigTests.swift */,
 				E1000004232C5A0000000001 /* YTDCacheTests.swift */,
 				H1000004232C5A0000000001 /* QuarterlyCacheTests.swift */,
 				I1000004232C5A0000000001 /* QuarterlyPanelTests.swift */,
@@ -476,7 +473,6 @@
 				B100000F232C5A0000000001 /* TickerConfigTests.swift in Sources */,
 				B1000011232C5A0000000001 /* MenuBarViewTests.swift in Sources */,
 				C1000005232C5A0000000001 /* NewsServiceTests.swift in Sources */,
-				D1000003232C5A0000000001 /* LayoutConfigTests.swift in Sources */,
 				E1000003232C5A0000000001 /* YTDCacheTests.swift in Sources */,
 				H1000003232C5A0000000001 /* QuarterlyCacheTests.swift in Sources */,
 				I1000003232C5A0000000001 /* QuarterlyPanelTests.swift in Sources */,

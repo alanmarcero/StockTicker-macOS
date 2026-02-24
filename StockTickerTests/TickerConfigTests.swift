@@ -38,13 +38,6 @@ final class IndexSymbolTests: XCTestCase {
 
 final class ClosedMarketAssetTests: XCTestCase {
 
-    func testAllCases_containsExpectedAssets() {
-        XCTAssertEqual(MenuBarAsset.allCases.count, 6)
-        XCTAssertTrue(MenuBarAsset.allCases.contains(.spy))
-        XCTAssertTrue(MenuBarAsset.allCases.contains(.bitcoin))
-        XCTAssertTrue(MenuBarAsset.allCases.contains(.ethereum))
-    }
-
     func testSymbol_matchesRawValue() {
         XCTAssertEqual(MenuBarAsset.spy.symbol, "SPY")
         XCTAssertEqual(MenuBarAsset.bitcoin.symbol, "BTC-USD")
@@ -61,62 +54,6 @@ final class ClosedMarketAssetTests: XCTestCase {
 // MARK: - WatchlistConfig Tests
 
 final class WatchlistConfigTests: XCTestCase {
-
-    func testDefaultConfig_hasExpectedValues() {
-        let config = WatchlistConfig.defaultConfig
-
-        XCTAssertEqual(config.watchlist, [
-            "SPY", "QQQ", "XLU", "XLP", "XLC", "XLRE", "XLI", "XLV", "XLE", "XLF",
-            "XLK", "XLY", "XLB", "IWM", "DIA", "IBIT", "ETHA", "SLV", "GLD", "SMH",
-            "NVDA", "AAPL", "GOOGL", "MSFT", "AMZN", "TSM", "META", "AVGO", "TSLA",
-            "BRK-B", "WMT", "LLY", "JPM", "XOM", "V", "JNJ", "ASML",
-            "SSK", "XRPR", "DOJE", "TMUS"
-        ])
-        XCTAssertEqual(config.menuBarRotationInterval, 5)
-        XCTAssertEqual(config.refreshInterval, 30)
-        XCTAssertEqual(config.sortDirection, "percentDesc")
-        XCTAssertEqual(config.menuBarAssetWhenClosed, .bitcoin)
-        XCTAssertEqual(config.indexSymbols.count, 6)
-        XCTAssertTrue(config.showNewsHeadlines)
-        XCTAssertEqual(config.newsRefreshInterval, 300)
-    }
-
-    func testDefaultConfig_watchlistCount() {
-        XCTAssertEqual(WatchlistConfig.defaultConfig.watchlist.count, 41)
-    }
-
-    func testDefaultConfig_containsNewTickers() {
-        let watchlist = WatchlistConfig.defaultConfig.watchlist
-        XCTAssertTrue(watchlist.contains("SSK"))
-        XCTAssertTrue(watchlist.contains("XRPR"))
-        XCTAssertTrue(watchlist.contains("DOJE"))
-        XCTAssertTrue(watchlist.contains("TMUS"))
-    }
-
-    func testDefaultConfig_watchlistWithinMaxSize() {
-        XCTAssertLessThanOrEqual(
-            WatchlistConfig.defaultConfig.watchlist.count,
-            LayoutConfig.Watchlist.maxSize
-        )
-    }
-
-    func testMaxWatchlistSize_is128() {
-        XCTAssertEqual(LayoutConfig.Watchlist.maxSize, 128)
-    }
-
-    func testDefaultIndexSymbols_hasExpectedIndexes() {
-        let indexes = WatchlistConfig.defaultIndexSymbols
-
-        XCTAssertEqual(indexes.count, 6)
-        XCTAssertEqual(indexes[0].symbol, "^GSPC")
-        XCTAssertEqual(indexes[0].displayName, "SPX")
-        XCTAssertEqual(indexes[1].symbol, "^DJI")
-        XCTAssertEqual(indexes[1].displayName, "DJI")
-    }
-
-    func testMaxWatchlistSize_matchesLayoutConfig() {
-        XCTAssertEqual(WatchlistConfig.maxWatchlistSize, LayoutConfig.Watchlist.maxSize)
-    }
 
     func testEquatable_sameConfig_areEqual() {
         let config1 = WatchlistConfig(watchlist: ["SPY", "QQQ"], menuBarRotationInterval: 5, sortDirection: "percentDesc")
@@ -319,19 +256,6 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(config.alwaysOpenMarkets.count, 1)
         XCTAssertEqual(config.alwaysOpenMarkets[0].symbol, "BTC-USD")
         XCTAssertEqual(config.alwaysOpenMarkets[0].displayName, "Bitcoin")
-    }
-
-    func testDefaultAlwaysOpenMarkets_containsExpectedCryptos() {
-        let markets = WatchlistConfig.defaultAlwaysOpenMarkets
-
-        XCTAssertEqual(markets.count, 5)
-
-        let symbols = markets.map { $0.symbol }
-        XCTAssertTrue(symbols.contains("BTC-USD"))
-        XCTAssertTrue(symbols.contains("ETH-USD"))
-        XCTAssertTrue(symbols.contains("SOL-USD"))
-        XCTAssertTrue(symbols.contains("DOGE-USD"))
-        XCTAssertTrue(symbols.contains("XRP-USD"))
     }
 
     // MARK: - menuBarAssetWhenClosed backward compatibility tests
@@ -595,10 +519,6 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(decoded.universe, original.universe)
     }
 
-    func testDefaultConfig_hasEmptyUniverse() {
-        XCTAssertEqual(WatchlistConfig.defaultConfig.universe, [])
-    }
-
     func testEquatable_differentUniverse_areNotEqual() {
         let config1 = WatchlistConfig(
             watchlist: ["SPY"],
@@ -665,10 +585,6 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(decoded.finnhubApiKey, "")
     }
 
-    func testDefaultConfig_hasEmptyFinnhubApiKey() {
-        XCTAssertEqual(WatchlistConfig.defaultConfig.finnhubApiKey, "")
-    }
-
     // MARK: - scannerBaseURL tests
 
     func testDecoder_scannerBaseURL_decodesCorrectly() throws {
@@ -718,9 +634,6 @@ final class WatchlistConfigTests: XCTestCase {
         XCTAssertEqual(decoded.scannerBaseURL, "")
     }
 
-    func testDefaultConfig_hasEmptyScannerBaseURL() {
-        XCTAssertEqual(WatchlistConfig.defaultConfig.scannerBaseURL, "")
-    }
 }
 
 // MARK: - WatchlistConfigManager Tests

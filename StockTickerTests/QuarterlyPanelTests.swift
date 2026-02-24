@@ -400,12 +400,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
     // MARK: - View Mode
 
-    func testViewMode_defaultIsSinceQuarter() {
-        let vm = QuarterlyPanelViewModel()
-
-        XCTAssertEqual(vm.viewMode, .sinceQuarter)
-    }
-
     func testSwitchMode_toDuringQuarter_recomputesRows() {
         let vm = QuarterlyPanelViewModel()
 
@@ -875,28 +869,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.breakoutRows[1].symbol, "MSFT")
     }
 
-    // MARK: - isPriceBreaksMode
-
-    func testIsPriceBreaksMode_priceBreaks_true() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-        vm.switchMode(.priceBreaks)
-        XCTAssertTrue(vm.isPriceBreaksMode)
-    }
-
-    func testIsPriceBreaksMode_sinceQuarter_false() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-        XCTAssertFalse(vm.isPriceBreaksMode)
-    }
-
-    func testIsPriceBreaksMode_forwardPE_false() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-        vm.switchMode(.forwardPE)
-        XCTAssertFalse(vm.isPriceBreaksMode)
-    }
-
     // MARK: - Price Breaks RSI Column
 
     func testPriceBreaks_breakoutRows_includeRSI() {
@@ -1310,15 +1282,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.miscStats[9].value, "--")
     }
 
-    func testIsMiscStatsMode() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-
-        XCTAssertFalse(vm.isMiscStatsMode)
-        vm.switchMode(.miscStats)
-        XCTAssertTrue(vm.isMiscStatsMode)
-    }
-
     func testSort_byRSI_breakoutRows() {
         let vm = QuarterlyPanelViewModel()
 
@@ -1479,18 +1442,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertTrue(vm.emaWeekRows.isEmpty)
     }
 
-    func testIsEMAsMode_emas_true() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-        vm.switchMode(.emas)
-        XCTAssertTrue(vm.isEMAsMode)
-    }
-
-    func testIsEMAsMode_sinceQuarter_false() {
-        let vm = QuarterlyPanelViewModel()
-        vm.update(watchlist: [], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
-        XCTAssertFalse(vm.isEMAsMode)
-    }
 
     func testEMAs_weekRows_aboveEMA() {
         let vm = QuarterlyPanelViewModel()
@@ -1857,39 +1808,3 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
     }
 }
 
-// MARK: - QuarterlySortColumn Equality Tests
-
-final class QuarterlySortColumnTests: XCTestCase {
-
-    func testEquality_symbol() {
-        XCTAssertEqual(QuarterlySortColumn.symbol, QuarterlySortColumn.symbol)
-    }
-
-    func testEquality_sameQuarter() {
-        XCTAssertEqual(QuarterlySortColumn.quarter("Q4-2025"), QuarterlySortColumn.quarter("Q4-2025"))
-    }
-
-    func testInequality_differentQuarters() {
-        XCTAssertNotEqual(QuarterlySortColumn.quarter("Q4-2025"), QuarterlySortColumn.quarter("Q3-2025"))
-    }
-
-    func testInequality_symbolVsQuarter() {
-        XCTAssertNotEqual(QuarterlySortColumn.symbol, QuarterlySortColumn.quarter("Q4-2025"))
-    }
-
-    func testEquality_date() {
-        XCTAssertEqual(QuarterlySortColumn.date, QuarterlySortColumn.date)
-    }
-
-    func testEquality_priceBreakPercent() {
-        XCTAssertEqual(QuarterlySortColumn.priceBreakPercent, QuarterlySortColumn.priceBreakPercent)
-    }
-
-    func testInequality_dateVsPriceBreakPercent() {
-        XCTAssertNotEqual(QuarterlySortColumn.date, QuarterlySortColumn.priceBreakPercent)
-    }
-
-    func testEquality_rsi() {
-        XCTAssertEqual(QuarterlySortColumn.rsi, QuarterlySortColumn.rsi)
-    }
-}

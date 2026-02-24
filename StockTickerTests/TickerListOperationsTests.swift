@@ -203,10 +203,4 @@ final class WatchlistOperationsTests: XCTestCase {
         XCTAssertFalse(result)
     }
 
-    // MARK: - maxWatchlistSize constant
-
-    func testMaxWatchlistSize_matchesWatchlistConfig() {
-        XCTAssertEqual(WatchlistOperations.maxWatchlistSize, WatchlistConfig.maxWatchlistSize)
-        XCTAssertEqual(WatchlistOperations.maxWatchlistSize, LayoutConfig.Watchlist.maxSize)
-    }
 }

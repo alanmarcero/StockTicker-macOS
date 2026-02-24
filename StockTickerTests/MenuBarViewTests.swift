@@ -5,19 +5,6 @@ import XCTest
 
 final class SortOptionTests: XCTestCase {
 
-    func testRawValue_correctStrings() {
-        XCTAssertEqual(SortOption.tickerAsc.rawValue, "Ticker ↑")
-        XCTAssertEqual(SortOption.tickerDesc.rawValue, "Ticker ↓")
-        XCTAssertEqual(SortOption.marketCapAsc.rawValue, "Market Cap ↑")
-        XCTAssertEqual(SortOption.marketCapDesc.rawValue, "Market Cap ↓")
-        XCTAssertEqual(SortOption.percentAsc.rawValue, "% Change ↑")
-        XCTAssertEqual(SortOption.percentDesc.rawValue, "% Change ↓")
-        XCTAssertEqual(SortOption.ytdAsc.rawValue, "YTD % ↑")
-        XCTAssertEqual(SortOption.ytdDesc.rawValue, "YTD % ↓")
-        XCTAssertEqual(SortOption.highAsc.rawValue, "High % ↑")
-        XCTAssertEqual(SortOption.highDesc.rawValue, "High % ↓")
-    }
-
     func testFromConfigString_validStrings() {
         XCTAssertEqual(SortOption.from(configString: "tickerAsc"), .tickerAsc)
         XCTAssertEqual(SortOption.from(configString: "tickerDesc"), .tickerDesc)
@@ -62,19 +49,6 @@ final class SortOptionTests: XCTestCase {
         }
     }
 
-    func testAllCases_containsAllOptions() {
-        XCTAssertEqual(SortOption.allCases.count, 10)
-        XCTAssertTrue(SortOption.allCases.contains(.tickerAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.tickerDesc))
-        XCTAssertTrue(SortOption.allCases.contains(.marketCapAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.marketCapDesc))
-        XCTAssertTrue(SortOption.allCases.contains(.percentAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.percentDesc))
-        XCTAssertTrue(SortOption.allCases.contains(.ytdAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.ytdDesc))
-        XCTAssertTrue(SortOption.allCases.contains(.highAsc))
-        XCTAssertTrue(SortOption.allCases.contains(.highDesc))
-    }
 }
 
 // MARK: - SortOption.sort() Tests

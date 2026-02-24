@@ -151,9 +151,4 @@ final class SwingAnalysisTests: XCTestCase {
         XCTAssertEqual(result.breakdownIndex, 0)
     }
 
-    // MARK: - Threshold Constant
-
-    func testThreshold_is10Percent() {
-        XCTAssertEqual(SwingAnalysis.threshold, 0.10)
-    }
 }

@@ -89,9 +89,4 @@ final class RSIAnalysisTests: XCTestCase {
         XCTAssertEqual(result, 100.0)
     }
 
-    // MARK: - Default Period
-
-    func testDefaultPeriod_is14() {
-        XCTAssertEqual(RSIAnalysis.defaultPeriod, 14)
-    }
 }

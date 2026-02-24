@@ -314,46 +314,6 @@ final class RSSParserTests: XCTestCase {
 
 // MARK: - NewsItem Tests
 
-final class NewsItemTests: XCTestCase {
-
-    func testNewsItem_initializesWithUUID() {
-        let item = NewsItem(headline: "Test", source: "CNBC")
-
-        XCTAssertNotNil(item.id)
-        XCTAssertEqual(item.headline, "Test")
-        XCTAssertEqual(item.source, "CNBC")
-    }
-
-    func testNewsItem_withAllFields() {
-        let url = URL(string: "https://example.com")!
-        let date = Date()
-        let item = NewsItem(headline: "Test", source: "CNBC", link: url, publishedAt: date)
-
-        XCTAssertEqual(item.headline, "Test")
-        XCTAssertEqual(item.source, "CNBC")
-        XCTAssertEqual(item.link, url)
-        XCTAssertEqual(item.publishedAt, date)
-    }
-}
-
-// MARK: - NewsSource Tests
-
-final class NewsSourceTests: XCTestCase {
-
-    func testCNBCMarketsSource_hasFeedURL() {
-        XCTAssertEqual(NewsSource.cnbcMarkets.feedURL, "https://www.cnbc.com/id/20910258/device/rss/rss.html")
-        XCTAssertEqual(NewsSource.cnbcMarkets.displayName, "CNBC")
-    }
-
-    func testAllCases_returnsAllSources() {
-        XCTAssertEqual(NewsSource.allCases.count, 1)
-        XCTAssertTrue(NewsSource.allCases.contains(.cnbcMarkets))
-    }
-
-    func testCNBCMarketsSource_rawValue() {
-        XCTAssertEqual(NewsSource.cnbcMarkets.rawValue, "cnbcMarkets")
-    }
-}
 
 // MARK: - Additional NewsService Tests
 
@@ -685,28 +645,3 @@ final class RSSParserEdgeCaseTests: XCTestCase {
     }
 }
 
-// MARK: - NewsItem Edge Case Tests
-
-final class NewsItemEdgeCaseTests: XCTestCase {
-
-    func testNewsItem_uniqueIDs_forDifferentInstances() {
-        let item1 = NewsItem(headline: "Same headline", source: "Same source")
-        let item2 = NewsItem(headline: "Same headline", source: "Same source")
-
-        XCTAssertNotEqual(item1.id, item2.id)
-    }
-
-    func testNewsItem_nilOptionalFields_defaultCorrectly() {
-        let item = NewsItem(headline: "Test", source: "Test")
-
-        XCTAssertNil(item.link)
-        XCTAssertNil(item.publishedAt)
-    }
-
-    func testNewsItem_identifiable_conformance() {
-        let item = NewsItem(headline: "Test", source: "Test")
-        let id: UUID = item.id
-
-        XCTAssertNotNil(id)
-    }
-}

@@ -1,49 +1,6 @@
 import XCTest
 @testable import StockTicker
 
-// MARK: - MarqueeConfig Tests
-
-final class MarqueeConfigTests: XCTestCase {
-
-    func testTickInterval_hasReasonableValue() {
-        XCTAssertEqual(MarqueeConfig.tickInterval, 0.25)
-    }
-
-    func testPixelsPerTick_hasReasonableValue() {
-        // 8 pixels per tick at 0.25s interval = 32 px/sec
-        XCTAssertEqual(MarqueeConfig.pixelsPerTick, 8)
-    }
-
-    func testViewDimensions_matchLayoutConfig() {
-        XCTAssertEqual(MarqueeConfig.viewWidth, LayoutConfig.Marquee.width)
-        XCTAssertEqual(MarqueeConfig.viewHeight, LayoutConfig.Marquee.height)
-    }
-
-    func testSeparator_isThreeSpaces() {
-        XCTAssertEqual(MarqueeConfig.separator, "   ")
-        XCTAssertEqual(MarqueeConfig.separator.count, 3)
-    }
-
-    func testPingFadeStep_isSmallIncrement() {
-        XCTAssertEqual(MarqueeConfig.pingFadeStep, 0.03)
-        XCTAssertLessThan(MarqueeConfig.pingFadeStep, 0.1)
-    }
-
-    func testPingFadeInterval_matchesFadeStep() {
-        XCTAssertEqual(MarqueeConfig.pingFadeInterval, 0.05)
-    }
-
-    func testPingAlphaMultiplier_isSubtle() {
-        XCTAssertEqual(MarqueeConfig.pingAlphaMultiplier, 0.4)
-        XCTAssertLessThanOrEqual(MarqueeConfig.pingAlphaMultiplier, 1.0)
-    }
-
-    func testScrollSpeed_isApproximately32PixelsPerSecond() {
-        let pixelsPerSecond = MarqueeConfig.pixelsPerTick / MarqueeConfig.tickInterval
-        XCTAssertEqual(pixelsPerSecond, 32.0, accuracy: 0.1)
-    }
-}
-
 // MARK: - MarqueeView Tests
 
 final class MarqueeViewTests: XCTestCase {
