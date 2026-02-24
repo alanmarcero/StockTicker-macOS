@@ -557,8 +557,8 @@ final class EMACacheTests: XCTestCase {
         let cacheData = EMACacheData(
             lastUpdated: "2026-02-18T12:00:00Z",
             entries: [
-                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: 3, weekBelowCount: 2, dayAboveCount: 5, weekAboveCount: 10),
-                "SPY": EMACacheEntry(day: 500.0, week: 495.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 8, weekAboveCount: nil),
+                "AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: 3, weekCrossdownWeeksAbove: 7, weekBelowCount: 2, dayAboveCount: 5, weekAboveCount: 10),
+                "SPY": EMACacheEntry(day: 500.0, week: 495.0, weekCrossoverWeeksBelow: nil, weekCrossdownWeeksAbove: nil, weekBelowCount: nil, dayAboveCount: 8, weekAboveCount: nil),
             ]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
@@ -578,6 +578,7 @@ final class EMACacheTests: XCTestCase {
         XCTAssertEqual(aaplEntry?.weekCrossoverWeeksBelow, 3)
         XCTAssertEqual(aaplEntry?.weekBelowCount, 2)
         XCTAssertEqual(aaplEntry?.weekAboveCount, 10)
+        XCTAssertEqual(aaplEntry?.weekCrossdownWeeksAbove, 7)
 
         let spyEntry = await cacheManager.getEntry(for: "SPY")
         XCTAssertNil(spyEntry?.day)
@@ -585,6 +586,7 @@ final class EMACacheTests: XCTestCase {
         XCTAssertEqual(spyEntry?.week, 495.0)
         XCTAssertNil(spyEntry?.weekCrossoverWeeksBelow)
         XCTAssertNil(spyEntry?.weekAboveCount)
+        XCTAssertNil(spyEntry?.weekCrossdownWeeksAbove)
 
         // Entries still exist (not removed, just daily fields cleared)
         let allEntries = await cacheManager.getAllEntries()

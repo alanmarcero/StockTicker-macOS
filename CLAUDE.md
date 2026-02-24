@@ -33,7 +33,7 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (42 files, ~8,717 lines)
+## Source Files (42 files, ~8,781 lines)
 
 ```
 StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
@@ -46,7 +46,7 @@ StockService+MarketCap.swift     (95L)   Extension: market cap + forward P/E via
 StockService+Historical.swift    (388L)  Extension: historical price fetching (YTD, quarterly, daily analysis consolidation) with Finnhub routing + Yahoo fallback
 StockService+ForwardPE.swift     (51L)   Extension: historical forward P/E ratios via timeseries API
 StockService+Finnhub.swift       (83L)   Extension: Finnhub candle API fetch methods (daily candles, closes, historical close) + real-time quote fetch
-StockService+EMA.swift           (223L)  Extension: 5-day/week EMA fetch + weekly crossover + below-count + above-count with Finnhub routing + Yahoo fallback
+StockService+EMA.swift           (224L)  Extension: 5-day/week EMA fetch + weekly crossover + crossdown + below-count + above-count with Finnhub routing + Yahoo fallback
 StockData.swift                  (553L)  Data models: StockQuote, TradingSession, TradingHours, Formatting, v7/timeseries response models, FinnhubCandleResponse, FinnhubQuoteResponse
 MarketSchedule.swift             (291L)  NYSE holiday/hours calculation, MarketState enum
 TickerConfig.swift               (318L)  Config loading/saving, protocols, legacy backward compat, universe field, finnhubApiKey, scannerBaseURL
@@ -56,14 +56,14 @@ DebugWindow.swift                (315L)  API errors window with endpoint filter 
 SortOption.swift                 (58L)   Sort option enum with config parsing and sorting logic
 MarqueeView.swift                (126L)  Scrolling index marquee NSView with ping animation
 MenuItemFactory.swift            (31L)   Factory for creating styled NSMenuItems and font constants
-ScannerService.swift             (101L)  AWS scanner API client (actor), fetches EMA crossover/above/below data from CloudFront, feature-flagged via scannerBaseURL
+ScannerService.swift             (119L)  AWS scanner API client (actor), fetches EMA crossover/crossdown/above/below data from CloudFront, feature-flagged via scannerBaseURL
 NewsService.swift                (135L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (148L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
 QuarterlyCache.swift             (217L)  Quarter calculation helpers, quarterly price cache (actor), no-data symbol tracking
 QuarterlyPanelModels.swift        (79L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn, QuarterlyPanelData DTO
-QuarterlyPanelView.swift         (628L)  Extra Stats window: SwiftUI view, controller
-QuarterlyPanelViewModel.swift     (460L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels, scanner data merge
+QuarterlyPanelView.swift         (630L)  Extra Stats window: SwiftUI view, controller
+QuarterlyPanelViewModel.swift     (474L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels, scanner data merge
 LayoutConfig.swift               (80L)   Centralized layout constants
 AppInfrastructure.swift           (78L)   OpaqueContainerView, FileSystemProtocol, WorkspaceProtocol, ColorMapping
 CacheStorage.swift               (56L)   Generic cache file I/O helper and CacheTimestamp utilities (used by YTD, quarterly, highest close, forward P/E, swing level, RSI caches)
@@ -75,14 +75,14 @@ SwingAnalysis.swift              (73L)   Pure swing analysis algorithm (breakout
 SwingLevelCache.swift            (110L)  Swing level cache manager (actor), daily refresh
 RSIAnalysis.swift                (37L)   Pure RSI-14 algorithm (Wilder's smoothing method)
 RSICache.swift                   (87L)   RSI cache manager (actor), daily refresh
-EMAAnalysis.swift                (97L)   Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover detection + weeks-below counting + periods-above counting
-EMACache.swift                   (168L)  EMA cache manager (actor), daily refresh, market close refresh, sneak peek refresh, 2 timeframes + crossover + below-count + above-count per symbol
+EMAAnalysis.swift                (123L)  Pure 5-period EMA algorithm (SMA seed + iterative) + weekly crossover/crossdown detection + weeks-below counting + periods-above counting
+EMACache.swift                   (171L)  EMA cache manager (actor), daily refresh, market close refresh, sneak peek refresh, 2 timeframes + crossover + crossdown + below-count + above-count per symbol
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (37 files, ~12,869 lines)
+## Test Files (37 files, ~13,043 lines)
 
-All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (620L), `QuarterlyCacheTests.swift` (632L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
+All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1895L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (622L), `QuarterlyCacheTests.swift` (632L), `ScannerServiceTests.swift` (276L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
 
 ## Design Patterns
 
@@ -135,7 +135,7 @@ Saved with `prettyPrinted` and `sortedKeys`. Supports legacy field names via `de
 
 ## AWS EMA Scanner (`aws-scanner/`)
 
-Serverless weekly scanner: detects 5-week EMA crossovers and counts days/weeks above EMA across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~2,101 lines.
+Serverless weekly scanner: detects 5-week EMA crossovers/crossdowns and counts days/weeks above EMA across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~2,164 lines.
 
 **Architecture:** EventBridge (Friday 2 PM ET) → Orchestrator Lambda → SQS → Worker Lambda (reserved concurrency 1) → S3 → CloudFront.
 

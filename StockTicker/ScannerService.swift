@@ -18,6 +18,14 @@ struct ScannerCrossoverItem: Codable, Equatable {
     let weeksBelow: Int
 }
 
+struct ScannerCrossdownItem: Codable, Equatable {
+    let symbol: String
+    let close: Double
+    let ema: Double
+    let pctBelow: Double
+    let weeksAbove: Int
+}
+
 struct ScannerBelowItem: Codable, Equatable {
     let symbol: String
     let close: Double
@@ -35,6 +43,10 @@ struct ScannerCrossoverResponse: Codable {
     let crossovers: [ScannerCrossoverItem]
 }
 
+struct ScannerCrossdownResponse: Codable {
+    let crossdowns: [ScannerCrossdownItem]
+}
+
 struct ScannerBelowResponse: Codable {
     let below: [ScannerBelowItem]
 }
@@ -43,6 +55,7 @@ struct ScannerEMAData: Equatable {
     let dayAbove: [ScannerAboveItem]
     let weekAbove: [ScannerAboveItem]
     let crossovers: [ScannerCrossoverItem]
+    let crossdowns: [ScannerCrossdownItem]
     let below: [ScannerBelowItem]
 }
 
@@ -66,12 +79,14 @@ actor ScannerService: ScannerServiceProtocol {
 
         guard let aboveURL = URL(string: "\(trimmed)/results/latest-above.json"),
               let crossoverURL = URL(string: "\(trimmed)/results/latest.json"),
+              let crossdownURL = URL(string: "\(trimmed)/results/latest-crossdown.json"),
               let belowURL = URL(string: "\(trimmed)/results/latest-below.json") else {
             return nil
         }
 
         async let aboveResult = fetchJSON(ScannerAboveResponse.self, from: aboveURL)
         async let crossoverResult = fetchJSON(ScannerCrossoverResponse.self, from: crossoverURL)
+        async let crossdownResult = fetchJSON(ScannerCrossdownResponse.self, from: crossdownURL)
         async let belowResult = fetchJSON(ScannerBelowResponse.self, from: belowURL)
 
         guard let above = await aboveResult,
@@ -80,10 +95,13 @@ actor ScannerService: ScannerServiceProtocol {
             return nil
         }
 
+        let crossdownItems = await crossdownResult?.crossdowns ?? []
+
         return ScannerEMAData(
             dayAbove: above.dayAbove,
             weekAbove: above.weekAbove,
             crossovers: crossover.crossovers,
+            crossdowns: crossdownItems,
             below: below.below
         )
     }

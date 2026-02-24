@@ -22,6 +22,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var emaDayRows: [QuarterlyRow] = []
     @Published var emaWeekRows: [QuarterlyRow] = []
     @Published var emaCrossRows: [QuarterlyRow] = []
+    @Published var emaCrossdownRows: [QuarterlyRow] = []
     @Published var emaBelowRows: [QuarterlyRow] = []
 
     var isForwardPEMode: Bool { viewMode == .forwardPE }
@@ -32,7 +33,7 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     var shouldShowEmptyState: Bool {
         if isPriceBreaksMode { return breakoutRows.isEmpty && breakdownRows.isEmpty }
-        if isEMAsMode { return emaDayRows.isEmpty && emaWeekRows.isEmpty && emaCrossRows.isEmpty && emaBelowRows.isEmpty }
+        if isEMAsMode { return emaDayRows.isEmpty && emaWeekRows.isEmpty && emaCrossRows.isEmpty && emaCrossdownRows.isEmpty && emaBelowRows.isEmpty }
         return rows.isEmpty
     }
 
@@ -219,6 +220,14 @@ class QuarterlyPanelViewModel: ObservableObject {
             crossRows.append(makeEMARow(symbol: symbol, suffix: "cross", count: weeksBelow))
         }
 
+        var crossdownRows: [QuarterlyRow] = []
+        for symbol in storedWatchlist {
+            guard let entry = storedEMAEntries[symbol],
+                  let weeksAbove = entry.weekCrossdownWeeksAbove,
+                  weeksAbove >= 3 else { continue }
+            crossdownRows.append(makeEMARow(symbol: symbol, suffix: "crossdown", count: weeksAbove))
+        }
+
         var belowRows: [QuarterlyRow] = []
         for symbol in storedWatchlist {
             guard let entry = storedEMAEntries[symbol],
@@ -241,6 +250,9 @@ class QuarterlyPanelViewModel: ObservableObject {
             for item in scanner.crossovers where !localSymbols.contains(item.symbol) {
                 crossRows.append(makeEMARow(symbol: item.symbol, suffix: "cross", count: item.weeksBelow))
             }
+            for item in scanner.crossdowns where !localSymbols.contains(item.symbol) {
+                crossdownRows.append(makeEMARow(symbol: item.symbol, suffix: "crossdown", count: item.weeksAbove))
+            }
             for item in scanner.below where !localSymbols.contains(item.symbol) {
                 belowRows.append(makeEMARow(symbol: item.symbol, suffix: "below", count: item.weeksBelow))
             }
@@ -249,9 +261,10 @@ class QuarterlyPanelViewModel: ObservableObject {
         emaDayRows = dayRows
         emaWeekRows = weekRows
         emaCrossRows = crossRows
+        emaCrossdownRows = crossdownRows
         emaBelowRows = belowRows
 
-        return dayRows + weekRows + crossRows + belowRows
+        return dayRows + weekRows + crossRows + crossdownRows + belowRows
     }
 
     private func makeEMARow(symbol: String, suffix: String, count: Int) -> QuarterlyRow {
@@ -453,6 +466,7 @@ class QuarterlyPanelViewModel: ObservableObject {
             emaDayRows.sort(by: comparator)
             emaWeekRows.sort(by: comparator)
             emaCrossRows.sort(by: comparator)
+            emaCrossdownRows.sort(by: comparator)
             emaBelowRows.sort(by: comparator)
         }
         rows.sort(by: comparator)

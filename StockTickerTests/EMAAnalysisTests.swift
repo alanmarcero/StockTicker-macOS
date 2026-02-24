@@ -244,4 +244,64 @@ final class EMAAnalysisTests: XCTestCase {
         let result = EMAAnalysis.countWeeksBelow(closes: closes)
         XCTAssertEqual(result, 1)
     }
+
+    // MARK: - Weekly Crossdown Detection
+
+    func testDetectWeeklyCrossdown_noData_returnsNil() {
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: [])
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossdown_insufficientData_returnsNil() {
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: [100.0, 101.0, 102.0, 103.0, 104.0])
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossdown_noCrossdown_allAbove_returnsNil() {
+        // All closes above their EMA — no crossdown
+        let closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossdown_noCrossdown_allBelow_returnsNil() {
+        // All closes below their EMA — downtrend, no crossdown
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertNil(result)
+    }
+
+    func testDetectWeeklyCrossdown_crossdown_oneWeekAbove() {
+        // Build: below EMA, then one week above, then cross back below
+        // Period=5, SMA seed from first 5
+        // First 5: [100, 90, 80, 70, 60] → SMA = 80.0
+        // idx5: close=85, EMA = (85-80)*0.3333+80 = 81.667 → 85 > 81.667 (above)
+        // idx6: close=70, EMA = (70-81.667)*0.3333+81.667 = 77.778 → 70 <= 77.778 (below — crossdown!)
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 85.0, 70.0]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertEqual(result, 1)
+    }
+
+    func testDetectWeeklyCrossdown_crossdown_threeWeeksAbove() {
+        // Downtrend then three weeks above EMA, then drop below
+        // First 5: [100, 90, 80, 70, 60] → SMA = 80.0
+        // offset=4: close=60 <= ema=80 (below — stops count)
+        // idx5: close=85, EMA=81.667 → above (1)
+        // idx6: close=90, EMA=84.444 → above (2)
+        // idx7: close=95, EMA=87.963 → above (3)
+        // idx8: close=50, EMA=75.309 → 50 <= 75.309 (below — crossdown!)
+        let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 85.0, 90.0, 95.0, 50.0]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertEqual(result, 3)
+    }
+
+    func testDetectWeeklyCrossdown_crossdown_atBoundary() {
+        // Minimum data: period+1 = 6 closes, crossdown at last bar
+        // First 5: [10, 20, 30, 40, 50] → SMA = 30.0
+        // offset=4: close=50 > ema=30 (above)
+        // idx5: close=20, EMA = (20-30)*0.3333+30 = 26.667 → 20 <= 26.667 (below — crossdown!)
+        let closes = [10.0, 20.0, 30.0, 40.0, 50.0, 20.0]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertEqual(result, 1)
+    }
 }

@@ -1,6 +1,6 @@
 import pytest
 
-from src.worker.ema import DEFAULT_PERIOD, calculate, count_periods_above, count_weeks_below, detect_weekly_crossover
+from src.worker.ema import DEFAULT_PERIOD, calculate, count_periods_above, count_weeks_below, detect_weekly_crossover, detect_weekly_crossdown
 
 
 def test_calculate_empty_closes_returns_none():
@@ -166,3 +166,58 @@ def test_count_periods_above_equal_to_ema_returns_none():
     closes = [50.0] * 10
     result = count_periods_above(closes=closes)
     assert result is None
+
+
+def test_detect_weekly_crossdown_no_data_returns_none():
+    result = detect_weekly_crossdown(closes=[])
+    assert result is None
+
+
+def test_detect_weekly_crossdown_insufficient_data_returns_none():
+    result = detect_weekly_crossdown(closes=[100.0, 101.0, 102.0, 103.0, 104.0])
+    assert result is None
+
+
+def test_detect_weekly_crossdown_no_crossdown_all_above_returns_none():
+    closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result is None
+
+
+def test_detect_weekly_crossdown_no_crossdown_all_below_returns_none():
+    closes = [100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result is None
+
+
+def test_detect_weekly_crossdown_crossdown_one_week_above():
+    # Above for one bar, then drop below
+    # First 5: [100, 90, 80, 70, 60] -> SMA = 80.0
+    # idx5: close=85, EMA=81.667 -> 85 > 81.667 (above)
+    # idx6: close=70, EMA=77.778 -> 70 <= 77.778 (at-or-below) -- crossdown! 1 week above
+    closes = [100.0, 90.0, 80.0, 70.0, 60.0, 85.0, 70.0]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result == 1
+
+
+def test_detect_weekly_crossdown_crossdown_multiple_weeks_above():
+    # Uptrend, multiple weeks above EMA, then drop below
+    # First 5: [10, 20, 30, 40, 50] -> SMA = 30.0
+    # ema_offset=4: close[4]=50 > EMA[0]=30 (above)
+    # idx5: close=60, EMA=40.0 -> above
+    # idx6: close=70, EMA=50.0 -> above
+    # idx7: close=80, EMA=60.0 -> above (previous)
+    # idx8: close=40, EMA=53.333 -> 40 <= 53.333 -- crossdown! 4 weeks above
+    closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 40.0]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result == 4
+
+
+def test_detect_weekly_crossdown_crossdown_at_boundary():
+    # Minimum data: period+1 = 6 closes
+    # First 5: [10, 20, 30, 40, 50] -> SMA = 30.0
+    # offset=4: close=50 > ema=30 (above)
+    # idx5: close=20, EMA = (20-30)*0.3333+30 = 26.667 -> 20 <= 26.667 -- crossdown! 1 week above
+    closes = [10.0, 20.0, 30.0, 40.0, 50.0, 20.0]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result == 1

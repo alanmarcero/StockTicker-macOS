@@ -45,6 +45,32 @@ enum EMAAnalysis {
         return weeksBelow
     }
 
+    static func detectWeeklyCrossdown(closes: [Double], period: Int = defaultPeriod) -> Int? {
+        guard closes.count >= period + 1 else { return nil }
+
+        let multiplier = 2.0 / Double(period + 1)
+        var ema = closes[0..<period].reduce(0.0, +) / Double(period)
+        var emaValues = [ema]
+        for i in period..<closes.count {
+            ema = (closes[i] - ema) * multiplier + ema
+            emaValues.append(ema)
+        }
+
+        let last = emaValues.count - 1
+        guard last >= 1 else { return nil }
+        let offset = period - 1
+
+        guard closes[offset + last] <= emaValues[last],
+              closes[offset + last - 1] > emaValues[last - 1] else { return nil }
+
+        var weeksAbove = 1
+        for j in stride(from: last - 2, through: 0, by: -1) {
+            guard closes[offset + j] > emaValues[j] else { break }
+            weeksAbove += 1
+        }
+        return weeksAbove
+    }
+
     static func countPeriodsAbove(closes: [Double], period: Int = defaultPeriod) -> Int? {
         guard closes.count >= period + 1 else { return nil }
 

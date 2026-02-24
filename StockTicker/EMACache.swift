@@ -6,14 +6,16 @@ struct EMACacheEntry: Codable, Equatable {
     let day: Double?
     let week: Double?
     let weekCrossoverWeeksBelow: Int?
+    let weekCrossdownWeeksAbove: Int?
     let weekBelowCount: Int?
     let dayAboveCount: Int?
     let weekAboveCount: Int?
 
-    init(day: Double?, week: Double?, weekCrossoverWeeksBelow: Int?, weekBelowCount: Int?, dayAboveCount: Int? = nil, weekAboveCount: Int? = nil) {
+    init(day: Double?, week: Double?, weekCrossoverWeeksBelow: Int?, weekCrossdownWeeksAbove: Int? = nil, weekBelowCount: Int?, dayAboveCount: Int? = nil, weekAboveCount: Int? = nil) {
         self.day = day
         self.week = week
         self.weekCrossoverWeeksBelow = weekCrossoverWeeksBelow
+        self.weekCrossdownWeeksAbove = weekCrossdownWeeksAbove
         self.weekBelowCount = weekBelowCount
         self.dayAboveCount = dayAboveCount
         self.weekAboveCount = weekAboveCount
@@ -100,6 +102,7 @@ actor EMACacheManager {
             updated[symbol] = EMACacheEntry(
                 day: nil, week: entry.week,
                 weekCrossoverWeeksBelow: entry.weekCrossoverWeeksBelow,
+                weekCrossdownWeeksAbove: entry.weekCrossdownWeeksAbove,
                 weekBelowCount: entry.weekBelowCount,
                 dayAboveCount: nil, weekAboveCount: entry.weekAboveCount
             )

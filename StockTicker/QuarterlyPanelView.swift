@@ -69,7 +69,9 @@ struct QuarterlyPanelView: View {
                 Divider()
                 emaTable("5-Week", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
                 Divider()
-                emaCrossTable("5W Cross", rows: viewModel.emaCrossRows)
+                emaCrossTable("5W Cross Above", rows: viewModel.emaCrossRows)
+                Divider()
+                emaCrossTable("5W Cross Below", rows: viewModel.emaCrossdownRows)
                 Divider()
                 emaCrossTable("Below 5W", rows: viewModel.emaBelowRows)
             }
@@ -479,7 +481,7 @@ struct QuarterlyPanelView: View {
             return "\(viewModel.miscStats.count) stats"
         }
         if viewModel.isEMAsMode {
-            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross, \(viewModel.emaBelowRows.count) below"
+            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross\u{2191}, \(viewModel.emaCrossdownRows.count) cross\u{2193}, \(viewModel.emaBelowRows.count) below"
         }
         if viewModel.isPriceBreaksMode {
             return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"
@@ -500,7 +502,7 @@ struct QuarterlyPanelView: View {
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
-            return "Consecutive days/weeks above the 5-period EMA. 5W Cross: weekly close crossed above 5-week EMA."
+            return "Consecutive days/weeks above the 5-period EMA. Cross Above/Below: weekly close crossed the 5-week EMA."
         case .miscStats:
             return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
         }

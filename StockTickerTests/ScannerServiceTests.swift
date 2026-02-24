@@ -40,7 +40,7 @@ final class ScannerServiceTests: XCTestCase {
     // MARK: - Successful Fetch
 
     func testFetchEMAData_allEndpointsSucceed_returnsUnifiedData() async {
-        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, below: belowJSON)
+        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, crossdown: crossdownJSON, below: belowJSON)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
@@ -53,6 +53,9 @@ final class ScannerServiceTests: XCTestCase {
         XCTAssertEqual(result?.crossovers.count, 1)
         XCTAssertEqual(result?.crossovers[0].symbol, "TSLA")
         XCTAssertEqual(result?.crossovers[0].weeksBelow, 5)
+        XCTAssertEqual(result?.crossdowns.count, 1)
+        XCTAssertEqual(result?.crossdowns[0].symbol, "META")
+        XCTAssertEqual(result?.crossdowns[0].weeksAbove, 4)
         XCTAssertEqual(result?.below.count, 1)
         XCTAssertEqual(result?.below[0].symbol, "GOOG")
         XCTAssertEqual(result?.below[0].weeksBelow, 4)
@@ -61,7 +64,7 @@ final class ScannerServiceTests: XCTestCase {
     // MARK: - Partial Failure
 
     func testFetchEMAData_aboveEndpointFails_returnsNil() async {
-        let client = makeMock(aboveFails: true, crossover: crossoverJSON, below: belowJSON)
+        let client = makeMock(aboveFails: true, crossover: crossoverJSON, crossdown: crossdownJSON, below: belowJSON)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
@@ -69,7 +72,7 @@ final class ScannerServiceTests: XCTestCase {
     }
 
     func testFetchEMAData_crossoverEndpointFails_returnsNil() async {
-        let client = makeMock(above: aboveJSON, crossoverFails: true, below: belowJSON)
+        let client = makeMock(above: aboveJSON, crossoverFails: true, crossdown: crossdownJSON, below: belowJSON)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
@@ -77,11 +80,21 @@ final class ScannerServiceTests: XCTestCase {
     }
 
     func testFetchEMAData_belowEndpointFails_returnsNil() async {
-        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, belowFails: true)
+        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, crossdown: crossdownJSON, belowFails: true)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
         XCTAssertNil(result)
+    }
+
+    func testFetchEMAData_crossdownEndpointFails_returnsDataWithEmptyCrossdowns() async {
+        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, crossdownFails: true, below: belowJSON)
+        let service = ScannerService(httpClient: client)
+        let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
+
+        XCTAssertNotNil(result)
+        XCTAssertTrue(result!.crossdowns.isEmpty)
+        XCTAssertEqual(result?.crossovers.count, 1)
     }
 
     // MARK: - Empty Arrays
@@ -93,10 +106,13 @@ final class ScannerServiceTests: XCTestCase {
         let emptyCross = """
         {"crossovers":[],"scanDate":"2026-02-23","scanTime":"2026-02-23T14:00:00Z","sneakPeek":true,"symbolsScanned":0,"errors":0}
         """
+        let emptyCrossdown = """
+        {"crossdowns":[],"scanDate":"2026-02-23","scanTime":"2026-02-23T14:00:00Z","sneakPeek":true,"symbolsScanned":0,"errors":0}
+        """
         let emptyBelow = """
         {"below":[],"scanDate":"2026-02-23","scanTime":"2026-02-23T14:00:00Z","sneakPeek":true,"symbolsScanned":0,"errors":0}
         """
-        let client = makeMock(above: emptyAbove, crossover: emptyCross, below: emptyBelow)
+        let client = makeMock(above: emptyAbove, crossover: emptyCross, crossdown: emptyCrossdown, below: emptyBelow)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
@@ -104,13 +120,14 @@ final class ScannerServiceTests: XCTestCase {
         XCTAssertTrue(result!.dayAbove.isEmpty)
         XCTAssertTrue(result!.weekAbove.isEmpty)
         XCTAssertTrue(result!.crossovers.isEmpty)
+        XCTAssertTrue(result!.crossdowns.isEmpty)
         XCTAssertTrue(result!.below.isEmpty)
     }
 
     // MARK: - Invalid JSON
 
     func testFetchEMAData_invalidJSON_returnsNil() async {
-        let client = makeMock(above: "not json", crossover: crossoverJSON, below: belowJSON)
+        let client = makeMock(above: "not json", crossover: crossoverJSON, crossdown: crossdownJSON, below: belowJSON)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net")
 
@@ -120,7 +137,7 @@ final class ScannerServiceTests: XCTestCase {
     // MARK: - Trailing Slash
 
     func testFetchEMAData_trailingSlash_handledCorrectly() async {
-        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, below: belowJSON)
+        let client = makeMock(above: aboveJSON, crossover: crossoverJSON, crossdown: crossdownJSON, below: belowJSON)
         let service = ScannerService(httpClient: client)
         let result = await service.fetchEMAData(baseURL: "https://abc123.cloudfront.net/")
 
@@ -150,6 +167,18 @@ final class ScannerServiceTests: XCTestCase {
         XCTAssertEqual(item.weeksBelow, 5)
     }
 
+    func testScannerCrossdownItem_decoding() throws {
+        let json = """
+        {"symbol":"META","close":520.0,"ema":525.5678,"pctBelow":1.06,"weeksAbove":4}
+        """
+        let item = try JSONDecoder().decode(ScannerCrossdownItem.self, from: json.data(using: .utf8)!)
+        XCTAssertEqual(item.symbol, "META")
+        XCTAssertEqual(item.close, 520.0)
+        XCTAssertEqual(item.ema, 525.5678)
+        XCTAssertEqual(item.pctBelow, 1.06)
+        XCTAssertEqual(item.weeksAbove, 4)
+    }
+
     func testScannerBelowItem_decoding() throws {
         let json = """
         {"symbol":"GOOG","close":145.5,"ema":148.2567,"pctBelow":1.86,"weeksBelow":4}
@@ -166,8 +195,9 @@ final class ScannerServiceTests: XCTestCase {
         let response500 = HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 500, httpVersion: nil, headerFields: nil)!
         let patterns: [(pattern: String, result: Result<(Data, URLResponse), Error>)] = [
             ("latest-above.json", .success((Data(), response500))),
-            ("latest.json", .success((crossoverJSON.data(using: .utf8)!, response200))),
             ("latest-below.json", .success((belowJSON.data(using: .utf8)!, response200))),
+            ("latest-crossdown.json", .success((crossdownJSON.data(using: .utf8)!, response200))),
+            ("latest.json", .success((crossoverJSON.data(using: .utf8)!, response200))),
         ]
         let client = ScannerMockHTTPClient(patterns: patterns)
         let service = ScannerService(httpClient: client)
@@ -200,9 +230,17 @@ final class ScannerServiceTests: XCTestCase {
     }
     """
 
+    private let crossdownJSON = """
+    {
+        "scanDate": "2026-02-23", "scanTime": "2026-02-23T14:00:00Z", "sneakPeek": true, "symbolsScanned": 10000, "errors": 0,
+        "crossdowns": [{"symbol":"META","close":520.0,"ema":525.5678,"pctBelow":1.06,"weeksAbove":4}]
+    }
+    """
+
     private func makeMock(
         above: String? = nil, aboveFails: Bool = false,
         crossover: String? = nil, crossoverFails: Bool = false,
+        crossdown: String? = nil, crossdownFails: Bool = false,
         below: String? = nil, belowFails: Bool = false
     ) -> ScannerMockHTTPClient {
         // Order: most specific patterns first to avoid substring collisions
@@ -218,6 +256,12 @@ final class ScannerServiceTests: XCTestCase {
             patterns.append(("latest-below.json", .failure(URLError(.notConnectedToInternet))))
         } else if let json = below {
             patterns.append(("latest-below.json", .success((json.data(using: .utf8)!, response200))))
+        }
+
+        if crossdownFails {
+            patterns.append(("latest-crossdown.json", .failure(URLError(.notConnectedToInternet))))
+        } else if let json = crossdown {
+            patterns.append(("latest-crossdown.json", .success((json.data(using: .utf8)!, response200))))
         }
 
         // Crossover pattern last since "latest.json" could match if patterns weren't specific
