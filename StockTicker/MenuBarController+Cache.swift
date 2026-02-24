@@ -95,8 +95,12 @@ extension MenuBarController {
                 symbols: missingSymbols, period1: period1, period2: period2
             )
 
-            guard !fetched.isEmpty else { continue }
-            await quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
+            let noData = Set(missingSymbols).subtracting(fetched.keys)
+            await quarterlyCacheManager.markNoData(quarter: qi.identifier, symbols: noData)
+
+            if !fetched.isEmpty {
+                await quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
+            }
             await quarterlyCacheManager.save()
         }
 

@@ -33,13 +33,13 @@ xcodebuild -project StockTicker.xcodeproj -scheme StockTicker -configuration Rel
 pgrep -x Stonks && echo "App is running"
 ```
 
-## Source Files (42 files, ~8,681 lines)
+## Source Files (42 files, ~8,717 lines)
 
 ```
 StockTickerApp.swift             (19L)   Entry point, creates MenuBarController, single-instance guard
 MenuBarView.swift                (982L)  Main controller: menu bar UI, state management, two-tier universe fetching with Finnhub routing, scanner data fetch trigger
-MenuBarController+Cache.swift    (495L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis (watchlist-scoped, re-entrancy guarded), sneak peek EMA refresh (watchlist-scoped), market close daily EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
-BackfillScheduler.swift          (236L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
+MenuBarController+Cache.swift    (499L)  Extension: YTD, quarterly, forward P/E, consolidated daily analysis (watchlist-scoped, re-entrancy guarded), sneak peek EMA refresh (watchlist-scoped), market close daily EMA refresh, backfill scheduler coordination, and market cap cache coordination with shared helpers
+BackfillScheduler.swift          (238L)  Staggered backfill actor: prioritized cache population (~15 req/min) with cancellation, BackfillCaches struct
 TimerManager.swift               (101L)  Timer lifecycle management with delegate pattern
 StockService.swift               (249L)  Yahoo Finance API client (actor), chart v8 methods, SymbolRouting enum
 StockService+MarketCap.swift     (95L)   Extension: market cap + forward P/E via v7 quote API with crumb auth, batched in chunks of 50
@@ -60,7 +60,7 @@ ScannerService.swift             (101L)  AWS scanner API client (actor), fetches
 NewsService.swift                (135L)  RSS feed fetcher for financial news (actor)
 NewsData.swift                   (148L)  NewsItem model, RSSParser, NewsSource enum
 YTDCache.swift                   (99L)   Year-to-date price cache manager (actor)
-QuarterlyCache.swift             (187L)  Quarter calculation helpers, quarterly price cache (actor)
+QuarterlyCache.swift             (217L)  Quarter calculation helpers, quarterly price cache (actor), no-data symbol tracking
 QuarterlyPanelModels.swift        (79L)   Extra Stats data models: QuarterlyRow, MiscStat, QuarterlyViewMode, QuarterlySortColumn, QuarterlyPanelData DTO
 QuarterlyPanelView.swift         (628L)  Extra Stats window: SwiftUI view, controller
 QuarterlyPanelViewModel.swift     (460L)  Extra Stats view model: row building, sorting, highlights, misc stats, universe labels, scanner data merge
@@ -80,9 +80,9 @@ EMACache.swift                   (168L)  EMA cache manager (actor), daily refres
 ThrottledTaskGroup.swift         (50L)   Bounded concurrency utility with Backfill, FinnhubBackfill, and FinnhubQuote throttle modes
 ```
 
-## Test Files (37 files, ~12,718 lines)
+## Test Files (37 files, ~12,869 lines)
 
-All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (620L), `QuarterlyCacheTests.swift` (481L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
+All source files have corresponding test files. Key test files: `StockServiceTests.swift` (1263L), `QuarterlyPanelTests.swift` (1838L), `TickerConfigTests.swift` (881L), `StockDataTests.swift` (749L), `NewsServiceTests.swift` (712L), `EMACacheTests.swift` (620L), `QuarterlyCacheTests.swift` (632L), `ScannerServiceTests.swift` (232L). Shared helpers in `TestUtilities.swift` (MockDateProvider, date creation).
 
 ## Design Patterns
 

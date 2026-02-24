@@ -97,10 +97,23 @@ enum QuarterCalculation {
 struct QuarterlyCacheData: Codable {
     let lastUpdated: String
     var quarters: [String: [String: Double]]  // "Q4-2025" -> ["AAPL": 254.23]
+    var noDataSymbols: [String: Set<String>]  // "Q4-2025" -> ["DOJE", "SSK"] (symbols with no historical data)
 
-    init(lastUpdated: String = "", quarters: [String: [String: Double]] = [:]) {
+    init(
+        lastUpdated: String = "",
+        quarters: [String: [String: Double]] = [:],
+        noDataSymbols: [String: Set<String>] = [:]
+    ) {
         self.lastUpdated = lastUpdated
         self.quarters = quarters
+        self.noDataSymbols = noDataSymbols
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        lastUpdated = try container.decode(String.self, forKey: .lastUpdated)
+        quarters = try container.decode([String: [String: Double]].self, forKey: .quarters)
+        noDataSymbols = try container.decodeIfPresent([String: Set<String>].self, forKey: .noDataSymbols) ?? [:]
     }
 }
 
@@ -157,18 +170,31 @@ actor QuarterlyCacheManager {
     }
 
     func getMissingSymbols(for quarter: String, from symbols: [String]) -> [String] {
-        guard let quarterData = cache?.quarters[quarter] else { return symbols }
-        return symbols.filter { quarterData[$0] == nil }
+        guard let currentCache = cache else { return symbols }
+        let quarterData = currentCache.quarters[quarter]
+        let noData = currentCache.noDataSymbols[quarter] ?? []
+        return symbols.filter { quarterData?[$0] == nil && !noData.contains($0) }
+    }
+
+    func markNoData(quarter: String, symbols: Set<String>) {
+        guard !symbols.isEmpty else { return }
+        ensureCacheExists()
+        if cache?.noDataSymbols[quarter] == nil {
+            cache?.noDataSymbols[quarter] = symbols
+        } else {
+            cache?.noDataSymbols[quarter]?.formUnion(symbols)
+        }
     }
 
     func clearAllQuarters() {
-        cache = QuarterlyCacheData(lastUpdated: "", quarters: [:])
+        cache = QuarterlyCacheData(lastUpdated: "", quarters: [:], noDataSymbols: [:])
     }
 
     func pruneOldQuarters(keeping activeQuarters: [String]) {
         guard var currentCache = cache else { return }
         let activeSet = Set(activeQuarters)
         currentCache.quarters = currentCache.quarters.filter { activeSet.contains($0.key) }
+        currentCache.noDataSymbols = currentCache.noDataSymbols.filter { activeSet.contains($0.key) }
         cache = currentCache
         updateLastUpdated()
     }
@@ -182,6 +208,10 @@ actor QuarterlyCacheManager {
 
     private func updateLastUpdated() {
         guard let currentCache = cache else { return }
-        cache = QuarterlyCacheData(lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), quarters: currentCache.quarters)
+        cache = QuarterlyCacheData(
+            lastUpdated: CacheTimestamp.current(dateProvider: dateProvider),
+            quarters: currentCache.quarters,
+            noDataSymbols: currentCache.noDataSymbols
+        )
     }
 }

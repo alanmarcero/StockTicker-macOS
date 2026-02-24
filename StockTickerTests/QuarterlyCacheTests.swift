@@ -457,6 +457,157 @@ final class QuarterlyCacheManagerTests: XCTestCase {
 
     // MARK: - DateProvider Injection Tests
 
+    // MARK: - NoData Tracking Tests
+
+    func testGetMissingSymbols_excludesNoDataSymbols() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.setPrices(quarter: "Q4-2025", prices: ["AAPL": 254.23])
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["DOJE", "SSK"])
+
+        let missing = await manager.getMissingSymbols(
+            for: "Q4-2025", from: ["AAPL", "SPY", "DOJE", "SSK", "QQQ"]
+        )
+        XCTAssertEqual(Set(missing), Set(["SPY", "QQQ"]))
+    }
+
+    func testMarkNoData_storesSymbols() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["DOJE"])
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["SSK", "ETHA"])
+
+        // All three should be excluded from missing
+        let missing = await manager.getMissingSymbols(
+            for: "Q4-2025", from: ["DOJE", "SSK", "ETHA", "AAPL"]
+        )
+        XCTAssertEqual(missing, ["AAPL"])
+    }
+
+    func testMarkNoData_emptySet_doesNothing() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.markNoData(quarter: "Q4-2025", symbols: [])
+
+        // Cache should still be nil (not initialized)
+        let allPrices = await manager.getAllQuarterPrices()
+        XCTAssertTrue(allPrices.isEmpty)
+    }
+
+    func testPruneOldQuarters_removesNoDataSymbols() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.setPrices(quarter: "Q4-2025", prices: ["AAPL": 254.23])
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["DOJE"])
+        await manager.setPrices(quarter: "Q4-2023", prices: ["AAPL": 180.00])
+        await manager.markNoData(quarter: "Q4-2023", symbols: ["SSK"])
+
+        await manager.pruneOldQuarters(keeping: ["Q4-2025"])
+
+        // Q4-2025 no-data should remain, Q4-2023 no-data should be pruned
+        let missingQ4_2025 = await manager.getMissingSymbols(
+            for: "Q4-2025", from: ["DOJE", "AAPL"]
+        )
+        XCTAssertTrue(missingQ4_2025.isEmpty)
+
+        let missingQ4_2023 = await manager.getMissingSymbols(
+            for: "Q4-2023", from: ["SSK"]
+        )
+        XCTAssertEqual(missingQ4_2023, ["SSK"])
+    }
+
+    func testClearAllQuarters_removesNoDataSymbols() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.setPrices(quarter: "Q4-2025", prices: ["AAPL": 254.23])
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["DOJE"])
+
+        await manager.clearAllQuarters()
+
+        let missing = await manager.getMissingSymbols(
+            for: "Q4-2025", from: ["DOJE", "AAPL"]
+        )
+        XCTAssertEqual(Set(missing), Set(["DOJE", "AAPL"]))
+    }
+
+    func testDecoding_withoutNoDataField_defaultsToEmpty() async {
+        let mockFS = MockFileSystem()
+
+        // Simulate old cache format without noDataSymbols
+        let json = """
+        {"lastUpdated":"2026-01-15","quarters":{"Q4-2025":{"AAPL":254.23}}}
+        """
+        mockFS.files[testCacheFile] = json.data(using: .utf8)!
+
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.load()
+
+        let price = await manager.getPrice(symbol: "AAPL", quarter: "Q4-2025")
+        XCTAssertEqual(price, 254.23)
+
+        // No-data should be empty, so all symbols show as missing
+        let missing = await manager.getMissingSymbols(
+            for: "Q4-2025", from: ["SPY"]
+        )
+        XCTAssertEqual(missing, ["SPY"])
+    }
+
+    func testNoDataSymbols_persistThroughSaveLoad() async {
+        let mockFS = MockFileSystem()
+        let manager = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await manager.markNoData(quarter: "Q4-2025", symbols: ["DOJE", "SSK"])
+        await manager.save()
+
+        // Load into a new manager to verify persistence
+        let manager2 = QuarterlyCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        // Transfer written file to readable files
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        if let written = mockFS.writtenFiles[cacheURL] {
+            mockFS.files[testCacheFile] = written
+        }
+
+        await manager2.load()
+
+        let missing = await manager2.getMissingSymbols(
+            for: "Q4-2025", from: ["DOJE", "SSK", "AAPL"]
+        )
+        XCTAssertEqual(missing, ["AAPL"])
+    }
+
+    // MARK: - DateProvider Injection Tests
+
     func testSetPrices_withMockDateProvider_updatesLastUpdated() async {
         let mockFS = MockFileSystem()
         let mockDateProvider = MockDateProvider(year: 2026, month: 6, day: 15)

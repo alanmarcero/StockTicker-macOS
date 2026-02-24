@@ -227,8 +227,10 @@ actor BackfillScheduler {
             await processSymbols(missing, phase: .quarterly, onBatchComplete: onBatchComplete) { symbol in
                 if let price = await stockService.fetchQuarterEndPrice(symbol: symbol, period1: period1, period2: period2) {
                     await cache.setPrices(quarter: qi.identifier, prices: [symbol: price])
-                    await cache.save()
+                } else {
+                    await cache.markNoData(quarter: qi.identifier, symbols: [symbol])
                 }
+                await cache.save()
             }
         }
     }
