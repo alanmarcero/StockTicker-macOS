@@ -265,7 +265,8 @@ class MenuBarController: NSObject, ObservableObject {
             MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self),
             MenuItemFactory.action(title: "Reload Config", action: #selector(reloadConfig), target: self),
             MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self),
-            MenuItemFactory.action(title: "Clear Cache", action: #selector(clearAllCaches), target: self)
+            MenuItemFactory.action(title: "Clear Cache", action: #selector(clearAllCaches), target: self),
+            MenuItemFactory.action(title: "Clear 5-EMA Cache", action: #selector(clearEMACache), target: self)
         ]
         return MenuItemFactory.submenu(title: "Config", items: items)
     }
@@ -824,6 +825,15 @@ class MenuBarController: NSObject, ObservableObject {
             await emaCacheManager.clearForDailyRefresh()
             await refreshAllQuotes()
             await startBackfill()
+        }
+    }
+
+    @objc private func clearEMACache() {
+        emaEntries = [:]
+        Task {
+            await emaCacheManager.clearForDailyRefresh()
+            await emaCacheManager.save()
+            await fetchMissingDailyAnalysis()
         }
     }
 
