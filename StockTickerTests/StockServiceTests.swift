@@ -1260,4 +1260,107 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(quotes["AAPL"])
         XCTAssertNil(quotes["UNKNOWN"])
     }
+
+    // MARK: - YTD Start Price Fallback
+
+    private func chartJSON(symbol: String = "TEST", closes: [Double]) -> String {
+        let closesStr = closes.map { String($0) }.joined(separator: ",")
+        return """
+        {
+            "chart": {
+                "result": [{
+                    "meta": { "symbol": "\(symbol)" },
+                    "indicators": {
+                        "quote": [{ "close": [\(closesStr)] }]
+                    }
+                }]
+            }
+        }
+        """
+    }
+
+    private func emptyChartJSON(symbol: String = "TEST") -> String {
+        """
+        {
+            "chart": {
+                "result": [{
+                    "meta": { "symbol": "\(symbol)" },
+                    "indicators": {
+                        "quote": [{ "close": [] }]
+                    }
+                }]
+            }
+        }
+        """
+    }
+
+    func testFetchYTDStartPrice_dec31Available_returnsDec31Price() async {
+        let mockClient = MockHTTPClient()
+        mockClient.patternResponses.append((
+            pattern: "chart/AAPL",
+            result: .success((chartJSON(symbol: "AAPL", closes: [192.53]).data(using: .utf8)!,
+                              HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
+        ))
+
+        let service = StockService(httpClient: mockClient)
+        let price = await service.fetchYTDStartPrice(symbol: "AAPL")
+
+        XCTAssertEqual(price, 192.53)
+    }
+
+    func testFetchYTDStartPrice_dec31Fails_fallsBackToFirstClose() async {
+        let multiMock = CallCountMockHTTPClient()
+        multiMock.responsesByCallIndex = [
+            // Call 0: Dec 31 fetch — empty closes (no data for recent IPO)
+            .success((emptyChartJSON(symbol: "BOBS").data(using: .utf8)!,
+                      HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!)),
+            // Call 1: Full year fallback — first available close
+            .success((chartJSON(symbol: "BOBS", closes: [25.10, 26.50, 27.00]).data(using: .utf8)!,
+                      HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
+        ]
+
+        let service = StockService(httpClient: multiMock)
+        let price = await service.fetchYTDStartPrice(symbol: "BOBS")
+
+        XCTAssertEqual(price, 25.10)
+    }
+
+    func testFetchYTDStartPrice_bothFail_returnsNil() async {
+        let multiMock = CallCountMockHTTPClient()
+        multiMock.responsesByCallIndex = [
+            // Call 0: Dec 31 fetch — 404
+            .success((Data(), HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 404, httpVersion: nil, headerFields: nil)!)),
+            // Call 1: Full year fallback — also 404
+            .success((Data(), HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 404, httpVersion: nil, headerFields: nil)!))
+        ]
+
+        let service = StockService(httpClient: multiMock)
+        let price = await service.fetchYTDStartPrice(symbol: "FAKESYM")
+
+        XCTAssertNil(price)
+    }
+}
+
+// MARK: - Call-Count Mock HTTP Client
+
+private final class CallCountMockHTTPClient: HTTPClient, @unchecked Sendable {
+    var responsesByCallIndex: [Result<(Data, URLResponse), Error>] = []
+    private var callIndex = 0
+
+    func data(from url: URL) async throws -> (Data, URLResponse) {
+        let index = callIndex
+        callIndex += 1
+        guard index < responsesByCallIndex.count else {
+            return (Data(), HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!)
+        }
+        switch responsesByCallIndex[index] {
+        case .success(let response): return response
+        case .failure(let error): throw error
+        }
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let url = request.url else { throw URLError(.badURL) }
+        return try await data(from: url)
+    }
 }

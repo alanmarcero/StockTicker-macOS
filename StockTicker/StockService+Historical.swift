@@ -145,7 +145,50 @@ extension StockService {
         let period1 = Int(dec31.timeIntervalSince1970)
         let period2 = Int(jan2.timeIntervalSince1970)
 
-        return await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2)
+        if let price = await fetchHistoricalClosePrice(symbol: symbol, period1: period1, period2: period2) {
+            return price
+        }
+
+        // Fallback for symbols that IPO'd after Dec 31: use first available close of the year
+        return await fetchFirstCloseOfYear(symbol: symbol, year: currentYear)
+    }
+
+    private func fetchFirstCloseOfYear(symbol: String, year: Int) async -> Double? {
+        let calendar = Calendar.current
+        guard let jan1 = calendar.date(from: DateComponents(year: year, month: 1, day: 1)) else { return nil }
+        let period1 = Int(jan1.timeIntervalSince1970)
+        let period2 = Int(Date().timeIntervalSince1970)
+
+        switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
+        case .finnhub:
+            if let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2),
+               let first = result.closes.first { return first }
+            return await fetchFirstCloseFromYahoo(symbol: symbol, period1: period1, period2: period2)
+        case .yahoo:
+            return await fetchFirstCloseFromYahoo(symbol: symbol, period1: period1, period2: period2)
+        }
+    }
+
+    private func fetchFirstCloseFromYahoo(symbol: String, period1: Int, period2: Int) async -> Double? {
+        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
+            return nil
+        }
+
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let closes = result.indicators?.quote?.first?.close,
+                  let firstClose = closes.compactMap({ $0 }).first else {
+                return nil
+            }
+
+            return firstClose
+        } catch {
+            return nil
+        }
     }
 
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double] {
