@@ -16,6 +16,13 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.from(configString: "ytdDesc"), .ytdDesc)
         XCTAssertEqual(SortOption.from(configString: "highAsc"), .highAsc)
         XCTAssertEqual(SortOption.from(configString: "highDesc"), .highDesc)
+        XCTAssertEqual(SortOption.from(configString: "extendedAsc"), .extendedAsc)
+        XCTAssertEqual(SortOption.from(configString: "extendedDesc"), .extendedDesc)
+    }
+
+    func testFromConfigString_extendedValues() {
+        XCTAssertEqual(SortOption.from(configString: "extendedAsc"), .extendedAsc)
+        XCTAssertEqual(SortOption.from(configString: "extendedDesc"), .extendedDesc)
     }
 
     func testFromConfigString_invalidString_returnsDefault() {
@@ -39,6 +46,28 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.ytdDesc.configString, "ytdDesc")
         XCTAssertEqual(SortOption.highAsc.configString, "highAsc")
         XCTAssertEqual(SortOption.highDesc.configString, "highDesc")
+        XCTAssertEqual(SortOption.extendedAsc.configString, "extendedAsc")
+        XCTAssertEqual(SortOption.extendedDesc.configString, "extendedDesc")
+    }
+
+    func testConfigString_extendedRoundTrip() {
+        XCTAssertEqual(SortOption.from(configString: SortOption.extendedAsc.configString), .extendedAsc)
+        XCTAssertEqual(SortOption.from(configString: SortOption.extendedDesc.configString), .extendedDesc)
+    }
+
+    func testIsExtendedHoursSort_trueForExtended() {
+        XCTAssertTrue(SortOption.extendedAsc.isExtendedHoursSort)
+        XCTAssertTrue(SortOption.extendedDesc.isExtendedHoursSort)
+    }
+
+    func testIsExtendedHoursSort_falseForRegular() {
+        let regularOptions: [SortOption] = [
+            .tickerAsc, .tickerDesc, .marketCapAsc, .marketCapDesc,
+            .percentAsc, .percentDesc, .ytdAsc, .ytdDesc, .highAsc, .highDesc
+        ]
+        for option in regularOptions {
+            XCTAssertFalse(option.isExtendedHoursSort, "\(option) should not be extended hours sort")
+        }
     }
 
     func testConfigString_roundTrip() {
@@ -244,5 +273,53 @@ final class SortOptionSortTests: XCTestCase {
 
         // All have 0 cap, should maintain relative order based on sort stability
         XCTAssertEqual(sorted.count, 3)
+    }
+
+    // MARK: - Extended hours sorting
+
+    func testSort_extendedAsc_sortsByExtendedHoursChangePercent() {
+        let extendedQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .preMarket,
+                               preMarketPrice: 155.0, preMarketChange: 10.0, preMarketChangePercent: 6.90),
+            "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0, session: .preMarket,
+                               preMarketPrice: 305.0, preMarketChange: -5.0, preMarketChangePercent: -1.61),
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 140.0, session: .preMarket,
+                                preMarketPrice: 142.0, preMarketChange: 2.0, preMarketChangePercent: 1.43),
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL"]
+        let sorted = SortOption.extendedAsc.sort(symbols, using: extendedQuotes)
+
+        // MSFT: -1.61%, GOOGL: +1.43%, AAPL: +6.90%
+        XCTAssertEqual(sorted, ["MSFT", "GOOGL", "AAPL"])
+    }
+
+    func testSort_extendedDesc_sortsByExtendedHoursChangePercent() {
+        let extendedQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .afterHours,
+                               postMarketPrice: 155.0, postMarketChange: 10.0, postMarketChangePercent: 6.90),
+            "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0, session: .afterHours,
+                               postMarketPrice: 305.0, postMarketChange: -5.0, postMarketChangePercent: -1.61),
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 140.0, session: .afterHours,
+                                postMarketPrice: 142.0, postMarketChange: 2.0, postMarketChangePercent: 1.43),
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL"]
+        let sorted = SortOption.extendedDesc.sort(symbols, using: extendedQuotes)
+
+        // AAPL: +6.90%, GOOGL: +1.43%, MSFT: -1.61%
+        XCTAssertEqual(sorted, ["AAPL", "GOOGL", "MSFT"])
+    }
+
+    func testSort_extendedDesc_fallsBackToChangePercent_whenNoExtendedData() {
+        // Simulates Yahoo returning "CLOSED" during after-hours (no extended data on quote)
+        let mixedQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, session: .afterHours,
+                               postMarketPrice: 155.0, postMarketChange: 10.0, postMarketChangePercent: 6.90),
+            "MSFT": StockQuote(symbol: "MSFT", price: 300.0, previousClose: 310.0),  // no extended data, changePercent ~ -3.23%
+        ]
+        let symbols = ["MSFT", "AAPL"]
+        let sorted = SortOption.extendedDesc.sort(symbols, using: mixedQuotes)
+
+        // AAPL: +6.90% (extended), MSFT: -3.23% (regular fallback)
+        XCTAssertEqual(sorted, ["AAPL", "MSFT"])
     }
 }

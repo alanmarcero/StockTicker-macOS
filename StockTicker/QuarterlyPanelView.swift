@@ -502,7 +502,7 @@ struct QuarterlyPanelView: View {
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
-            return "Consecutive days/weeks above the 5-period EMA. Cross Above/Below: weekly close crossed the 5-week EMA."
+            return "5-Day/5-Week: real-time price above the 5-period EMA (count = consecutive closes above)."
         case .miscStats:
             return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
         }
@@ -512,7 +512,10 @@ struct QuarterlyPanelView: View {
         if viewModel.isForwardPEMode {
             return "Current: latest forward P/E from most recent quote"
         }
-        if viewModel.isPriceBreaksMode || viewModel.isEMAsMode || viewModel.isMiscStatsMode {
+        if viewModel.isEMAsMode {
+            return "Cross Above/Below: weekly close reversal after 3+ weeks on the other side. Below 5W: weekly close below EMA for 3+ weeks."
+        }
+        if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode {
             return ""
         }
         return "High: percent from highest daily close over trailing 3 years"

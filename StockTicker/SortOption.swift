@@ -13,6 +13,8 @@ enum SortOption: String, CaseIterable {
     case ytdDesc = "YTD % ↓"
     case highAsc = "High % ↑"
     case highDesc = "High % ↓"
+    case extendedAsc = "AH % ↑"
+    case extendedDesc = "AH % ↓"
 
     static func from(configString: String) -> SortOption {
         switch configString {
@@ -26,6 +28,8 @@ enum SortOption: String, CaseIterable {
         case "ytdDesc": return .ytdDesc
         case "highAsc": return .highAsc
         case "highDesc": return .highDesc
+        case "extendedAsc": return .extendedAsc
+        case "extendedDesc": return .extendedDesc
         default: return .percentDesc
         }
     }
@@ -42,6 +46,8 @@ enum SortOption: String, CaseIterable {
         case .ytdDesc: return "ytdDesc"
         case .highAsc: return "highAsc"
         case .highDesc: return "highDesc"
+        case .extendedAsc: return "extendedAsc"
+        case .extendedDesc: return "extendedDesc"
         }
     }
 
@@ -65,6 +71,20 @@ enum SortOption: String, CaseIterable {
         case .highDesc: return symbols.sorted {
             (quotes[$0]?.highestCloseChangePercent ?? 0) > (quotes[$1]?.highestCloseChangePercent ?? 0)
         }
+        case .extendedAsc: return symbols.sorted {
+            Self.extendedPercent(quotes[$0]) < Self.extendedPercent(quotes[$1])
         }
+        case .extendedDesc: return symbols.sorted {
+            Self.extendedPercent(quotes[$0]) > Self.extendedPercent(quotes[$1])
+        }
+        }
+    }
+
+    var isExtendedHoursSort: Bool {
+        self == .extendedAsc || self == .extendedDesc
+    }
+
+    private static func extendedPercent(_ quote: StockQuote?) -> Double {
+        quote?.extendedHoursChangePercent ?? quote?.changePercent ?? 0
     }
 }

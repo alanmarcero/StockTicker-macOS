@@ -255,6 +255,7 @@ class MenuBarController: NSObject, ObservableObject {
         let items = SortOption.allCases.map { option -> NSMenuItem in
             let item = MenuItemFactory.action(title: option.rawValue, action: #selector(sortOptionSelected(_:)), target: self)
             item.representedObject = option
+            if option.isExtendedHoursSort { item.isHidden = true }
             return item
         }
         return MenuItemFactory.submenu(title: "Sort By", items: items)
@@ -350,6 +351,14 @@ class MenuBarController: NSObject, ObservableObject {
             self.indexQuotes = result.indexQuotes
         }
         self.yahooMarketState = result.yahooMarketState
+        if currentSortOption.isExtendedHoursSort {
+            let state = MarketState(fromYahooState: result.yahooMarketState)
+            if state == .open {
+                currentSortOption = .percentDesc
+                config.sortDirection = currentSortOption.configString
+                config.save()
+            }
+        }
         if result.isInitialLoadComplete { hasCompletedInitialLoad = true }
 
         self.lastRefreshTime = dateProvider.now()
@@ -682,9 +691,13 @@ class MenuBarController: NSObject, ObservableObject {
         guard let sortItem = menu.items.first(where: { $0.title == "Sort By" }),
               let sortMenu = sortItem.submenu else { return }
 
+        let isExtended = currentMarketState == .preMarket || currentMarketState == .afterHours
         for item in sortMenu.items {
             guard let option = item.representedObject as? SortOption else { continue }
             item.state = (option == currentSortOption) ? .on : .off
+            if option.isExtendedHoursSort {
+                item.isHidden = !isExtended
+            }
         }
     }
 
