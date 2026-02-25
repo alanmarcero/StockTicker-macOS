@@ -48,6 +48,11 @@ struct QuarterlyPanelView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
+            if !belowColumnDescription.isEmpty {
+                Text(belowColumnDescription)
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
         }
         .padding()
     }
@@ -65,13 +70,13 @@ struct QuarterlyPanelView: View {
     private var scrollableContent: some View {
         if viewModel.isEMAsMode {
             HStack(alignment: .top, spacing: 0) {
-                emaTable("Currently Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
+                emaTable("Closing Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
                 Divider()
-                emaTable("Currently Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
+                emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
                 Divider()
-                emaCrossTable("5W Cross Above", rows: viewModel.emaCrossRows)
+                emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows)
                 Divider()
-                emaCrossTable("5W Cross Below", rows: viewModel.emaCrossdownRows)
+                emaCrossTable("5W Closing Cross Below", rows: viewModel.emaCrossdownRows)
                 Divider()
                 emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows)
             }
@@ -502,7 +507,7 @@ struct QuarterlyPanelView: View {
         case .priceBreaks:
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
-            return "5-Day/5-Week: real-time price above the 5-period EMA (count = consecutive closes above)."
+            return "Closing Above: price above the 5-period EMA with at least 1 consecutive close above (count = consecutive closes above)."
         case .miscStats:
             return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
         }
@@ -513,12 +518,19 @@ struct QuarterlyPanelView: View {
             return "Current: latest forward P/E from most recent quote"
         }
         if viewModel.isEMAsMode {
-            return "Cross Above/Below: weekly close reversal after 3+ weeks on the other side. Below 5W: weekly close below EMA for 3+ weeks."
+            return "Closing Cross: weekly close reversal after 3+ weeks on the other side. Crosses recalculate Fridays at 2 PM ET."
         }
         if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode {
             return ""
         }
         return "High: percent from highest daily close over trailing 3 years"
+    }
+
+    private var belowColumnDescription: String {
+        if viewModel.isEMAsMode {
+            return "Closing Below: weekly close below 5-week EMA for 3+ consecutive weeks."
+        }
+        return ""
     }
 
     private func peCellView(_ value: Double?, priorValue: Double?) -> some View {
