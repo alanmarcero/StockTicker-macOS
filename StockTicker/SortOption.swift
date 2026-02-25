@@ -72,10 +72,20 @@ enum SortOption: String, CaseIterable {
             (quotes[$0]?.highestCloseChangePercent ?? 0) > (quotes[$1]?.highestCloseChangePercent ?? 0)
         }
         case .extendedAsc: return symbols.sorted {
-            Self.extendedPercent(quotes[$0]) < Self.extendedPercent(quotes[$1])
+            switch (Self.extendedPercent(quotes[$0]), Self.extendedPercent(quotes[$1])) {
+            case let (a?, b?): return a < b
+            case (nil, .some): return true
+            case (.some, nil): return false
+            case (nil, nil): return $0 < $1
+            }
         }
         case .extendedDesc: return symbols.sorted {
-            Self.extendedPercent(quotes[$0]) > Self.extendedPercent(quotes[$1])
+            switch (Self.extendedPercent(quotes[$0]), Self.extendedPercent(quotes[$1])) {
+            case let (a?, b?): return a > b
+            case (nil, .some): return false
+            case (.some, nil): return true
+            case (nil, nil): return $0 < $1
+            }
         }
         }
     }
@@ -84,7 +94,7 @@ enum SortOption: String, CaseIterable {
         self == .extendedAsc || self == .extendedDesc
     }
 
-    private static func extendedPercent(_ quote: StockQuote?) -> Double {
-        quote?.extendedHoursChangePercent ?? quote?.changePercent ?? 0
+    private static func extendedPercent(_ quote: StockQuote?) -> Double? {
+        quote?.extendedHoursChangePercent
     }
 }
