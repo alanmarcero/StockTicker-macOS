@@ -80,11 +80,11 @@ struct QuarterlyPanelView: View {
                 Divider()
                 emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
                 Divider()
-                emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows)
+                emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows, columnLabel: "Wks Below")
                 Divider()
-                emaCrossTable("5W Closing Cross Below", rows: viewModel.emaCrossdownRows)
+                emaCrossTable("5W Closing Cross Below", rows: viewModel.emaCrossdownRows, columnLabel: "Wks Above")
                 Divider()
-                emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows)
+                emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows, columnLabel: "Wks Below")
             }
         } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
@@ -264,10 +264,10 @@ struct QuarterlyPanelView: View {
         }
     }
 
-    private func emaCrossTable(_ title: String, rows: [QuarterlyRow]) -> some View {
+    private func emaCrossTable(_ title: String, rows: [QuarterlyRow], columnLabel: String) -> some View {
         ScrollView([.vertical]) {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section(header: emaCrossPinnedHeaders(title)) {
+                Section(header: emaCrossPinnedHeaders(title, columnLabel: columnLabel)) {
                     ForEach(rows) { row in
                         emaCrossRowView(row)
                         Divider().opacity(0.3)
@@ -279,7 +279,7 @@ struct QuarterlyPanelView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func emaCrossPinnedHeaders(_ title: String) -> some View {
+    private func emaCrossPinnedHeaders(_ title: String, columnLabel: String) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text(title)
@@ -291,7 +291,7 @@ struct QuarterlyPanelView: View {
             .padding(.top, 4)
             HStack(spacing: 0) {
                 sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
-                sortableHeader("Wks", column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                sortableHeader(columnLabel, column: .priceBreakPercent, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
