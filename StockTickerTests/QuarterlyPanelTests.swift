@@ -133,7 +133,7 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         XCTAssertEqual(vm.rows[0].symbol, "AAPL")
         XCTAssertEqual(vm.rows[1].symbol, "MSFT")
         XCTAssertEqual(vm.rows[2].symbol, "SPY")
-        XCTAssertTrue(vm.sortAscending)
+        XCTAssertTrue(vm.isSortAscending)
     }
 
     func testSort_bySymbol_togglesDirection() {
@@ -148,13 +148,13 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         // Default is .symbol ascending; first click toggles to descending
         vm.sort(by: .symbol)
-        XCTAssertFalse(vm.sortAscending)
+        XCTAssertFalse(vm.isSortAscending)
         XCTAssertEqual(vm.rows[0].symbol, "SPY")
         XCTAssertEqual(vm.rows[1].symbol, "AAPL")
 
         // Second click toggles back to ascending
         vm.sort(by: .symbol)
-        XCTAssertTrue(vm.sortAscending)
+        XCTAssertTrue(vm.isSortAscending)
         XCTAssertEqual(vm.rows[0].symbol, "AAPL")
         XCTAssertEqual(vm.rows[1].symbol, "SPY")
     }
@@ -191,11 +191,11 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         // Default is .symbol ascending; first click toggles to descending
         vm.sort(by: .symbol)
-        XCTAssertFalse(vm.sortAscending)
+        XCTAssertFalse(vm.isSortAscending)
 
         // Switching to a different column resets to ascending
         vm.sort(by: .quarter("Q4-2025"))
-        XCTAssertTrue(vm.sortAscending)
+        XCTAssertTrue(vm.isSortAscending)
     }
 
     func testSort_nilValues_sortFirst() {

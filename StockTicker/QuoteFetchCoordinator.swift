@@ -41,7 +41,7 @@ enum QuoteFetchCoordinator {
         let quotes = await fetchedQuotes
 
         var combinedIndexQuotes = await fetchedIndexQuotes
-        combinedIndexQuotes.merge(await fetchedAlwaysOpen) { _, new in new }
+        combinedIndexQuotes.mergeKeepingNew(await fetchedAlwaysOpen)
 
         // Extract market state from SPY quote (already fetched as part of watchlist/index)
         // On weekends, force CLOSED regardless of what API returns

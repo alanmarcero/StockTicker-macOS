@@ -356,8 +356,8 @@ class MenuBarController: NSObject, ObservableObject {
         }
 
         if result.shouldMergeQuotes {
-            self.quotes.merge(result.quotes) { _, new in new }
-            self.indexQuotes.merge(result.indexQuotes) { _, new in new }
+            self.quotes.mergeKeepingNew(result.quotes)
+            self.indexQuotes.mergeKeepingNew(result.indexQuotes)
         } else {
             self.quotes = result.quotes
             self.indexQuotes = result.indexQuotes
@@ -379,8 +379,8 @@ class MenuBarController: NSObject, ObservableObject {
 
         if isInitialLoad || scheduleInfo.state == .open {
             let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: config.watchlist)
-            marketCaps.merge(fetchedCaps) { _, new in new }
-            currentForwardPEs.merge(fetchedPEs) { _, new in new }
+            marketCaps.mergeKeepingNew(fetchedCaps)
+            currentForwardPEs.mergeKeepingNew(fetchedPEs)
         }
         attachMarketCapsToQuotes()
         await refreshDailyAnalysisIfNeeded()
@@ -457,24 +457,24 @@ class MenuBarController: NSObject, ObservableObject {
         async let fQuotes = stockService.fetchFinnhubQuotes(symbols: batch)
         async let yQuotes = stockService.fetchQuotes(symbols: allYahoo)
         var fetched = await yQuotes
-        fetched.merge(await fQuotes) { _, new in new }
+        fetched.mergeKeepingNew(await fQuotes)
 
-        universeQuotes.merge(fetched) { _, new in new }
+        universeQuotes.mergeKeepingNew(fetched)
 
         let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: symbols)
-        universeMarketCaps.merge(fetchedCaps) { _, new in new }
-        universeForwardPEs.merge(fetchedPEs) { _, new in new }
+        universeMarketCaps.mergeKeepingNew(fetchedCaps)
+        universeForwardPEs.mergeKeepingNew(fetchedPEs)
     }
 
     func mergedQuotes() -> [String: StockQuote] {
         var combined = quotes
-        combined.merge(universeQuotes) { existing, _ in existing }
+        combined.mergeKeepingExisting(universeQuotes)
         return combined
     }
 
     private func mergedForwardPEs() -> [String: Double] {
         var combined = currentForwardPEs
-        combined.merge(universeForwardPEs) { existing, _ in existing }
+        combined.mergeKeepingExisting(universeForwardPEs)
         return combined
     }
 

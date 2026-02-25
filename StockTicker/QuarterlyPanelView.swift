@@ -375,7 +375,7 @@ struct QuarterlyPanelView: View {
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.semibold)
                 if viewModel.sortColumn == column {
-                    Image(systemName: viewModel.sortAscending ? "chevron.up" : "chevron.down")
+                    Image(systemName: viewModel.isSortAscending ? "chevron.up" : "chevron.down")
                         .font(.system(size: 8))
                 }
                 if alignment == .leading {

@@ -40,8 +40,8 @@ extension StockService {
         into caps: inout [String: Double],
         and pes: inout [String: Double]
     ) {
-        caps.merge(result.marketCaps) { _, new in new }
-        pes.merge(result.forwardPEs) { _, new in new }
+        caps.mergeKeepingNew(result.marketCaps)
+        pes.mergeKeepingNew(result.forwardPEs)
     }
 
     func refreshCrumb() async {

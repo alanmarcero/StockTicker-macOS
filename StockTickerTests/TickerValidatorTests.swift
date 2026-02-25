@@ -153,24 +153,24 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         responses[url] = .success((json.data(using: .utf8)!, response))
     }
 
     func setFailureResponse(for symbol: String, statusCode: Int = 404) {
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: statusCode, httpVersion: nil, headerFields: nil)!
         responses[url] = .success((Data(), response))
     }
 
     func setNetworkError(for symbol: String) {
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         responses[url] = .failure(URLError(.notConnectedToInternet))
     }
 
     func setInvalidJSON(for symbol: String) {
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         responses[url] = .success(("invalid json".data(using: .utf8)!, response))
     }
@@ -187,7 +187,7 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         responses[url] = .success((json.data(using: .utf8)!, response))
     }
@@ -206,7 +206,7 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         responses[url] = .success((json.data(using: .utf8)!, response))
     }

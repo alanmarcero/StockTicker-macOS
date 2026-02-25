@@ -6,7 +6,7 @@ import SwiftUI
 class QuarterlyPanelViewModel: ObservableObject {
     @Published var rows: [QuarterlyRow] = []
     @Published var sortColumn: QuarterlySortColumn = .symbol
-    @Published var sortAscending: Bool = true
+    @Published var isSortAscending: Bool = true
     @Published var quarters: [QuarterInfo] = []
     @Published var highlightedSymbols: Set<String> = []
     @Published var viewMode: QuarterlyViewMode = .sinceQuarter
@@ -380,10 +380,10 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     func sort(by column: QuarterlySortColumn) {
         if sortColumn == column {
-            sortAscending.toggle()
+            isSortAscending.toggle()
         } else {
             sortColumn = column
-            sortAscending = true
+            isSortAscending = true
         }
         applySorting()
     }
@@ -459,7 +459,7 @@ class QuarterlyPanelViewModel: ObservableObject {
                 case (nil, nil): result = a.symbol < b.symbol
                 }
             }
-            return self.sortAscending ? result : !result
+            return self.isSortAscending ? result : !result
         }
 
         if isPriceBreaksMode {

@@ -22,25 +22,8 @@ extension StockService {
     }
 
     private func fetchChartClosesFromYahoo(symbol: String, range: String, interval: String) async -> [Double]? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=\(range)&interval=\(interval)") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close else {
-                return nil
-            }
-
-            return closes.compactMap { $0 }
-        } catch {
-            print("EMA fetch failed for \(symbol) (\(range)/\(interval)): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, range: range, interval: interval) else { return nil }
+        return await fetchYahooCloses(symbol: symbol, url: url)
     }
 
     // MARK: - Finnhub Conversion Helpers
@@ -65,30 +48,8 @@ extension StockService {
     }
 
     private func fetchWeeklyClosesWithTimestamps(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=6mo&interval=1wk") else { return nil }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let rawCloses = result.indicators?.quote?.first?.close,
-                  let rawTimestamps = result.timestamp else { return nil }
-
-            var closes: [Double] = []
-            var timestamps: [Int] = []
-            for (ts, c) in zip(rawTimestamps, rawCloses) {
-                guard let close = c else { continue }
-                closes.append(close)
-                timestamps.append(ts)
-            }
-            guard !closes.isEmpty else { return nil }
-            return (closes, timestamps)
-        } catch {
-            print("Weekly closes fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, range: "6mo", interval: "1wk") else { return nil }
+        return await fetchYahooClosesAndTimestamps(symbol: symbol, url: url)
     }
 
     private func completedWeeklyBarCount(timestamps: [Int], now: Date) -> Int {
@@ -176,50 +137,14 @@ extension StockService {
     }
 
     func batchFetchEMAValues(symbols: [String]) async -> [String: EMACacheEntry] {
-        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
-
-        async let finnhubResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
-            items: finnhubSymbols,
-            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
-            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
-        ) { symbol in
+        await partitionedBatchFetch(symbols: symbols) { symbol in
             await self.fetchEMAEntry(symbol: symbol)
         }
-
-        async let yahooResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
-            items: yahooSymbols,
-            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
-            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
-        ) { symbol in
-            await self.fetchEMAEntry(symbol: symbol)
-        }
-
-        let fResults = await finnhubResults
-        let yResults = await yahooResults
-        return fResults.merging(yResults) { f, _ in f }
     }
 
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double], dailyAboveCounts: [String: Int] = [:]) async -> [String: EMACacheEntry] {
-        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
-
-        async let finnhubResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
-            items: finnhubSymbols,
-            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
-            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
-        ) { symbol in
+        await partitionedBatchFetch(symbols: symbols) { symbol in
             await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol], precomputedDailyAboveCount: dailyAboveCounts[symbol])
         }
-
-        async let yahooResults: [String: EMACacheEntry] = ThrottledTaskGroup.map(
-            items: yahooSymbols,
-            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
-            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
-        ) { symbol in
-            await self.fetchEMAEntry(symbol: symbol, precomputedDailyEMA: dailyEMAs[symbol], precomputedDailyAboveCount: dailyAboveCounts[symbol])
-        }
-
-        let fResults = await finnhubResults
-        let yResults = await yahooResults
-        return fResults.merging(yResults) { f, _ in f }
     }
 }

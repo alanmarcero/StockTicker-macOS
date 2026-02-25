@@ -106,6 +106,16 @@ actor StockService: StockServiceProtocol {
         static let quoteBase = "https://query2.finance.yahoo.com/v7/finance/quote"
         static let timeseriesBase = "https://query2.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
         static let userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+
+        static func chartURL(symbol: String, range: String, interval: String, includePrePost: Bool = false) -> URL? {
+            var query = "\(chartBase)\(symbol)?range=\(range)&interval=\(interval)"
+            if includePrePost { query += "&includePrePost=true" }
+            return URL(string: query)
+        }
+
+        static func chartURL(symbol: String, period1: Int, period2: Int, interval: String = "1d") -> URL? {
+            URL(string: "\(chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=\(interval)")
+        }
     }
 
     init(httpClient: HTTPClient = LoggingHTTPClient(), finnhubApiKey: String = "") {
@@ -163,7 +173,7 @@ actor StockService: StockServiceProtocol {
 
     func fetchChartData(symbol: String) async -> YahooChartResponse? {
         // Use 1-minute intervals with includePrePost to get extended hours data
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?interval=1m&range=1d&includePrePost=true") else {
+        guard let url = APIEndpoints.chartURL(symbol: symbol, range: "1d", interval: "1m", includePrePost: true) else {
             return nil
         }
 
@@ -174,6 +184,81 @@ actor StockService: StockServiceProtocol {
             return try JSONDecoder().decode(YahooChartResponse.self, from: data)
         } catch {
             print("Chart data fetch failed for \(symbol): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    // MARK: - Partitioned Batch Fetch
+
+    func partitionedBatchFetch<T: Sendable>(
+        symbols: [String],
+        fetch: @escaping @Sendable (String) async -> T?
+    ) async -> [String: T] {
+        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
+
+        async let finnhubResults: [String: T] = ThrottledTaskGroup.map(
+            items: finnhubSymbols,
+            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
+            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
+        ) { symbol in
+            await fetch(symbol)
+        }
+
+        async let yahooResults: [String: T] = ThrottledTaskGroup.map(
+            items: yahooSymbols,
+            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
+            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
+        ) { symbol in
+            await fetch(symbol)
+        }
+
+        let fResults = await finnhubResults
+        let yResults = await yahooResults
+        return fResults.mergingKeepingExisting(yResults)
+    }
+
+    // MARK: - Yahoo Decode Helpers
+
+    func fetchYahooCloses(symbol: String, url: URL) async -> [Double]? {
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let closes = result.indicators?.quote?.first?.close else {
+                return nil
+            }
+            return closes.compactMap { $0 }
+        } catch {
+            print("Yahoo closes fetch failed for \(symbol): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    func fetchYahooClosesAndTimestamps(symbol: String, url: URL) async -> (closes: [Double], timestamps: [Int])? {
+        do {
+            let (data, response) = try await httpClient.data(from: url)
+            guard response.isSuccessfulHTTP else { return nil }
+
+            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
+            guard let result = decoded.chart.result?.first,
+                  let rawCloses = result.indicators?.quote?.first?.close,
+                  let rawTimestamps = result.timestamp else {
+                return nil
+            }
+
+            var closes: [Double] = []
+            var timestamps: [Int] = []
+            for (ts, c) in zip(rawTimestamps, rawCloses) {
+                guard let close = c else { continue }
+                closes.append(close)
+                timestamps.append(ts)
+            }
+            guard !closes.isEmpty else { return nil }
+            return (closes, timestamps)
+        } catch {
+            print("Yahoo closes+timestamps fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
         }
     }

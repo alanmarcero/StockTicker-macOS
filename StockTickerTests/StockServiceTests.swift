@@ -29,7 +29,7 @@ final class StockServiceTests: XCTestCase {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
 
@@ -45,7 +45,7 @@ final class StockServiceTests: XCTestCase {
 
     func testFetchQuote_networkError_returnsNil() async {
         let mockClient = MockHTTPClient()
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         mockClient.responses[url] = .failure(URLError(.notConnectedToInternet))
 
         let service = StockService(httpClient: mockClient)
@@ -56,7 +56,7 @@ final class StockServiceTests: XCTestCase {
 
     func testFetchQuote_non200StatusCode_returnsNil() async {
         let mockClient = MockHTTPClient()
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success((Data(), response))
 
@@ -68,7 +68,7 @@ final class StockServiceTests: XCTestCase {
 
     func testFetchQuote_invalidJSON_returnsNil() async {
         let mockClient = MockHTTPClient()
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success(("invalid json".data(using: .utf8)!, response))
 
@@ -93,7 +93,7 @@ final class StockServiceTests: XCTestCase {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
 
@@ -122,7 +122,7 @@ final class StockServiceTests: XCTestCase {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
 
@@ -155,7 +155,7 @@ final class StockServiceTests: XCTestCase {
                 }
             }
             """
-            let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?interval=1m&range=1d&includePrePost=true")!
+            let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(symbol)?range=1d&interval=1m&includePrePost=true")!
             let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
             mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
         }
@@ -190,12 +190,12 @@ final class StockServiceTests: XCTestCase {
             }
         }
         """
-        let aaplURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?interval=1m&range=1d&includePrePost=true")!
+        let aaplURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: aaplURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[aaplURL] = .success((json.data(using: .utf8)!, response))
 
         // INVALID fails
-        let invalidURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/INVALID?interval=1m&range=1d&includePrePost=true")!
+        let invalidURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/INVALID?range=1d&interval=1m&includePrePost=true")!
         let errorResponse = HTTPURLResponse(url: invalidURL, statusCode: 404, httpVersion: nil, headerFields: nil)!
         mockClient.responses[invalidURL] = .success((Data(), errorResponse))
 
@@ -233,7 +233,7 @@ final class StockServiceTests: XCTestCase {
             }
         }
         """
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=1d&interval=1m&includePrePost=true")!
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
         mockClient.responses[url] = .success((json.data(using: .utf8)!, response))
 
@@ -245,7 +245,7 @@ final class StockServiceTests: XCTestCase {
 
     func testFetchMarketState_error_returnsNil() async {
         let mockClient = MockHTTPClient()
-        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1m&range=1d&includePrePost=true")!
+        let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=1d&interval=1m&includePrePost=true")!
         mockClient.responses[url] = .failure(URLError(.timedOut))
 
         let service = StockService(httpClient: mockClient)
@@ -822,7 +822,7 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNil(result)
     }
 
-    func testFetchDailyAnalysis_emptyCloses_returnsNilHighest() async {
+    func testFetchDailyAnalysis_emptyCloses_returnsNil() async {
         let mockClient = MockHTTPClient()
         let json = """
         {
@@ -850,10 +850,7 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         let service = StockService(httpClient: mockClient)
         let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
 
-        XCTAssertNotNil(result)
-        XCTAssertNil(result?.highestClose)
-        XCTAssertNil(result?.rsi)
-        XCTAssertNil(result?.dailyEMA)
+        XCTAssertNil(result)
     }
 
     // MARK: - batchFetchEMAValues with dailyEMAs tests
@@ -1099,8 +1096,9 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
         let closes = (0..<30).map { 100.0 + Double($0) }
         let closesJSON = closes.map { String($0) }.joined(separator: ",")
+        let timestamps = (0..<30).map { String(1000 + $0 * 86400) }.joined(separator: ",")
         let yahooJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[],"indicators":{"quote":[{"close":[\(closesJSON)]}]}}]}}
+        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(timestamps)],"indicators":{"quote":[{"close":[\(closesJSON)]}]}}]}}
         """
         mockClient.patternResponses.append((
             pattern: "query1.finance.yahoo.com/v8/finance/chart/AAPL",

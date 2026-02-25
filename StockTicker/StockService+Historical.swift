@@ -68,67 +68,15 @@ extension StockService {
     }
 
     private func fetchDailyAnalysisFromYahoo(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close else {
-                return nil
-            }
-
-            let validCloses = closes.compactMap { $0 }
-
-            // Swing analysis requires paired timestamps + closes
-            let timestamps = result.timestamp ?? []
-            let paired = zip(timestamps, closes).compactMap { ts, close -> (Int, Double)? in
-                guard let close else { return nil }
-                return (ts, close)
-            }
-            let swingEntry = paired.isEmpty
-                ? nil
-                : buildSwingEntry(closes: paired.map { $0.1 }, timestamps: paired.map { $0.0 })
-
-            return DailyAnalysisResult(
-                highestClose: validCloses.max(),
-                swingLevelEntry: swingEntry,
-                rsi: RSIAnalysis.calculate(closes: validCloses),
-                dailyEMA: EMAAnalysis.calculate(closes: validCloses),
-                dailyAboveCount: EMAAnalysis.countPeriodsAbove(closes: validCloses)
-            )
-        } catch {
-            print("Daily analysis fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        guard let result = await fetchYahooClosesAndTimestamps(symbol: symbol, url: url) else { return nil }
+        return buildDailyAnalysisResult(closes: result.closes, timestamps: result.timestamps)
     }
 
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult] {
-        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
-
-        async let finnhubResults: [String: DailyAnalysisResult] = ThrottledTaskGroup.map(
-            items: finnhubSymbols,
-            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
-            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
-        ) { symbol in
+        await partitionedBatchFetch(symbols: symbols) { symbol in
             await self.fetchDailyAnalysis(symbol: symbol, period1: period1, period2: period2)
         }
-
-        async let yahooResults: [String: DailyAnalysisResult] = ThrottledTaskGroup.map(
-            items: yahooSymbols,
-            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
-            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
-        ) { symbol in
-            await self.fetchDailyAnalysis(symbol: symbol, period1: period1, period2: period2)
-        }
-
-        let fResults = await finnhubResults
-        let yResults = await yahooResults
-        return fResults.merging(yResults) { f, _ in f }
     }
 
     // MARK: - YTD & Quarter End Prices
@@ -170,25 +118,8 @@ extension StockService {
     }
 
     private func fetchFirstCloseFromYahoo(symbol: String, period1: Int, period2: Int) async -> Double? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close,
-                  let firstClose = closes.compactMap({ $0 }).first else {
-                return nil
-            }
-
-            return firstClose
-        } catch {
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        return await fetchYahooCloses(symbol: symbol, url: url)?.first
     }
 
     func batchFetchYTDPrices(symbols: [String]) async -> [String: Double] {
@@ -220,26 +151,8 @@ extension StockService {
     }
 
     private func fetchHistoricalClosePriceFromYahoo(symbol: String, period1: Int, period2: Int) async -> Double? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close,
-                  let closePrice = closes.compactMap({ $0 }).last else {
-                return nil
-            }
-
-            return closePrice
-        } catch {
-            print("Historical close price fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        return await fetchYahooCloses(symbol: symbol, url: url)?.last
     }
 
     // MARK: - Highest Close
@@ -256,25 +169,8 @@ extension StockService {
     }
 
     private func fetchHighestCloseFromYahoo(symbol: String, period1: Int, period2: Int) async -> Double? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close else {
-                return nil
-            }
-
-            return closes.compactMap({ $0 }).max()
-        } catch {
-            print("Highest close fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        return await fetchYahooCloses(symbol: symbol, url: url)?.max()
     }
 
     func batchFetchHighestCloses(symbols: [String], period1: Int, period2: Int) async -> [String: Double] {
@@ -301,56 +197,15 @@ extension StockService {
     }
 
     private func fetchSwingLevelsFromYahoo(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?period1=\(period1)&period2=\(period2)&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close else {
-                return nil
-            }
-
-            let timestamps = result.timestamp ?? []
-            let paired = zip(timestamps, closes).compactMap { ts, close -> (Int, Double)? in
-                guard let close else { return nil }
-                return (ts, close)
-            }
-            guard !paired.isEmpty else { return nil }
-
-            return buildSwingEntry(closes: paired.map { $0.1 }, timestamps: paired.map { $0.0 })
-        } catch {
-            print("Swing levels fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        guard let result = await fetchYahooClosesAndTimestamps(symbol: symbol, url: url) else { return nil }
+        return buildSwingEntry(closes: result.closes, timestamps: result.timestamps)
     }
 
     func batchFetchSwingLevels(symbols: [String], period1: Int, period2: Int) async -> [String: SwingLevelCacheEntry] {
-        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
-
-        async let finnhubResults: [String: SwingLevelCacheEntry] = ThrottledTaskGroup.map(
-            items: finnhubSymbols,
-            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
-            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
-        ) { symbol in
+        await partitionedBatchFetch(symbols: symbols) { symbol in
             await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2)
         }
-
-        async let yahooResults: [String: SwingLevelCacheEntry] = ThrottledTaskGroup.map(
-            items: yahooSymbols,
-            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
-            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
-        ) { symbol in
-            await self.fetchSwingLevels(symbol: symbol, period1: period1, period2: period2)
-        }
-
-        let fResults = await finnhubResults
-        let yResults = await yahooResults
-        return fResults.merging(yResults) { f, _ in f }
     }
 
     // MARK: - RSI
@@ -373,25 +228,9 @@ extension StockService {
     }
 
     private func fetchRSIFromYahoo(symbol: String) async -> Double? {
-        guard let url = URL(string: "\(APIEndpoints.chartBase)\(symbol)?range=1y&interval=1d") else {
-            return nil
-        }
-
-        do {
-            let (data, response) = try await httpClient.data(from: url)
-            guard response.isSuccessfulHTTP else { return nil }
-
-            let decoded = try JSONDecoder().decode(YahooChartResponse.self, from: data)
-            guard let result = decoded.chart.result?.first,
-                  let closes = result.indicators?.quote?.first?.close else {
-                return nil
-            }
-
-            return RSIAnalysis.calculate(closes: closes.compactMap { $0 })
-        } catch {
-            print("RSI fetch failed for \(symbol): \(error.localizedDescription)")
-            return nil
-        }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, range: "1y", interval: "1d") else { return nil }
+        guard let closes = await fetchYahooCloses(symbol: symbol, url: url) else { return nil }
+        return RSIAnalysis.calculate(closes: closes)
     }
 
     func batchFetchRSIValues(symbols: [String]) async -> [String: Double] {
@@ -406,26 +245,6 @@ extension StockService {
         symbols: [String],
         fetcher: @escaping @Sendable (String) async -> Double?
     ) async -> [String: Double] {
-        let (finnhubSymbols, yahooSymbols) = SymbolRouting.partition(symbols, finnhubApiKey: finnhubApiKey)
-
-        async let finnhubResults: [String: Double] = ThrottledTaskGroup.map(
-            items: finnhubSymbols,
-            maxConcurrency: ThrottledTaskGroup.FinnhubBackfill.maxConcurrency,
-            delay: ThrottledTaskGroup.FinnhubBackfill.delayNanoseconds
-        ) { symbol in
-            await fetcher(symbol)
-        }
-
-        async let yahooResults: [String: Double] = ThrottledTaskGroup.map(
-            items: yahooSymbols,
-            maxConcurrency: ThrottledTaskGroup.Backfill.maxConcurrency,
-            delay: ThrottledTaskGroup.Backfill.delayNanoseconds
-        ) { symbol in
-            await fetcher(symbol)
-        }
-
-        let fResults = await finnhubResults
-        let yResults = await yahooResults
-        return fResults.merging(yResults) { f, _ in f }
+        await partitionedBatchFetch(symbols: symbols, fetch: fetcher)
     }
 }
