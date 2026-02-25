@@ -247,7 +247,8 @@ class WatchlistConfigManager {
             save(config)
             return config
         } catch {
-            return saveDefault()
+            print("Config parse error (keeping current config): \(error.localizedDescription)")
+            return WatchlistConfig.defaultConfig
         }
     }
 

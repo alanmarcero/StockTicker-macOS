@@ -683,15 +683,17 @@ final class WatchlistConfigManagerTests: XCTestCase {
         XCTAssertEqual(config.sortDirection, "tickerAsc")
     }
 
-    func testLoad_invalidJSON_createsDefault() {
+    func testLoad_invalidJSON_returnsDefaultWithoutOverwriting() {
         let mockFS = MockFileSystem(homeDirectory: "/Users/test")
-        mockFS.files["/Users/test/.stockticker/config.json"] = "invalid json".data(using: .utf8)
+        let invalidData = "invalid json".data(using: .utf8)!
+        mockFS.files["/Users/test/.stockticker/config.json"] = invalidData
         mockFS.directories.insert("/Users/test/.stockticker")
 
         let manager = WatchlistConfigManager(fileSystem: mockFS)
         let config = manager.load()
 
         XCTAssertEqual(config, WatchlistConfig.defaultConfig)
+        XCTAssertEqual(mockFS.files["/Users/test/.stockticker/config.json"], invalidData)
     }
 
     func testLoad_tooManyTickers_truncatesToMax() {

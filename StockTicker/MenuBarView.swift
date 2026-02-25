@@ -229,6 +229,7 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(quarterlyItem)
 
         menu.addItem(createConfigSubmenu())
+        menu.addItem(createCacheSubmenu())
         menu.addItem(createClosedMarketSubmenu())
         menu.addItem(createSortSubmenu())
         let apiErrorsItem = MenuItemFactory.action(title: "API Errors...", action: #selector(showDebugWindow), target: self, keyEquivalent: "d")
@@ -264,12 +265,17 @@ class MenuBarController: NSObject, ObservableObject {
     private func createConfigSubmenu() -> NSMenuItem {
         let items = [
             MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self),
-            MenuItemFactory.action(title: "Reload Config", action: #selector(reloadConfig), target: self),
-            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self),
-            MenuItemFactory.action(title: "Clear Cache", action: #selector(clearAllCaches), target: self),
-            MenuItemFactory.action(title: "Clear 5-EMA Cache", action: #selector(clearEMACache), target: self)
+            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self)
         ]
         return MenuItemFactory.submenu(title: "Config", items: items)
+    }
+
+    private func createCacheSubmenu() -> NSMenuItem {
+        let items = [
+            MenuItemFactory.action(title: "Clear All Caches", action: #selector(clearAllCaches), target: self),
+            MenuItemFactory.action(title: "Clear 5-EMA Cache", action: #selector(clearEMACache), target: self)
+        ]
+        return MenuItemFactory.submenu(title: "Cache", items: items)
     }
 
     // MARK: - Timer Management
@@ -311,6 +317,12 @@ class MenuBarController: NSObject, ObservableObject {
     // MARK: - Data Refresh
 
     func refreshAllQuotes() async {
+        let loadedConfig = configManager.load()
+        if loadedConfig != config {
+            reloadConfig()
+            return
+        }
+
         let scheduleInfo = marketSchedule.getTodaySchedule()
         let isWeekend = scheduleInfo.schedule.contains("Weekend")
         let isInitialLoad = !hasCompletedInitialLoad
@@ -772,7 +784,7 @@ class MenuBarController: NSObject, ObservableObject {
         reloadConfig()
     }
 
-    @objc private func reloadConfig() {
+    private func reloadConfig() {
         config = configManager.load()
         currentSortOption = SortOption.from(configString: config.sortDirection)
         currentIndex = 0
@@ -906,7 +918,8 @@ class MenuBarController: NSObject, ObservableObject {
             highlightOpacity: config.highlightOpacity,
             data: makeQuarterlyPanelData(),
             isUniverseActive: !config.universe.isEmpty,
-            refreshInterval: config.refreshInterval
+            refreshInterval: config.refreshInterval,
+            hasFinnhubApiKey: !config.finnhubApiKey.isEmpty
         )
     }
 

@@ -40,6 +40,12 @@ struct QuarterlyPanelView: View {
                 }
             }
             .pickerStyle(.segmented)
+            if !viewModel.hasFinnhubApiKey {
+                Text("No Finnhub API key found")
+                    .foregroundColor(.red)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+            }
             Text(headerDescription)
                 .foregroundColor(.secondary)
                 .font(.caption)
@@ -594,7 +600,8 @@ class QuarterlyPanelWindowController {
         highlightOpacity: Double = 0.25,
         data: QuarterlyPanelData,
         isUniverseActive: Bool = false,
-        refreshInterval: Int = 15
+        refreshInterval: Int = 15,
+        hasFinnhubApiKey: Bool = true
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -604,7 +611,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive, refreshInterval: refreshInterval)
+        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive, refreshInterval: refreshInterval, hasFinnhubApiKey: hasFinnhubApiKey)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)
