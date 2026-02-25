@@ -65,15 +65,15 @@ struct QuarterlyPanelView: View {
     private var scrollableContent: some View {
         if viewModel.isEMAsMode {
             HStack(alignment: .top, spacing: 0) {
-                emaTable("5-Day", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
+                emaTable("Currently Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
                 Divider()
-                emaTable("5-Week", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
+                emaTable("Currently Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
                 Divider()
                 emaCrossTable("5W Cross Above", rows: viewModel.emaCrossRows)
                 Divider()
                 emaCrossTable("5W Cross Below", rows: viewModel.emaCrossdownRows)
                 Divider()
-                emaCrossTable("Below 5W", rows: viewModel.emaBelowRows)
+                emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows)
             }
         } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
