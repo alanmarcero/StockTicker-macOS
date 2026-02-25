@@ -1186,7 +1186,8 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.update(watchlist: ["BTC-USD"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: [:], quarterPrices: [:]))
         vm.switchMode(.miscStats)
 
-        XCTAssertEqual(vm.miscStats[7].value, "--")
+        XCTAssertEqual(vm.miscStats[6].id, "avgForwardPE")
+        XCTAssertEqual(vm.miscStats[6].value, "--")
     }
 
     func testMiscStats_medianForwardPE_oddCount() {
@@ -1390,39 +1391,8 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.emaDayRows.count, 1)
         XCTAssertEqual(vm.emaWeekRows.count, 1)
-    }
-
-    func testEMAs_uniqueIDs() {
-        let vm = QuarterlyPanelViewModel()
-
-        let quotes: [String: StockQuote] = [
-            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
-        ]
-        let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 200.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 3, weekAboveCount: 2),
-        ]
-
-        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
-        vm.switchMode(.emas)
-
         XCTAssertEqual(vm.emaDayRows[0].id, "AAPL-ema-day")
         XCTAssertEqual(vm.emaWeekRows[0].id, "AAPL-ema-week")
-    }
-
-    func testEMAs_countCalculation() {
-        let vm = QuarterlyPanelViewModel()
-
-        let quotes: [String: StockQuote] = [
-            "AAPL": makeQuote(symbol: "AAPL", price: 110.0),
-        ]
-        let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 100.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 12),
-        ]
-
-        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
-        vm.switchMode(.emas)
-
-        XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 12.0, accuracy: 0.01)
     }
 
     func testEMAs_nilAboveCount_excluded() {
@@ -1536,6 +1506,8 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
 
         XCTAssertEqual(vm.emaBelowRows.count, 1)
         XCTAssertEqual(vm.emaBelowRows[0].symbol, "AAPL")
+        XCTAssertEqual(vm.emaBelowRows[0].id, "AAPL-ema-below")
+        XCTAssertEqual(vm.emaBelowRows[0].breakoutPercent!, 4.0, accuracy: 0.01)
     }
 
     func testEMAs_belowRows_lessThan3Weeks_excluded() {
@@ -1568,38 +1540,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         vm.switchMode(.emas)
 
         XCTAssertTrue(vm.emaBelowRows.isEmpty)
-    }
-
-    func testEMAs_belowRows_uniqueID() {
-        let vm = QuarterlyPanelViewModel()
-
-        let quotes: [String: StockQuote] = [
-            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
-        ]
-        let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 3),
-        ]
-
-        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
-        vm.switchMode(.emas)
-
-        XCTAssertEqual(vm.emaBelowRows[0].id, "AAPL-ema-below")
-    }
-
-    func testEMAs_belowRows_weeksStoredInBreakoutPercent() {
-        let vm = QuarterlyPanelViewModel()
-
-        let quotes: [String: StockQuote] = [
-            "AAPL": makeQuote(symbol: "AAPL", price: 200.0),
-        ]
-        let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 195.0, week: 210.0, weekCrossoverWeeksBelow: nil, weekBelowCount: 5),
-        ]
-
-        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
-        vm.switchMode(.emas)
-
-        XCTAssertEqual(vm.emaBelowRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
     }
 
     // MARK: - Scanner EMA Data Merge
@@ -1747,22 +1687,6 @@ final class QuarterlyPanelViewModelTests: XCTestCase {
         // AAPL should appear once (from local cache), not duplicated from scanner
         XCTAssertEqual(vm.emaDayRows.count, 1)
         XCTAssertEqual(vm.emaDayRows[0].breakoutPercent!, 5.0, accuracy: 0.01)
-    }
-
-    func testEMAs_nilScannerData_noRegression() {
-        let vm = QuarterlyPanelViewModel()
-        let quotes: [String: StockQuote] = [
-            "AAPL": makeQuote(symbol: "AAPL", price: 220.0),
-        ]
-        let emaEntries: [String: EMACacheEntry] = [
-            "AAPL": EMACacheEntry(day: 200.0, week: nil, weekCrossoverWeeksBelow: nil, weekBelowCount: nil, dayAboveCount: 5),
-        ]
-
-        vm.update(watchlist: ["AAPL"], quarterInfos: testQuarters, data: QuarterlyPanelData(quotes: quotes, quarterPrices: [:], emaEntries: emaEntries))
-        vm.switchMode(.emas)
-
-        XCTAssertEqual(vm.emaDayRows.count, 1)
-        XCTAssertEqual(vm.emaDayRows[0].symbol, "AAPL")
     }
 
     func testHasScannerData_withData_returnsTrue() {

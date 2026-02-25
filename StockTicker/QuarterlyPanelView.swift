@@ -76,9 +76,9 @@ struct QuarterlyPanelView: View {
     private var scrollableContent: some View {
         if viewModel.isEMAsMode {
             HStack(alignment: .top, spacing: 0) {
-                emaTable("Closing Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days", suffix: "d")
+                emaTable("Closing Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days Above", suffix: "d")
                 Divider()
-                emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks", suffix: "w")
+                emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks Above", suffix: "w")
                 Divider()
                 emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows, columnLabel: "Wks Below")
                 Divider()
