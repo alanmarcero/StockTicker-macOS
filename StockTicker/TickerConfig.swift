@@ -232,7 +232,7 @@ class WatchlistConfigManager {
         configDirectoryURL.appendingPathComponent(configFileName)
     }
 
-    func load() -> WatchlistConfig {
+    func load(backfillDefaults: Bool = false) -> WatchlistConfig {
         ensureDirectoryExists()
 
         guard fileSystem.fileExists(atPath: configFileURL.path),
@@ -243,8 +243,9 @@ class WatchlistConfigManager {
         do {
             var config = try JSONDecoder().decode(WatchlistConfig.self, from: data)
             config.watchlist = Array(config.watchlist.prefix(WatchlistConfig.maxWatchlistSize))
-            // Save config to add any missing fields with defaults
-            save(config)
+            if backfillDefaults {
+                save(config)
+            }
             return config
         } catch {
             print("Config parse error (keeping current config): \(error.localizedDescription)")

@@ -156,7 +156,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.emaCacheManager = emaCacheManager
         self.lastRefreshTime = dateProvider.now()
 
-        let loadedConfig = configManager.load()
+        let loadedConfig = configManager.load(backfillDefaults: true)
         self.config = loadedConfig
         self.currentSortOption = SortOption.from(configString: loadedConfig.sortDirection)
 
@@ -785,7 +785,7 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func reloadConfig() {
-        config = configManager.load()
+        config = configManager.load(backfillDefaults: true)
         currentSortOption = SortOption.from(configString: config.sortDirection)
         currentIndex = 0
         hasCompletedInitialLoad = false  // Reset so next refresh fetches all symbols
