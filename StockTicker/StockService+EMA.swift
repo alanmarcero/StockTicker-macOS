@@ -134,23 +134,24 @@ extension StockService {
 
         let weekly = await weeklyData
         let weekEMA = weekly.flatMap { EMAAnalysis.calculate(closes: $0.closes) }
-        let weekAbove = weekly.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0.closes) }
 
-        // Crossover uses only completed weekly bars — filter by timestamp, not dropLast
-        let crossoverCloses: [Double]?
+        // Use completed weekly bars only (before Friday 2PM) for all weekly metrics
+        // to ensure crossover/crossdown/above/below are consistent with each other
+        let weeklyCloses: [Double]?
         if let weeklyData = weekly {
             if isCurrentWeekSneakPeek(now: now) {
-                crossoverCloses = weeklyData.closes
+                weeklyCloses = weeklyData.closes
             } else {
                 let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
-                crossoverCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
+                weeklyCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
             }
         } else {
-            crossoverCloses = nil
+            weeklyCloses = nil
         }
-        let crossover = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
-        let crossdown = crossoverCloses.flatMap { EMAAnalysis.detectWeeklyCrossdown(closes: $0) }
-        let belowCount = weekly.flatMap { EMAAnalysis.countWeeksBelow(closes: $0.closes) }
+        let weekAbove = weeklyCloses.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0) }
+        let crossover = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
+        let crossdown = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossdown(closes: $0) }
+        let belowCount = weeklyCloses.flatMap { EMAAnalysis.countWeeksBelow(closes: $0) }
 
         guard day != nil || weekEMA != nil else { return nil }
         return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekCrossdownWeeksAbove: crossdown, weekBelowCount: belowCount, dayAboveCount: dayAbove, weekAboveCount: weekAbove)
