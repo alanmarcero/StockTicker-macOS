@@ -905,7 +905,8 @@ class MenuBarController: NSObject, ObservableObject {
             highlightColor: config.highlightColor,
             highlightOpacity: config.highlightOpacity,
             data: makeQuarterlyPanelData(),
-            isUniverseActive: !config.universe.isEmpty
+            isUniverseActive: !config.universe.isEmpty,
+            refreshInterval: config.refreshInterval
         )
     }
 

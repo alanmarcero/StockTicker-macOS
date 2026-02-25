@@ -509,7 +509,7 @@ struct QuarterlyPanelView: View {
         case .emas:
             return "Closing Above: price above the 5-period EMA with at least 1 consecutive close above (count = consecutive closes above)."
         case .miscStats:
-            return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist")"
+            return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist"). Updated every \(viewModel.refreshInterval)s."
         }
     }
 
@@ -593,7 +593,8 @@ class QuarterlyPanelWindowController {
         highlightColor: String = "yellow",
         highlightOpacity: Double = 0.25,
         data: QuarterlyPanelData,
-        isUniverseActive: Bool = false
+        isUniverseActive: Bool = false,
+        refreshInterval: Int = 15
     ) {
         if let existingWindow = window, existingWindow.isVisible {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -603,7 +604,7 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive)
+        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive, refreshInterval: refreshInterval)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)

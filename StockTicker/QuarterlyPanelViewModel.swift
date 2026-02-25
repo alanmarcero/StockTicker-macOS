@@ -38,6 +38,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private(set) var isUniverseActive = false
+    private(set) var refreshInterval: Int = 15
     private var storedWatchlist: [String] = []
     private var storedQuotes: [String: StockQuote] = [:]
     private var storedQuarterPrices: [String: [String: Double]] = [:]
@@ -65,9 +66,10 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quarterInfos: [QuarterInfo], data: QuarterlyPanelData, isUniverseActive: Bool = false) {
+    func update(watchlist: [String], quarterInfos: [QuarterInfo], data: QuarterlyPanelData, isUniverseActive: Bool = false, refreshInterval: Int = 15) {
         self.quarters = quarterInfos
         self.isUniverseActive = isUniverseActive
+        self.refreshInterval = refreshInterval
         self.storedWatchlist = watchlist
         applyData(data)
 
