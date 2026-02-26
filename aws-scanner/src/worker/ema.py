@@ -33,7 +33,7 @@ def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -
         return None
 
     ema_offset = period - 1
-    current_above = closes[ema_offset + last_index] > ema_series[last_index]
+    current_above = closes[ema_offset + last_index] > ema_series[last_index] * 1.01
     previous_at_or_below = closes[ema_offset + last_index - 1] <= ema_series[last_index - 1]
 
     if not (current_above and previous_at_or_below):
@@ -58,7 +58,7 @@ def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -
         return None
 
     ema_offset = period - 1
-    current_at_or_below = closes[ema_offset + last_index] <= ema_series[last_index]
+    current_at_or_below = closes[ema_offset + last_index] < ema_series[last_index] * 0.99
     previous_above = closes[ema_offset + last_index - 1] > ema_series[last_index - 1]
 
     if not (current_at_or_below and previous_above):

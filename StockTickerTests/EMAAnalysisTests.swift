@@ -122,6 +122,16 @@ final class EMAAnalysisTests: XCTestCase {
         XCTAssertEqual(result, 3)
     }
 
+    func testDetectWeeklyCrossover_withinBuffer_returnsNil() {
+        // Close barely above EMA (within 1% buffer) should NOT trigger crossover
+        // First 5: [50, 52, 54, 56, 58] → SMA = 54.0
+        // idx5: close=53, EMA = (53-54)*0.3333+54 = 53.667 → 53 <= 53.667 (below)
+        // idx6: close=54.1, EMA = (54.1-53.667)*0.3333+53.667 = 53.811 → 54.1 > 53.811 but < 53.811*1.01=54.349 (within buffer)
+        let closes = [50.0, 52.0, 54.0, 56.0, 58.0, 53.0, 54.1]
+        let result = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertNil(result)
+    }
+
     func testDetectWeeklyCrossover_crossover_atBoundary() {
         // Minimum data: period+1 = 6 closes, crossover at last bar
         // First 5: [50, 48, 46, 44, 42] → SMA = 46.0
@@ -287,6 +297,16 @@ final class EMAAnalysisTests: XCTestCase {
         let closes = [100.0, 90.0, 80.0, 70.0, 60.0, 85.0, 90.0, 95.0, 50.0]
         let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
         XCTAssertEqual(result, 3)
+    }
+
+    func testDetectWeeklyCrossdown_withinBuffer_returnsNil() {
+        // Close barely below EMA (within 1% buffer) should NOT trigger crossdown
+        // First 5: [50, 52, 54, 56, 58] → SMA = 54.0
+        // idx5: close=56, EMA = (56-54)*0.3333+54 = 54.667 → 56 > 54.667 (above)
+        // idx6: close=54.3, EMA = (54.3-54.667)*0.3333+54.667 = 54.545 → 54.3 < 54.545 but > 54.545*0.99=53.999 (within buffer)
+        let closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 54.3]
+        let result = EMAAnalysis.detectWeeklyCrossdown(closes: closes)
+        XCTAssertNil(result)
     }
 
     func testDetectWeeklyCrossdown_crossdown_atBoundary() {

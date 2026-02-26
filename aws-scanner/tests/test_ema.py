@@ -88,6 +88,16 @@ def test_detect_weekly_crossover_crossover_three_weeks_below():
     assert result == 3
 
 
+def test_detect_weekly_crossover_within_buffer_returns_none():
+    # Close barely above EMA (within 1% buffer) should NOT trigger crossover
+    # First 5: [50, 52, 54, 56, 58] -> SMA = 54.0
+    # idx5: close=53, EMA = (53-54)*0.3333+54 = 53.667 -> 53 <= 53.667 (below)
+    # idx6: close=54.1, EMA = (54.1-53.667)*0.3333+53.667 = 53.811 -> 54.1 > 53.811 but < 53.811*1.01 (within buffer)
+    closes = [50.0, 52.0, 54.0, 56.0, 58.0, 53.0, 54.1]
+    result = detect_weekly_crossover(closes=closes)
+    assert result is None
+
+
 def test_detect_weekly_crossover_crossover_at_boundary():
     closes = [50.0, 48.0, 46.0, 44.0, 42.0, 48.0]
     result = detect_weekly_crossover(closes=closes)
@@ -211,6 +221,16 @@ def test_detect_weekly_crossdown_crossdown_multiple_weeks_above():
     closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 40.0]
     result = detect_weekly_crossdown(closes=closes)
     assert result == 4
+
+
+def test_detect_weekly_crossdown_within_buffer_returns_none():
+    # Close barely below EMA (within 1% buffer) should NOT trigger crossdown
+    # First 5: [50, 52, 54, 56, 58] -> SMA = 54.0
+    # idx5: close=56, EMA = (56-54)*0.3333+54 = 54.667 -> 56 > 54.667 (above)
+    # idx6: close=54.3, EMA = (54.3-54.667)*0.3333+54.667 = 54.545 -> 54.3 < 54.545 but > 54.545*0.99 (within buffer)
+    closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 54.3]
+    result = detect_weekly_crossdown(closes=closes)
+    assert result is None
 
 
 def test_detect_weekly_crossdown_crossdown_at_boundary():

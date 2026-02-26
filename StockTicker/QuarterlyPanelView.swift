@@ -23,14 +23,8 @@ struct QuarterlyPanelView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Extra Stats")
-                    .font(.headline)
-                Spacer()
-                Text(symbolCountText)
-                    .foregroundColor(.secondary)
-                    .font(.caption)
-            }
+            Text("Extra Stats")
+                .font(.headline)
             Picker("View Mode", selection: Binding(
                 get: { viewModel.viewMode },
                 set: { viewModel.switchMode($0) }
@@ -486,19 +480,6 @@ struct QuarterlyPanelView: View {
     }
 
     // MARK: - Header Helpers
-
-    private var symbolCountText: String {
-        if viewModel.isMiscStatsMode {
-            return "\(viewModel.miscStats.count) stats"
-        }
-        if viewModel.isEMAsMode {
-            return "\(viewModel.emaDayRows.count) day, \(viewModel.emaWeekRows.count) week, \(viewModel.emaCrossRows.count) cross\u{2191}, \(viewModel.emaCrossdownRows.count) cross\u{2193}, \(viewModel.emaBelowRows.count) below"
-        }
-        if viewModel.isPriceBreaksMode {
-            return "\(viewModel.breakoutRows.count) breakout, \(viewModel.breakdownRows.count) breakdown"
-        }
-        return "\(viewModel.rows.count) symbols"
-    }
 
     // MARK: - Forward P/E Cell Views
 
