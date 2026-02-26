@@ -14,8 +14,8 @@ extension StockService {
         return request
     }
 
-    func fetchFinnhubDailyCandles(symbol: String, from period1: Int, to period2: Int) async -> (closes: [Double], timestamps: [Int])? {
-        guard let request = finnhubRequest(symbol: symbol, resolution: "D", from: period1, to: period2) else { return nil }
+    func fetchFinnhubCandles(symbol: String, resolution: String = "D", from period1: Int, to period2: Int) async -> (closes: [Double], timestamps: [Int])? {
+        guard let request = finnhubRequest(symbol: symbol, resolution: resolution, from: period1, to: period2) else { return nil }
 
         do {
             let (data, response) = try await httpClient.data(for: request)
@@ -25,7 +25,7 @@ extension StockService {
             guard decoded.isValid, let closes = decoded.c, let timestamps = decoded.t else { return nil }
             return (closes, timestamps)
         } catch {
-            print("Finnhub daily candles fetch failed for \(symbol): \(error.localizedDescription)")
+            print("Finnhub candles fetch failed for \(symbol) (\(resolution)): \(error.localizedDescription)")
             return nil
         }
     }
@@ -47,7 +47,7 @@ extension StockService {
     }
 
     func fetchFinnhubHistoricalClosePrice(symbol: String, period1: Int, period2: Int) async -> Double? {
-        guard let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2) else { return nil }
+        guard let result = await fetchFinnhubCandles(symbol: symbol, from: period1, to: period2) else { return nil }
         return result.closes.last
     }
 

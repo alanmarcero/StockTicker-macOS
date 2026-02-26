@@ -48,6 +48,18 @@ extension StockService {
     }
 
     private func fetchWeeklyClosesWithTimestamps(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
+        switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
+        case .finnhub:
+            let now = Int(Date().timeIntervalSince1970)
+            let from = now - 180 * 24 * 60 * 60
+            if let result = await fetchFinnhubCandles(symbol: symbol, resolution: "W", from: from, to: now) { return result }
+            return await fetchWeeklyClosesFromYahoo(symbol: symbol)
+        case .yahoo:
+            return await fetchWeeklyClosesFromYahoo(symbol: symbol)
+        }
+    }
+
+    private func fetchWeeklyClosesFromYahoo(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
         guard let url = APIEndpoints.chartURL(symbol: symbol, range: "6mo", interval: "1wk") else { return nil }
         return await fetchYahooClosesAndTimestamps(symbol: symbol, url: url)
     }

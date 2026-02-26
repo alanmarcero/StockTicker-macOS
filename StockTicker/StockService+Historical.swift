@@ -62,7 +62,7 @@ extension StockService {
     }
 
     private func fetchDailyAnalysisFromFinnhub(symbol: String, period1: Int, period2: Int) async -> DailyAnalysisResult? {
-        guard let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2) else { return nil }
+        guard let result = await fetchFinnhubCandles(symbol: symbol, from: period1, to: period2) else { return nil }
         guard !result.closes.isEmpty else { return nil }
         return buildDailyAnalysisResult(closes: result.closes, timestamps: result.timestamps)
     }
@@ -109,7 +109,7 @@ extension StockService {
 
         switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
         case .finnhub:
-            if let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2),
+            if let result = await fetchFinnhubCandles(symbol: symbol, from: period1, to: period2),
                let first = result.closes.first { return first }
             return await fetchFirstCloseFromYahoo(symbol: symbol, period1: period1, period2: period2)
         case .yahoo:
@@ -160,7 +160,7 @@ extension StockService {
     func fetchHighestClose(symbol: String, period1: Int, period2: Int) async -> Double? {
         switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
         case .finnhub:
-            if let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2),
+            if let result = await fetchFinnhubCandles(symbol: symbol, from: period1, to: period2),
                let highest = result.closes.max() { return highest }
             return await fetchHighestCloseFromYahoo(symbol: symbol, period1: period1, period2: period2)
         case .yahoo:
@@ -192,7 +192,7 @@ extension StockService {
     }
 
     private func fetchSwingLevelsFromFinnhub(symbol: String, period1: Int, period2: Int) async -> SwingLevelCacheEntry? {
-        guard let result = await fetchFinnhubDailyCandles(symbol: symbol, from: period1, to: period2) else { return nil }
+        guard let result = await fetchFinnhubCandles(symbol: symbol, from: period1, to: period2) else { return nil }
         return buildSwingEntry(closes: result.closes, timestamps: result.timestamps)
     }
 

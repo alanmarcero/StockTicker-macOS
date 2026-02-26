@@ -1091,18 +1091,18 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
     // MARK: - Finnhub integration tests
 
-    func testDailyAnalysis_equity_withKey_usesYahoo() async {
+    func testDailyAnalysis_equity_withKey_usesFinnhub() async {
         let mockClient = MockHTTPClient()
 
         let closes = (0..<30).map { 100.0 + Double($0) }
         let closesJSON = closes.map { String($0) }.joined(separator: ",")
         let timestamps = (0..<30).map { String(1000 + $0 * 86400) }.joined(separator: ",")
-        let yahooJSON = """
-        {"chart":{"result":[{"meta":{"symbol":"AAPL","regularMarketPrice":150.50,"chartPreviousClose":148.00},"timestamp":[\(timestamps)],"indicators":{"quote":[{"close":[\(closesJSON)]}]}}]}}
+        let finnhubJSON = """
+        {"s":"ok","c":[\(closesJSON)],"t":[\(timestamps)]}
         """
         mockClient.patternResponses.append((
-            pattern: "query1.finance.yahoo.com/v8/finance/chart/AAPL",
-            result: .success((yahooJSON.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://query1.finance.yahoo.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
+            pattern: "finnhub.io/api/v1/stock/candle",
+            result: .success((finnhubJSON.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://finnhub.io")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
         ))
 
         let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
@@ -1114,7 +1114,7 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result?.dailyEMA)
 
         let finnhubRequests = mockClient.requestedURLs.filter { $0.absoluteString.contains("finnhub") }
-        XCTAssertTrue(finnhubRequests.isEmpty, "Historical data should always use Yahoo (candle endpoint is paid)")
+        XCTAssertFalse(finnhubRequests.isEmpty, "Historical data should prefer Finnhub for compatible symbols")
     }
 
     func testFinnhubRouting_indexSymbol_usesYahooDirectly() async {

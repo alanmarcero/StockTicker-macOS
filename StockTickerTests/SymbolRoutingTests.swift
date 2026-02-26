@@ -3,11 +3,11 @@ import XCTest
 
 final class SymbolRoutingTests: XCTestCase {
 
-    // MARK: - historicalSource (always Yahoo — candle endpoint requires paid tier)
+    // MARK: - historicalSource (prefers Finnhub for compatible symbols)
 
-    func testHistoricalSource_equity_withKey_returnsYahoo() {
+    func testHistoricalSource_equity_withKey_returnsFinnhub() {
         let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .yahoo)
+        XCTAssertEqual(source, .finnhub)
     }
 
     func testHistoricalSource_index_withKey_returnsYahoo() {

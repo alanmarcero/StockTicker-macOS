@@ -69,9 +69,10 @@ enum SymbolRouting {
         !symbol.hasPrefix("^") && !symbol.contains("-")
     }
 
-    /// Historical price routing — always Yahoo (Finnhub candle endpoint requires paid tier)
+    /// Historical price routing — prefers Finnhub for compatible symbols when API key is available
     static func historicalSource(for symbol: String, finnhubApiKey: String) -> Source {
-        .yahoo
+        guard !finnhubApiKey.isEmpty, isFinnhubCompatible(symbol) else { return .yahoo }
+        return .finnhub
     }
 
     /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote)
