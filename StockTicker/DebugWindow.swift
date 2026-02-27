@@ -191,6 +191,14 @@ struct RequestRowView: View {
             }
             .buttonStyle(.bordered)
 
+            Button {
+                copyToClipboard(entry.copyableAll)
+            } label: {
+                Label("Copy All", systemImage: "doc.on.doc")
+                    .font(.caption)
+            }
+            .buttonStyle(.bordered)
+
             Spacer()
         }
     }

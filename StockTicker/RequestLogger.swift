@@ -133,6 +133,10 @@ struct RequestLogEntry: Identifiable, Sendable {
         \(formattedResponseBody)
         """
     }
+
+    var copyableAll: String {
+        "\(copyableRequest)\n\n---\n\n\(copyableResponse)"
+    }
 }
 
 // MARK: - Request Logger
