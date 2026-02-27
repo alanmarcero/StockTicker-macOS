@@ -224,16 +224,6 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(.separator())
         menu.addItem(.separator())  // Ticker items inserted before this
 
-        let legendItem = NSMenuItem()
-        legendItem.isEnabled = false
-        let legendString = NSMutableAttributedString()
-        legendString.append(.styled("●", font: MenuItemFactory.monoFont, color: .systemRed))
-        legendString.append(.styled(" 2%  ", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
-        legendString.append(.styled("●", font: MenuItemFactory.monoFont, color: .systemOrange))
-        legendString.append(.styled(" 5% of 52W Low", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
-        legendItem.attributedTitle = legendString
-        menu.addItem(legendItem)
-
         menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
 
         let quarterlyItem = MenuItemFactory.action(title: "Extra Stats...", action: #selector(showQuarterlyPanel), target: self, keyEquivalent: "q")

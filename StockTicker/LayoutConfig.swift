@@ -13,6 +13,7 @@ enum LayoutConfig {
         static let percentWidth = 7
         static let ytdWidth = 13  // "YTD: +12.34%"
         static let highWidth = 14  // "High: -12.34%"
+        static let lowWidth = 13  // "Low: +12.34%"
         static let extendedHoursWidth = 12  // "Pre: +12.34%"
     }
 

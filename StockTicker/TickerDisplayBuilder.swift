@@ -22,6 +22,11 @@ extension StockQuote {
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
         return pct >= -5.0 ? .systemGreen : .systemRed
     }
+    var lowestCloseColor: NSColor {
+        guard let pct = lowestCloseChangePercent else { return .secondaryLabelColor }
+        if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
+        return pct <= 5.0 ? .systemRed : .systemGreen
+    }
 }
 
 // MARK: - Attributed String Helpers
@@ -115,14 +120,6 @@ enum TickerDisplayBuilder {
     static func tickerTitle(quote: StockQuote, highlight: HighlightConfig, date: Date = Date()) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
-        if quote.isNear52WeekLow {
-            result.append(.styled("● ", font: MenuItemFactory.monoFont, color: .systemRed))
-        } else if quote.isApproaching52WeekLow {
-            result.append(.styled("● ", font: MenuItemFactory.monoFont, color: .systemOrange))
-        } else {
-            result.append(.styled("  ", font: MenuItemFactory.monoFont))
-        }
-
         let symbolStr = padded(quote.symbol, toLength: LayoutConfig.Ticker.symbolWidth)
         let marketCapStr = padded(quote.formattedMarketCap, toLength: LayoutConfig.Ticker.marketCapWidth)
         let percentStr = padded(quote.formattedChangePercent, toLength: LayoutConfig.Ticker.percentWidth)
@@ -137,6 +134,7 @@ enum TickerDisplayBuilder {
 
         appendYTDSection(to: result, quote: quote, highlight: highlight)
         appendHighestCloseSection(to: result, quote: quote, highlight: highlight)
+        appendLowestCloseSection(to: result, quote: quote, highlight: highlight)
         appendExtendedHoursSection(to: result, quote: quote, highlight: highlight, date: date)
 
         return result
@@ -160,6 +158,15 @@ enum TickerDisplayBuilder {
                               font: MenuItemFactory.monoFont, color: highColor, backgroundColor: highBgColor))
     }
 
+    static func appendLowestCloseSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
+        guard let lowPercent = quote.formattedLowestCloseChangePercent else { return }
+        let lowContent = "Low: \(lowPercent)"
+        let paddedContent = padded(lowContent, toLength: LayoutConfig.Ticker.lowWidth)
+        let (lowColor, lowBgColor) = highlight.resolve(defaultColor: quote.lowestCloseColor)
+        result.append(.styled("  \(paddedContent)",
+                              font: MenuItemFactory.monoFont, color: lowColor, backgroundColor: lowBgColor))
+    }
+
     static func appendExtendedHoursSection(
         to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig, date: Date = Date()
     ) {
@@ -170,6 +177,9 @@ enum TickerDisplayBuilder {
         }
         if quote.formattedHighestCloseChangePercent == nil {
             result.append(.styled(emptyPadding(width: LayoutConfig.Ticker.highWidth), font: MenuItemFactory.monoFont))
+        }
+        if quote.formattedLowestCloseChangePercent == nil {
+            result.append(.styled(emptyPadding(width: LayoutConfig.Ticker.lowWidth), font: MenuItemFactory.monoFont))
         }
 
         if quote.shouldShowExtendedHours(at: date), let extPercent = quote.formattedExtendedHoursChangePercent {

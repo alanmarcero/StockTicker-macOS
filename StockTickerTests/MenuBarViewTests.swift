@@ -16,6 +16,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.from(configString: "ytdDesc"), .ytdDesc)
         XCTAssertEqual(SortOption.from(configString: "highAsc"), .highAsc)
         XCTAssertEqual(SortOption.from(configString: "highDesc"), .highDesc)
+        XCTAssertEqual(SortOption.from(configString: "lowAsc"), .lowAsc)
+        XCTAssertEqual(SortOption.from(configString: "lowDesc"), .lowDesc)
         XCTAssertEqual(SortOption.from(configString: "extendedAsc"), .extendedAsc)
         XCTAssertEqual(SortOption.from(configString: "extendedDesc"), .extendedDesc)
     }
@@ -46,6 +48,8 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(SortOption.ytdDesc.configString, "ytdDesc")
         XCTAssertEqual(SortOption.highAsc.configString, "highAsc")
         XCTAssertEqual(SortOption.highDesc.configString, "highDesc")
+        XCTAssertEqual(SortOption.lowAsc.configString, "lowAsc")
+        XCTAssertEqual(SortOption.lowDesc.configString, "lowDesc")
         XCTAssertEqual(SortOption.extendedAsc.configString, "extendedAsc")
         XCTAssertEqual(SortOption.extendedDesc.configString, "extendedDesc")
     }
@@ -63,7 +67,7 @@ final class SortOptionTests: XCTestCase {
     func testIsExtendedHoursSort_falseForRegular() {
         let regularOptions: [SortOption] = [
             .tickerAsc, .tickerDesc, .marketCapAsc, .marketCapDesc,
-            .percentAsc, .percentDesc, .ytdAsc, .ytdDesc, .highAsc, .highDesc
+            .percentAsc, .percentDesc, .ytdAsc, .ytdDesc, .highAsc, .highDesc, .lowAsc, .lowDesc
         ]
         for option in regularOptions {
             XCTAssertFalse(option.isExtendedHoursSort, "\(option) should not be extended hours sort")
@@ -230,6 +234,36 @@ final class SortOptionSortTests: XCTestCase {
 
         // MSFT: nil (treated as 0%), AAPL: -10%
         XCTAssertEqual(sorted, ["MSFT", "AAPL"])
+    }
+
+    // MARK: - Lowest close percent sorting
+
+    func testSort_lowAsc_sortsByLowestClosePercentAscending() {
+        let lowQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 100.0),  // +50%
+            "MSFT": StockQuote(symbol: "MSFT", price: 310.0, previousClose: 305.0, lowestClose: 300.0),  // +3.33%
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 138.0, lowestClose: 130.0), // +7.69%
+            "SPY": StockQuote(symbol: "SPY", price: 520.0, previousClose: 515.0, lowestClose: 500.0),    // +4%
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
+        let sorted = SortOption.lowAsc.sort(symbols, using: lowQuotes)
+
+        // MSFT: +3.33%, SPY: +4%, GOOGL: +7.69%, AAPL: +50%
+        XCTAssertEqual(sorted, ["MSFT", "SPY", "GOOGL", "AAPL"])
+    }
+
+    func testSort_lowDesc_sortsByLowestClosePercentDescending() {
+        let lowQuotes: [String: StockQuote] = [
+            "AAPL": StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 100.0),  // +50%
+            "MSFT": StockQuote(symbol: "MSFT", price: 310.0, previousClose: 305.0, lowestClose: 300.0),  // +3.33%
+            "GOOGL": StockQuote(symbol: "GOOGL", price: 140.0, previousClose: 138.0, lowestClose: 130.0), // +7.69%
+            "SPY": StockQuote(symbol: "SPY", price: 520.0, previousClose: 515.0, lowestClose: 500.0),    // +4%
+        ]
+        let symbols = ["AAPL", "MSFT", "GOOGL", "SPY"]
+        let sorted = SortOption.lowDesc.sort(symbols, using: lowQuotes)
+
+        // AAPL: +50%, GOOGL: +7.69%, SPY: +4%, MSFT: +3.33%
+        XCTAssertEqual(sorted, ["AAPL", "GOOGL", "SPY", "MSFT"])
     }
 
     func testSort_ytdDesc_missingYTDData_treatsAsZero() {

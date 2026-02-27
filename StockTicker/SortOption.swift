@@ -13,6 +13,8 @@ enum SortOption: String, CaseIterable {
     case ytdDesc = "YTD % ↓"
     case highAsc = "High % ↑"
     case highDesc = "High % ↓"
+    case lowAsc = "Low % ↑"
+    case lowDesc = "Low % ↓"
     case extendedAsc = "AH % ↑"
     case extendedDesc = "AH % ↓"
 
@@ -28,6 +30,8 @@ enum SortOption: String, CaseIterable {
         case "ytdDesc": return .ytdDesc
         case "highAsc": return .highAsc
         case "highDesc": return .highDesc
+        case "lowAsc": return .lowAsc
+        case "lowDesc": return .lowDesc
         case "extendedAsc": return .extendedAsc
         case "extendedDesc": return .extendedDesc
         default: return .percentDesc
@@ -46,6 +50,8 @@ enum SortOption: String, CaseIterable {
         case .ytdDesc: return "ytdDesc"
         case .highAsc: return "highAsc"
         case .highDesc: return "highDesc"
+        case .lowAsc: return "lowAsc"
+        case .lowDesc: return "lowDesc"
         case .extendedAsc: return "extendedAsc"
         case .extendedDesc: return "extendedDesc"
         }
@@ -70,6 +76,12 @@ enum SortOption: String, CaseIterable {
         }
         case .highDesc: return symbols.sorted {
             (quotes[$0]?.highestCloseChangePercent ?? 0) > (quotes[$1]?.highestCloseChangePercent ?? 0)
+        }
+        case .lowAsc: return symbols.sorted {
+            (quotes[$0]?.lowestCloseChangePercent ?? 0) < (quotes[$1]?.lowestCloseChangePercent ?? 0)
+        }
+        case .lowDesc: return symbols.sorted {
+            (quotes[$0]?.lowestCloseChangePercent ?? 0) > (quotes[$1]?.lowestCloseChangePercent ?? 0)
         }
         case .extendedAsc: return symbols.sorted {
             switch (Self.extendedPercent(quotes[$0]), Self.extendedPercent(quotes[$1])) {

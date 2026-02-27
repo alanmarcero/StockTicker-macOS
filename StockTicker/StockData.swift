@@ -437,16 +437,20 @@ struct StockQuote: Identifiable, Sendable {
         (highestCloseChangePercent ?? 0) >= 0
     }
 
-    // MARK: - 52-Week Low Properties
+    // MARK: - Lowest Close Properties
 
-    var isNear52WeekLow: Bool {
-        guard let lowest = lowestClose, lowest > 0 else { return false }
-        return price <= lowest * 1.02
+    var lowestCloseChangePercent: Double? {
+        guard let lowest = lowestClose, lowest > 0 else { return nil }
+        return ((price - lowest) / lowest) * 100
     }
 
-    var isApproaching52WeekLow: Bool {
-        guard let lowest = lowestClose, lowest > 0 else { return false }
-        return price <= lowest * 1.05 && !isNear52WeekLow
+    var formattedLowestCloseChangePercent: String? {
+        guard let percent = lowestCloseChangePercent else { return nil }
+        return Formatting.signedPercent(percent, isPositive: percent >= 0)
+    }
+
+    var lowestCloseIsPositive: Bool {
+        (lowestCloseChangePercent ?? 0) >= 0
     }
 }
 

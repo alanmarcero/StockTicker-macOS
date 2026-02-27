@@ -373,69 +373,41 @@ final class StockQuoteTests: XCTestCase {
         XCTAssertEqual(updated.highestClose, 200.0)
     }
 
-    // MARK: - 52-Week Low Properties
+    // MARK: - Lowest Close Properties
 
-    func testIsNear52WeekLow_priceAtLow_returnsTrue() {
+    func testLowestCloseChangePercent_calculatesCorrectly() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 100.0)
+        XCTAssertEqual(quote.lowestCloseChangePercent!, 50.0, accuracy: 0.01)
+    }
+
+    func testLowestCloseChangePercent_atLow_returnsZero() {
         let quote = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 102.0, lowestClose: 100.0)
-        XCTAssertTrue(quote.isNear52WeekLow)
+        XCTAssertEqual(quote.lowestCloseChangePercent!, 0.0, accuracy: 0.01)
     }
 
-    func testIsNear52WeekLow_priceWithin2Percent_returnsTrue() {
-        // 100.0 * 1.02 = 102.0, price of 102.0 should be within range
-        let quote = StockQuote(symbol: "AAPL", price: 102.0, previousClose: 103.0, lowestClose: 100.0)
-        XCTAssertTrue(quote.isNear52WeekLow)
+    func testLowestCloseChangePercent_belowLow_returnsNegative() {
+        let quote = StockQuote(symbol: "AAPL", price: 95.0, previousClose: 102.0, lowestClose: 100.0)
+        XCTAssertEqual(quote.lowestCloseChangePercent!, -5.0, accuracy: 0.01)
     }
 
-    func testIsNear52WeekLow_priceAbove2Percent_returnsFalse() {
-        // 100.0 * 1.02 = 102.0, price of 102.01 should be outside range
-        let quote = StockQuote(symbol: "AAPL", price: 102.01, previousClose: 103.0, lowestClose: 100.0)
-        XCTAssertFalse(quote.isNear52WeekLow)
+    func testLowestCloseChangePercent_noLowestClose_returnsNil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        XCTAssertNil(quote.lowestCloseChangePercent)
     }
 
-    func testIsNear52WeekLow_priceBelowLow_returnsTrue() {
-        let quote = StockQuote(symbol: "AAPL", price: 99.0, previousClose: 102.0, lowestClose: 100.0)
-        XCTAssertTrue(quote.isNear52WeekLow)
+    func testLowestCloseChangePercent_zeroLowestClose_returnsNil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 0.0)
+        XCTAssertNil(quote.lowestCloseChangePercent)
     }
 
-    func testIsNear52WeekLow_noLowestClose_returnsFalse() {
-        let quote = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 102.0)
-        XCTAssertFalse(quote.isNear52WeekLow)
+    func testFormattedLowestCloseChangePercent_positive() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 100.0)
+        XCTAssertEqual(quote.formattedLowestCloseChangePercent, "+50.00%")
     }
 
-    func testIsNear52WeekLow_zeroLowestClose_returnsFalse() {
-        let quote = StockQuote(symbol: "AAPL", price: 0.0, previousClose: 0.0, lowestClose: 0.0)
-        XCTAssertFalse(quote.isNear52WeekLow)
-    }
-
-    func testIsApproaching52WeekLow_within5Percent_returnsTrue() {
-        // 100.0 * 1.05 = 105.0, price of 104.0 is within 5% but above 2%
-        let quote = StockQuote(symbol: "AAPL", price: 104.0, previousClose: 106.0, lowestClose: 100.0)
-        XCTAssertTrue(quote.isApproaching52WeekLow)
-        XCTAssertFalse(quote.isNear52WeekLow)
-    }
-
-    func testIsApproaching52WeekLow_atBoundary_returnsTrue() {
-        // 100.0 * 1.05 = 105.0, price of 105.0 should be within range
-        let quote = StockQuote(symbol: "AAPL", price: 105.0, previousClose: 106.0, lowestClose: 100.0)
-        XCTAssertTrue(quote.isApproaching52WeekLow)
-    }
-
-    func testIsApproaching52WeekLow_above5Percent_returnsFalse() {
-        // 100.0 * 1.05 = 105.0, price of 105.01 should be outside range
-        let quote = StockQuote(symbol: "AAPL", price: 105.01, previousClose: 106.0, lowestClose: 100.0)
-        XCTAssertFalse(quote.isApproaching52WeekLow)
-    }
-
-    func testIsApproaching52WeekLow_within2Percent_returnsFalse() {
-        // Within 2% triggers isNear52WeekLow, not isApproaching
-        let quote = StockQuote(symbol: "AAPL", price: 101.0, previousClose: 106.0, lowestClose: 100.0)
-        XCTAssertFalse(quote.isApproaching52WeekLow)
-        XCTAssertTrue(quote.isNear52WeekLow)
-    }
-
-    func testIsApproaching52WeekLow_noLowestClose_returnsFalse() {
-        let quote = StockQuote(symbol: "AAPL", price: 104.0, previousClose: 106.0)
-        XCTAssertFalse(quote.isApproaching52WeekLow)
+    func testFormattedLowestCloseChangePercent_nil() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        XCTAssertNil(quote.formattedLowestCloseChangePercent)
     }
 
     func testWithLowestClose_preservesOtherFields() {
