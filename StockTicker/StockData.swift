@@ -16,16 +16,6 @@ enum TradingHours {
     static let extendedHoursPriceThreshold = 0.001
 }
 
-// MARK: - Finnhub Candle API Response Model
-
-struct FinnhubCandleResponse: Codable {
-    let c: [Double]?
-    let t: [Int]?
-    let s: String
-
-    var isValid: Bool { s == "ok" }
-}
-
 // MARK: - Finnhub Quote API Response Model
 
 struct FinnhubQuoteResponse: Codable {

@@ -5,61 +5,11 @@ import Foundation
 extension StockService {
 
     private func fetchChartCloses(symbol: String, range: String, interval: String) async -> [Double]? {
-        switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
-        case .finnhub:
-            if let closes = await fetchChartClosesFromFinnhub(symbol: symbol, range: range, interval: interval) { return closes }
-            return await fetchChartClosesFromYahoo(symbol: symbol, range: range, interval: interval)
-        case .yahoo:
-            return await fetchChartClosesFromYahoo(symbol: symbol, range: range, interval: interval)
-        }
-    }
-
-    private func fetchChartClosesFromFinnhub(symbol: String, range: String, interval: String) async -> [Double]? {
-        guard let resolution = finnhubResolution(interval) else { return nil }
-        let now = Int(Date().timeIntervalSince1970)
-        guard let from = finnhubFromTimestamp(range: range, now: now) else { return nil }
-        return await fetchFinnhubCloses(symbol: symbol, resolution: resolution, from: from, to: now)
-    }
-
-    private func fetchChartClosesFromYahoo(symbol: String, range: String, interval: String) async -> [Double]? {
         guard let url = APIEndpoints.chartURL(symbol: symbol, range: range, interval: interval) else { return nil }
         return await fetchYahooCloses(symbol: symbol, url: url)
     }
 
-    // MARK: - Finnhub Conversion Helpers
-
-    private func finnhubResolution(_ yahooInterval: String) -> String? {
-        switch yahooInterval {
-        case "1d": return "D"
-        case "1wk": return "W"
-        case "1mo": return "M"
-        default: return nil
-        }
-    }
-
-    private func finnhubFromTimestamp(range: String, now: Int) -> Int? {
-        switch range {
-        case "1mo": return now - 30 * 24 * 60 * 60
-        case "6mo": return now - 180 * 24 * 60 * 60
-        case "1y": return now - 365 * 24 * 60 * 60
-        case "2y": return now - 730 * 24 * 60 * 60
-        default: return nil
-        }
-    }
-
     private func fetchWeeklyClosesWithTimestamps(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
-        switch SymbolRouting.historicalSource(for: symbol, finnhubApiKey: finnhubApiKey) {
-        case .finnhub:
-            let now = Int(Date().timeIntervalSince1970)
-            let from = now - 180 * 24 * 60 * 60
-            if let result = await fetchFinnhubCandles(symbol: symbol, resolution: "W", from: from, to: now) { return result }
-            return await fetchWeeklyClosesFromYahoo(symbol: symbol)
-        case .yahoo:
-            return await fetchWeeklyClosesFromYahoo(symbol: symbol)
-        }
-    }
-
-    private func fetchWeeklyClosesFromYahoo(symbol: String) async -> (closes: [Double], timestamps: [Int])? {
         guard let url = APIEndpoints.chartURL(symbol: symbol, range: "6mo", interval: "1wk") else { return nil }
         return await fetchYahooClosesAndTimestamps(symbol: symbol, url: url)
     }

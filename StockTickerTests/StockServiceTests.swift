@@ -1093,32 +1093,6 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
 
     // MARK: - Finnhub integration tests
 
-    func testDailyAnalysis_equity_withKey_usesFinnhub() async {
-        let mockClient = MockHTTPClient()
-
-        let closes = (0..<30).map { 100.0 + Double($0) }
-        let closesJSON = closes.map { String($0) }.joined(separator: ",")
-        let timestamps = (0..<30).map { String(1000 + $0 * 86400) }.joined(separator: ",")
-        let finnhubJSON = """
-        {"s":"ok","c":[\(closesJSON)],"t":[\(timestamps)]}
-        """
-        mockClient.patternResponses.append((
-            pattern: "finnhub.io/api/v1/stock/candle",
-            result: .success((finnhubJSON.data(using: .utf8)!, HTTPURLResponse(url: URL(string: "https://finnhub.io")!, statusCode: 200, httpVersion: nil, headerFields: nil)!))
-        ))
-
-        let service = StockService(httpClient: mockClient, finnhubApiKey: "test_key")
-        let result = await service.fetchDailyAnalysis(symbol: "AAPL", period1: 1000, period2: 2000)
-
-        XCTAssertNotNil(result)
-        XCTAssertEqual(result?.highestClose, 129.0)
-        XCTAssertNotNil(result?.rsi)
-        XCTAssertNotNil(result?.dailyEMA)
-
-        let finnhubRequests = mockClient.requestedURLs.filter { $0.absoluteString.contains("finnhub") }
-        XCTAssertFalse(finnhubRequests.isEmpty, "Historical data should prefer Finnhub for compatible symbols")
-    }
-
     func testFinnhubRouting_indexSymbol_usesYahooDirectly() async {
         let mockClient = MockHTTPClient()
 

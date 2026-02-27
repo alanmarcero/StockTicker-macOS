@@ -137,4 +137,20 @@ final class DebugViewModelTests: XCTestCase {
 
         XCTAssertNil(viewModel.endpointFilter)
     }
+
+    func testCopyAll_copiesToClipboard() async {
+        let logger = RequestLogger()
+        let url = URL(string: "https://example.com/test")!
+        await logger.log(RequestLogEntry(url: url, statusCode: 500, responseSize: 10, duration: 0.1, error: "Server error"))
+
+        let viewModel = DebugViewModel(logger: logger)
+        viewModel.refresh()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertFalse(viewModel.entries.isEmpty)
+
+        viewModel.copyAll()
+
+        let clipboard = NSPasteboard.general.string(forType: .string) ?? ""
+        XCTAssertTrue(clipboard.contains("example.com/test"))
+    }
 }

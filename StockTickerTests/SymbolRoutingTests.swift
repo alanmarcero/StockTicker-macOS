@@ -3,23 +3,6 @@ import XCTest
 
 final class SymbolRoutingTests: XCTestCase {
 
-    // MARK: - historicalSource (prefers Finnhub for compatible symbols)
-
-    func testHistoricalSource_equity_withKey_returnsFinnhub() {
-        let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .finnhub)
-    }
-
-    func testHistoricalSource_index_withKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "^GSPC", finnhubApiKey: "test_key")
-        XCTAssertEqual(source, .yahoo)
-    }
-
-    func testHistoricalSource_equity_nilKey_returnsYahoo() {
-        let source = SymbolRouting.historicalSource(for: "AAPL", finnhubApiKey: "")
-        XCTAssertEqual(source, .yahoo)
-    }
-
     // MARK: - isFinnhubCompatible
 
     func testIsFinnhubCompatible_equity_returnsTrue() {

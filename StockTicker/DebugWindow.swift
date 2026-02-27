@@ -54,6 +54,11 @@ struct DebugView: View {
                 Text("\(viewModel.entries.count) errors")
                     .foregroundColor(.secondary)
                     .font(.caption)
+                Button("Copy All") {
+                    viewModel.copyAll()
+                }
+                .buttonStyle(.borderless)
+                .disabled(viewModel.entries.isEmpty)
                 Button("Clear") {
                     viewModel.clear()
                 }
@@ -240,6 +245,14 @@ class DebugViewModel: ObservableObject {
             let lastError = await logger.getLastError()
             lastErrorMessage = lastError?.error ?? lastError.map { "HTTP \($0.statusCode ?? 0)" }
         }
+    }
+
+    func copyAll() {
+        let text = filteredEntries.map { entry in
+            "\(entry.copyableRequest)\n\(entry.copyableResponse)"
+        }.joined(separator: "\n\n---\n\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     func clear() {

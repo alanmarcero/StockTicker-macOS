@@ -59,23 +59,12 @@ extension URLResponse {
 // MARK: - Symbol Routing
 
 enum SymbolRouting {
-    enum Source {
-        case finnhub
-        case yahoo
-    }
-
     /// Whether a symbol type is supported by Finnhub (equities/ETFs only, not indices or crypto)
     static func isFinnhubCompatible(_ symbol: String) -> Bool {
         !symbol.hasPrefix("^") && !symbol.contains("-")
     }
 
-    /// Historical price routing — prefers Finnhub for compatible symbols when API key is available
-    static func historicalSource(for symbol: String, finnhubApiKey: String) -> Source {
-        guard !finnhubApiKey.isEmpty, isFinnhubCompatible(symbol) else { return .yahoo }
-        return .finnhub
-    }
-
-    /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote)
+    /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote only)
     static func partition(_ symbols: [String], finnhubApiKey: String) -> (finnhub: [String], yahoo: [String]) {
         guard !finnhubApiKey.isEmpty else { return ([], symbols) }
         var finnhub: [String] = []
@@ -100,7 +89,6 @@ actor StockService: StockServiceProtocol {
 
     enum APIEndpoints {
         static let chartBase = "https://query1.finance.yahoo.com/v8/finance/chart/"
-        static let finnhubCandleBase = "https://finnhub.io/api/v1/stock/candle"
         static let finnhubQuoteBase = "https://finnhub.io/api/v1/quote"
         static let cookieSetup = "https://fc.yahoo.com/v1/test"
         static let crumbFetch = "https://query2.finance.yahoo.com/v1/test/getcrumb"
