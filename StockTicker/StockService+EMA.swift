@@ -61,38 +61,28 @@ extension StockService {
         // Use completed weekly bars only (before Friday 2PM) for all weekly metrics
         // to ensure crossover/crossdown/above/below are consistent with each other.
         //
-        // During sneak peek, two fixes:
-        // 1. Collapse current-week bars: Yahoo may return multiple bars for the current week
-        //    (e.g., yesterday's close + today's intraday). Use completed + latest close only,
-        //    so intermediate bars don't mask a crossover.
-        // 2. Fallback to completed bars: if the crossover happened in the most recently
-        //    completed week and the current week continues above, the collapsed view still
-        //    misses it. Check completed bars as fallback for crossover/crossdown.
+        // During sneak peek, collapse current-week bars: Yahoo may return multiple bars
+        // for the current week (e.g., yesterday's close + today's intraday). Use
+        // completed + latest close only, so intermediate bars don't mask a crossover.
         let weeklyCloses: [Double]?
-        let completedCloses: [Double]?
         if let weeklyData = weekly {
             let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
             if isCurrentWeekSneakPeek(now: now) {
                 let completed = count > 0 ? Array(weeklyData.closes[0..<count]) : []
-                completedCloses = completed.isEmpty ? nil : completed
                 if let lastClose = weeklyData.closes.last {
                     weeklyCloses = completed + [lastClose]
                 } else {
-                    weeklyCloses = completedCloses
+                    weeklyCloses = completed.isEmpty ? nil : completed
                 }
             } else {
                 weeklyCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
-                completedCloses = nil
             }
         } else {
             weeklyCloses = nil
-            completedCloses = nil
         }
         let weekAbove = weeklyCloses.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0) }
         let crossover = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
-            ?? completedCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
         let crossdown = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossdown(closes: $0) }
-            ?? completedCloses.flatMap { EMAAnalysis.detectWeeklyCrossdown(closes: $0) }
         let belowCount = weeklyCloses.flatMap { EMAAnalysis.countWeeksBelow(closes: $0) }
 
         guard day != nil || weekEMA != nil else { return nil }
