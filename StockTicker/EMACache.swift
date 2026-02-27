@@ -40,6 +40,7 @@ actor EMACacheManager {
     private let storage: CacheStorage<EMACacheData>
     private let dateProvider: DateProvider
     private var cache: EMACacheData?
+    private var lastSneakPeekDate: Date?
 
     init(
         fileSystem: FileSystemProtocol = FileManager.default,
@@ -146,11 +147,16 @@ actor EMACacheManager {
               let hour = components.hour,
               hour >= 14, hour < 16 else { return false }
 
-        // Must be 5+ minutes since last update
-        let formatter = ISO8601DateFormatter()
-        guard let lastDate = formatter.date(from: cache.lastUpdated) else { return false }
+        // First entry into sneak peek window: trigger immediately
+        guard let lastSneak = lastSneakPeekDate,
+              calendar.isDate(lastSneak, inSameDayAs: now) else { return true }
 
-        return now.timeIntervalSince(lastDate) >= SneakPeek.refreshInterval
+        // Periodic refresh: every 5 minutes within the window
+        return now.timeIntervalSince(lastSneak) >= SneakPeek.refreshInterval
+    }
+
+    func markSneakPeekDone() {
+        lastSneakPeekDate = dateProvider.now()
     }
 
     // MARK: - Private

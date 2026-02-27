@@ -282,13 +282,12 @@ final class EMACacheTests: XCTestCase {
 
     // MARK: - Sneak Peek Refresh Tests
 
-    func testNeedsSneakPeekRefresh_friday2PM_cacheUpdatedBefore_true() async {
+    func testNeedsSneakPeekRefresh_friday2PM_firstEntry_true() async {
         let mockFS = MockFileSystem()
         let et = MarketSchedule.easternTimeZone
-        // Friday Feb 20 2026, 2:30 PM ET
+        // Friday Feb 20 2026, 2:30 PM ET — first entry into sneak peek window
         let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 30, timeZone: et)
 
-        // Cache updated at 10 AM ET same day
         let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 10, minute: 0, timeZone: et)
         let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
 
@@ -310,13 +309,13 @@ final class EMACacheTests: XCTestCase {
         XCTAssertTrue(needs)
     }
 
-    func testNeedsSneakPeekRefresh_friday_withinFiveMinutes_false() async {
+    func testNeedsSneakPeekRefresh_friday2PM_firstEntry_ignoresRecentCacheUpdate_true() async {
         let mockFS = MockFileSystem()
         let et = MarketSchedule.easternTimeZone
-        // Friday Feb 20 2026, 2:03 PM ET
-        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 3, timeZone: et)
+        // Friday Feb 20 2026, 2:01 PM ET — cache was updated 1 minute ago by backfill
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 1, timeZone: et)
 
-        // Cache updated at 2:00 PM ET same day (3 minutes ago)
+        // Cache updated at 2:00 PM ET (backfill just wrote an entry)
         let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 0, timeZone: et)
         let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
 
@@ -334,20 +333,17 @@ final class EMACacheTests: XCTestCase {
         )
         await cacheManager.load()
 
+        // First entry should trigger regardless of cache.lastUpdated
         let needs = await cacheManager.needsSneakPeekRefresh()
-        XCTAssertFalse(needs)
+        XCTAssertTrue(needs)
     }
 
-    func testNeedsSneakPeekRefresh_friday_afterFiveMinutes_true() async {
+    func testNeedsSneakPeekRefresh_afterMarkDone_withinFiveMinutes_false() async {
         let mockFS = MockFileSystem()
         let et = MarketSchedule.easternTimeZone
-        // Friday Feb 20 2026, 2:10 PM ET
-        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 10, timeZone: et)
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 0, timeZone: et)
 
-        // Cache updated at 2:05 PM ET same day (5 minutes ago)
-        let cacheTimeProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 5, timeZone: et)
-        let cacheTimestamp = ISO8601DateFormatter().string(from: cacheTimeProvider.now())
-
+        let cacheTimestamp = ISO8601DateFormatter().string(from: mockDateProvider.now())
         let cacheData = EMACacheData(
             lastUpdated: cacheTimestamp,
             entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
@@ -361,6 +357,42 @@ final class EMACacheTests: XCTestCase {
             cacheDirectory: testCacheDirectory
         )
         await cacheManager.load()
+
+        // Simulate sneak peek was done at 2:00 PM
+        await cacheManager.markSneakPeekDone()
+
+        // Advance to 2:03 PM (3 minutes later — within 5-minute interval)
+        mockDateProvider.currentDate = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 3, timeZone: et).now()
+
+        let needs = await cacheManager.needsSneakPeekRefresh()
+        XCTAssertFalse(needs)
+    }
+
+    func testNeedsSneakPeekRefresh_afterMarkDone_afterFiveMinutes_true() async {
+        let mockFS = MockFileSystem()
+        let et = MarketSchedule.easternTimeZone
+        let mockDateProvider = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 0, timeZone: et)
+
+        let cacheTimestamp = ISO8601DateFormatter().string(from: mockDateProvider.now())
+        let cacheData = EMACacheData(
+            lastUpdated: cacheTimestamp,
+            entries: ["AAPL": EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            dateProvider: mockDateProvider,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+
+        // Simulate sneak peek was done at 2:00 PM
+        await cacheManager.markSneakPeekDone()
+
+        // Advance to 2:05 PM (5 minutes later)
+        mockDateProvider.currentDate = MockDateProvider(year: 2026, month: 2, day: 20, hour: 14, minute: 5, timeZone: et).now()
 
         let needs = await cacheManager.needsSneakPeekRefresh()
         XCTAssertTrue(needs)

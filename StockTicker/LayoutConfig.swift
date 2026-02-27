@@ -28,14 +28,14 @@ enum LayoutConfig {
     // MARK: - Index Marquee
 
     enum Marquee {
-        static let width: CGFloat = 450
+        static let width: CGFloat = 500
         static let height: CGFloat = 18
     }
 
     // MARK: - News Headlines
 
     enum Headlines {
-        static let maxLength = 70
+        static let maxLength = 85
         static let itemsPerSource = 5
     }
 

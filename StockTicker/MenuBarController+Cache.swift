@@ -427,6 +427,7 @@ extension MenuBarController {
         }
 
         await emaCacheManager.clearForDailyRefresh()
+        await emaCacheManager.markSneakPeekDone()
 
         let symbols = allWatchlistSymbols
         let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
