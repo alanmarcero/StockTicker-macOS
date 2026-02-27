@@ -6,11 +6,21 @@ struct HighestCloseCacheData: Codable {
     let quarterRange: String
     let lastUpdated: String
     var prices: [String: Double]
+    var lowestClosePrices: [String: Double]
 
-    init(quarterRange: String, lastUpdated: String = "", prices: [String: Double] = [:]) {
+    init(quarterRange: String, lastUpdated: String = "", prices: [String: Double] = [:], lowestClosePrices: [String: Double] = [:]) {
         self.quarterRange = quarterRange
         self.lastUpdated = lastUpdated
         self.prices = prices
+        self.lowestClosePrices = lowestClosePrices
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        quarterRange = try container.decode(String.self, forKey: .quarterRange)
+        lastUpdated = try container.decode(String.self, forKey: .lastUpdated)
+        prices = try container.decode([String: Double].self, forKey: .prices)
+        lowestClosePrices = try container.decodeIfPresent([String: Double].self, forKey: .lowestClosePrices) ?? [:]
     }
 }
 
@@ -61,6 +71,20 @@ actor HighestCloseCacheManager {
         cache?.prices ?? [:]
     }
 
+    func getLowestClose(for symbol: String) -> Double? {
+        cache?.lowestClosePrices[symbol]
+    }
+
+    func setLowestClose(for symbol: String, price: Double) {
+        ensureCacheExists(quarterRange: cache?.quarterRange ?? "")
+        cache?.lowestClosePrices[symbol] = price
+        updateLastUpdated()
+    }
+
+    func getAllLowestClosePrices() -> [String: Double] {
+        cache?.lowestClosePrices ?? [:]
+    }
+
     func getMissingSymbols(from symbols: [String]) -> [String] {
         guard let cache = cache else { return symbols }
         return symbols.filter { cache.prices[$0] == nil }
@@ -72,7 +96,7 @@ actor HighestCloseCacheManager {
     }
 
     func clearForNewRange(_ range: String) {
-        cache = HighestCloseCacheData(quarterRange: range, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:])
+        cache = HighestCloseCacheData(quarterRange: range, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:], lowestClosePrices: [:])
     }
 
     func needsDailyRefresh() -> Bool {
@@ -82,14 +106,14 @@ actor HighestCloseCacheManager {
 
     func clearPricesForDailyRefresh() {
         guard let currentCache = cache else { return }
-        cache = HighestCloseCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", prices: [:])
+        cache = HighestCloseCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", prices: [:], lowestClosePrices: [:])
     }
 
     // MARK: - Private
 
     private func ensureCacheExists(quarterRange: String) {
         guard cache == nil else { return }
-        cache = HighestCloseCacheData(quarterRange: quarterRange, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:])
+        cache = HighestCloseCacheData(quarterRange: quarterRange, lastUpdated: CacheTimestamp.current(dateProvider: dateProvider), prices: [:], lowestClosePrices: [:])
     }
 
     private func updateLastUpdated() {
@@ -97,7 +121,8 @@ actor HighestCloseCacheManager {
         cache = HighestCloseCacheData(
             quarterRange: currentCache.quarterRange,
             lastUpdated: CacheTimestamp.current(dateProvider: dateProvider),
-            prices: currentCache.prices
+            prices: currentCache.prices,
+            lowestClosePrices: currentCache.lowestClosePrices
         )
     }
 }

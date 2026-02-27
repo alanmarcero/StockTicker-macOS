@@ -35,7 +35,7 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-43 source files (~8,800 lines), 37 test files (~12,700 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+43 source files (~8,900 lines), 37 test files (~12,900 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
 **Core flow:** `MenuBarView` (main controller) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 

@@ -4,6 +4,7 @@ import Foundation
 
 struct DailyAnalysisResult: Sendable {
     let highestClose: Double?
+    let lowestClose: Double?
     let swingLevelEntry: SwingLevelCacheEntry?
     let rsi: Double?
     let dailyEMA: Double?
@@ -36,8 +37,10 @@ private func buildSwingEntry(closes: [Double], timestamps: [Int]) -> SwingLevelC
 }
 
 private func buildDailyAnalysisResult(closes: [Double], timestamps: [Int]) -> DailyAnalysisResult {
-    DailyAnalysisResult(
+    let last252 = closes.count > 252 ? Array(closes.suffix(252)) : closes
+    return DailyAnalysisResult(
         highestClose: closes.max(),
+        lowestClose: last252.min(),
         swingLevelEntry: buildSwingEntry(closes: closes, timestamps: timestamps),
         rsi: RSIAnalysis.calculate(closes: closes),
         dailyEMA: EMAAnalysis.calculate(closes: closes),

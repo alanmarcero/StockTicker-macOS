@@ -193,6 +193,9 @@ struct StockQuote: Identifiable, Sendable {
     // Highest daily close over trailing 12 quarters (~3 years)
     let highestClose: Double?
 
+    // Lowest daily close over last 252 trading days (~52 weeks)
+    let lowestClose: Double?
+
     // Raw Yahoo market state string (e.g. "REGULAR", "PRE", "POST", "CLOSED")
     let yahooMarketState: String?
 
@@ -200,7 +203,7 @@ struct StockQuote: Identifiable, Sendable {
          preMarketPrice: Double? = nil, preMarketChange: Double? = nil, preMarketChangePercent: Double? = nil,
          postMarketPrice: Double? = nil, postMarketChange: Double? = nil, postMarketChangePercent: Double? = nil,
          ytdStartPrice: Double? = nil, marketCap: Double? = nil, highestClose: Double? = nil,
-         yahooMarketState: String? = nil) {
+         lowestClose: Double? = nil, yahooMarketState: String? = nil) {
         self.id = UUID()
         self.symbol = symbol
         self.price = price
@@ -215,6 +218,7 @@ struct StockQuote: Identifiable, Sendable {
         self.ytdStartPrice = ytdStartPrice
         self.marketCap = marketCap
         self.highestClose = highestClose
+        self.lowestClose = lowestClose
         self.yahooMarketState = yahooMarketState
     }
 
@@ -432,6 +436,13 @@ struct StockQuote: Identifiable, Sendable {
     var highestCloseIsPositive: Bool {
         (highestCloseChangePercent ?? 0) >= 0
     }
+
+    // MARK: - 52-Week Low Properties
+
+    var isNear52WeekLow: Bool {
+        guard let lowest = lowestClose, lowest > 0 else { return false }
+        return price <= lowest * 1.02
+    }
 }
 
 // MARK: - Formatting Helpers
@@ -507,6 +518,7 @@ extension StockQuote {
             ytdStartPrice: ytdPrice,
             marketCap: marketCap,
             highestClose: highestClose,
+            lowestClose: lowestClose,
             yahooMarketState: yahooMarketState
         )
     }
@@ -527,6 +539,7 @@ extension StockQuote {
             ytdStartPrice: ytdStartPrice,
             marketCap: cap,
             highestClose: highestClose,
+            lowestClose: lowestClose,
             yahooMarketState: yahooMarketState
         )
     }
@@ -547,6 +560,28 @@ extension StockQuote {
             ytdStartPrice: ytdStartPrice,
             marketCap: marketCap,
             highestClose: highest,
+            lowestClose: lowestClose,
+            yahooMarketState: yahooMarketState
+        )
+    }
+
+    /// Returns a new StockQuote with the lowest close set
+    func withLowestClose(_ lowest: Double?) -> StockQuote {
+        StockQuote(
+            symbol: symbol,
+            price: price,
+            previousClose: previousClose,
+            session: session,
+            preMarketPrice: preMarketPrice,
+            preMarketChange: preMarketChange,
+            preMarketChangePercent: preMarketChangePercent,
+            postMarketPrice: postMarketPrice,
+            postMarketChange: postMarketChange,
+            postMarketChangePercent: postMarketChangePercent,
+            ytdStartPrice: ytdStartPrice,
+            marketCap: marketCap,
+            highestClose: highestClose,
+            lowestClose: lowest,
             yahooMarketState: yahooMarketState
         )
     }

@@ -331,4 +331,131 @@ final class HighestCloseCacheTests: XCTestCase {
             XCTFail("Cache was not written")
         }
     }
+
+    // MARK: - Lowest Close Tests
+
+    func testSetAndGetLowestClose() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q1-2026")
+        await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
+
+        let price = await cacheManager.getLowestClose(for: "AAPL")
+        XCTAssertEqual(price, 120.50)
+    }
+
+    func testGetLowestClose_whenNotSet_returnsNil() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q1-2026")
+
+        let price = await cacheManager.getLowestClose(for: "AAPL")
+        XCTAssertNil(price)
+    }
+
+    func testGetAllLowestClosePrices() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q1-2026")
+        await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
+        await cacheManager.setLowestClose(for: "SPY", price: 400.00)
+
+        let all = await cacheManager.getAllLowestClosePrices()
+        XCTAssertEqual(all["AAPL"], 120.50)
+        XCTAssertEqual(all["SPY"], 400.00)
+        XCTAssertEqual(all.count, 2)
+    }
+
+    func testClearForNewRange_clearsBothHighestAndLowest() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q4-2025")
+        await cacheManager.setHighestClose(for: "AAPL", price: 260.50)
+        await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
+
+        await cacheManager.clearForNewRange("Q1-2026")
+
+        let highest = await cacheManager.getHighestClose(for: "AAPL")
+        let lowest = await cacheManager.getLowestClose(for: "AAPL")
+        XCTAssertNil(highest)
+        XCTAssertNil(lowest)
+    }
+
+    func testClearPricesForDailyRefresh_clearsBothHighestAndLowest() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q1-2026")
+        await cacheManager.setHighestClose(for: "AAPL", price: 260.50)
+        await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
+
+        await cacheManager.clearPricesForDailyRefresh()
+
+        let allHighest = await cacheManager.getAllPrices()
+        let allLowest = await cacheManager.getAllLowestClosePrices()
+        XCTAssertTrue(allHighest.isEmpty)
+        XCTAssertTrue(allLowest.isEmpty)
+    }
+
+    func testSave_persistsLowestClosePrices() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.clearForNewRange("Q1-2026")
+        await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
+        await cacheManager.save()
+
+        let cacheURL = URL(fileURLWithPath: testCacheFile)
+        if let writtenData = mockFS.writtenFiles[cacheURL] {
+            let decoded = try! JSONDecoder().decode(HighestCloseCacheData.self, from: writtenData)
+            XCTAssertEqual(decoded.lowestClosePrices["AAPL"], 120.50)
+        } else {
+            XCTFail("Cache was not written")
+        }
+    }
+
+    func testLoad_lowestClosePrices_backwardsCompatible() async {
+        let mockFS = MockFileSystem()
+
+        // Simulate old cache format without lowestClosePrices field
+        let json = """
+        {"quarterRange":"Q1-2026","lastUpdated":"2026-02-15T12:00:00Z","prices":{"AAPL":260.50}}
+        """
+        mockFS.files[testCacheFile] = json.data(using: .utf8)!
+
+        let cacheManager = HighestCloseCacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.load()
+
+        let highest = await cacheManager.getHighestClose(for: "AAPL")
+        XCTAssertEqual(highest, 260.50)
+
+        let allLowest = await cacheManager.getAllLowestClosePrices()
+        XCTAssertTrue(allLowest.isEmpty)
+    }
 }

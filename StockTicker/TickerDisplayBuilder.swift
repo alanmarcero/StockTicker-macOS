@@ -115,6 +115,12 @@ enum TickerDisplayBuilder {
     static func tickerTitle(quote: StockQuote, highlight: HighlightConfig, date: Date = Date()) -> NSAttributedString {
         let result = NSMutableAttributedString()
 
+        if quote.isNear52WeekLow {
+            result.append(.styled("● ", font: MenuItemFactory.monoFont, color: .systemOrange))
+        } else {
+            result.append(.styled("  ", font: MenuItemFactory.monoFont))
+        }
+
         let symbolStr = padded(quote.symbol, toLength: LayoutConfig.Ticker.symbolWidth)
         let marketCapStr = padded(quote.formattedMarketCap, toLength: LayoutConfig.Ticker.marketCapWidth)
         let percentStr = padded(quote.formattedChangePercent, toLength: LayoutConfig.Ticker.percentWidth)

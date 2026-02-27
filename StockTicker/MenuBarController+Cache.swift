@@ -28,6 +28,7 @@ extension MenuBarController {
 
     private func refreshDailyAnalysisProperties() async {
         highestClosePrices = await highestCloseCacheManager.getAllPrices()
+        lowestClosePrices = await highestCloseCacheManager.getAllLowestClosePrices()
         swingLevelEntries = await swingLevelCacheManager.getAllEntries()
         rsiValues = await rsiCacheManager.getAllValues()
         emaEntries = await emaCacheManager.getAllEntries()
@@ -164,6 +165,26 @@ extension MenuBarController {
         }
     }
 
+    // MARK: - Lowest Close Cache
+
+    func loadLowestCloseCache() async {
+        lowestClosePrices = await highestCloseCacheManager.getAllLowestClosePrices()
+    }
+
+    func attachLowestClosesToQuotes() {
+        for (symbol, quote) in quotes {
+            if let lowest = lowestClosePrices[symbol] {
+                quotes[symbol] = quote.withLowestClose(lowest)
+            }
+        }
+
+        for (symbol, quote) in universeQuotes {
+            if let lowest = lowestClosePrices[symbol] {
+                universeQuotes[symbol] = quote.withLowestClose(lowest)
+            }
+        }
+    }
+
     // MARK: - Forward P/E Cache
 
     func loadForwardPECache() async {
@@ -295,11 +316,13 @@ extension MenuBarController {
         defer { isFetchingDailyAnalysis = false }
 
         let highestCloseMissing = Set(await highestCloseCacheManager.getMissingSymbols(from: allWatchlistSymbols))
+        let allLowest = await highestCloseCacheManager.getAllLowestClosePrices()
+        let lowestCloseMissing = Set(allWatchlistSymbols.filter { allLowest[$0] == nil })
         let swingMissing = Set(await swingLevelCacheManager.getMissingSymbols(from: allWatchlistSymbols))
         let rsiMissing = Set(await rsiCacheManager.getMissingSymbols(from: allWatchlistSymbols))
         let emaMissing = Set(await emaCacheManager.getMissingSymbols(from: allWatchlistSymbols))
 
-        let allMissing = Array(highestCloseMissing.union(swingMissing).union(rsiMissing).union(emaMissing))
+        let allMissing = Array(highestCloseMissing.union(lowestCloseMissing).union(swingMissing).union(rsiMissing).union(emaMissing))
 
         guard !allMissing.isEmpty else {
             await refreshDailyAnalysisProperties()
@@ -326,6 +349,9 @@ extension MenuBarController {
         for (symbol, result) in results {
             if highestCloseMissing.contains(symbol), let highest = result.highestClose {
                 await highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
+            }
+            if lowestCloseMissing.contains(symbol), let lowest = result.lowestClose {
+                await highestCloseCacheManager.setLowestClose(for: symbol, price: lowest)
             }
             if swingMissing.contains(symbol), let entry = result.swingLevelEntry {
                 await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
@@ -475,6 +501,7 @@ extension MenuBarController {
         ytdPrices = await ytdCacheManager.getAllPrices()
         quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
         highestClosePrices = await highestCloseCacheManager.getAllPrices()
+        lowestClosePrices = await highestCloseCacheManager.getAllLowestClosePrices()
         forwardPEData = await forwardPECacheManager.getAllData()
         swingLevelEntries = await swingLevelCacheManager.getAllEntries()
         rsiValues = await rsiCacheManager.getAllValues()

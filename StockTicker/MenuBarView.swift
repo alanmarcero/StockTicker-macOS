@@ -103,6 +103,7 @@ class MenuBarController: NSObject, ObservableObject {
     var marketCaps: [String: Double] = [:]
     let highestCloseCacheManager: HighestCloseCacheManager
     var highestClosePrices: [String: Double] = [:]
+    var lowestClosePrices: [String: Double] = [:]
     let forwardPECacheManager: ForwardPECacheManager
     var forwardPEData: [String: [String: Double]] = [:]
     var currentForwardPEs: [String: Double] = [:]
@@ -170,6 +171,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadYTDCache()
             await loadQuarterlyCache()
             await loadHighestCloseCache()
+            await loadLowestCloseCache()
             await loadForwardPECache()
             await loadSwingLevelCache()
             await loadRSICache()
@@ -221,6 +223,14 @@ class MenuBarController: NSObject, ObservableObject {
 
         menu.addItem(.separator())
         menu.addItem(.separator())  // Ticker items inserted before this
+
+        let legendItem = NSMenuItem()
+        legendItem.isEnabled = false
+        let legendString = NSMutableAttributedString()
+        legendString.append(.styled("●", font: MenuItemFactory.monoFont, color: .systemOrange))
+        legendString.append(.styled(" = Within 2% of 52W Low", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
+        legendItem.attributedTitle = legendString
+        menu.addItem(legendItem)
 
         menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
 
@@ -391,6 +401,7 @@ class MenuBarController: NSObject, ObservableObject {
             }
         }
         attachHighestClosesToQuotes()
+        attachLowestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
         await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
@@ -829,6 +840,7 @@ class MenuBarController: NSObject, ObservableObject {
         ytdPrices = [:]
         quarterlyPrices = [:]
         highestClosePrices = [:]
+        lowestClosePrices = [:]
         forwardPEData = [:]
         currentForwardPEs = [:]
         swingLevelEntries = [:]

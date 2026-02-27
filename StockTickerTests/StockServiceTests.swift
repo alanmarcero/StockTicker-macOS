@@ -802,6 +802,8 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result)
         // Highest close should be the max of all closes (138.0)
         XCTAssertEqual(result?.highestClose, 138.0)
+        // Lowest close should be the min (100.0, first entry)
+        XCTAssertEqual(result?.lowestClose, 100.0)
         // RSI should be non-nil (steady rise = 100.0)
         XCTAssertNotNil(result?.rsi)
         XCTAssertEqual(result?.rsi, 100.0)

@@ -139,16 +139,27 @@ actor BackfillScheduler {
         onBatchComplete: @escaping @Sendable (Phase) async -> Void
     ) async {
         let highestCloseMissing = Set(await caches.highestClose.getMissingSymbols(from: symbols))
+        var lowestCloseMissingSet = Set<String>()
+        for symbol in symbols {
+            if await caches.highestClose.getLowestClose(for: symbol) == nil {
+                lowestCloseMissingSet.insert(symbol)
+            }
+        }
+        let lowestCloseMissing = lowestCloseMissingSet
         let swingMissing = Set(await caches.swingLevel.getMissingSymbols(from: symbols))
         let rsiMissing = Set(await caches.rsi.getMissingSymbols(from: symbols))
         let emaMissing = Set(await caches.ema.getMissingSymbols(from: symbols))
 
-        let allMissing = Array(highestCloseMissing.union(swingMissing).union(rsiMissing).union(emaMissing))
+        let allMissing = Array(highestCloseMissing.union(lowestCloseMissing).union(swingMissing).union(rsiMissing).union(emaMissing))
 
         await processSymbols(allMissing, phase: .dailyAnalysis, onBatchComplete: onBatchComplete) { symbol in
             guard let result = await stockService.fetchDailyAnalysis(symbol: symbol, period1: period1, period2: period2) else { return }
             if highestCloseMissing.contains(symbol), let highest = result.highestClose {
                 await caches.highestClose.setHighestClose(for: symbol, price: highest)
+                await caches.highestClose.save()
+            }
+            if lowestCloseMissing.contains(symbol), let lowest = result.lowestClose {
+                await caches.highestClose.setLowestClose(for: symbol, price: lowest)
                 await caches.highestClose.save()
             }
             if swingMissing.contains(symbol), let entry = result.swingLevelEntry {

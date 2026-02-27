@@ -106,7 +106,7 @@ final class BackfillSchedulerTests: XCTestCase {
         let service = TrackingMockStockService()
         service.ytdPricesToReturn = ["AAPL": 150.0]
         service.dailyAnalysisToReturn = ["AAPL": DailyAnalysisResult(
-            highestClose: 200.0, swingLevelEntry: nil, rsi: 55.0, dailyEMA: 160.0, dailyAboveCount: 5
+            highestClose: 200.0, lowestClose: 120.0, swingLevelEntry: nil, rsi: 55.0, dailyEMA: 160.0, dailyAboveCount: 5
         )]
         service.emaEntriesToReturn = ["AAPL": EMACacheEntry(day: 160.0, week: 155.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil)]
         service.forwardPERatiosToReturn = ["AAPL": ["Q4-2025": 28.0]]
@@ -280,6 +280,7 @@ final class BackfillSchedulerTests: XCTestCase {
         let service = TrackingMockStockService()
         service.dailyAnalysisToReturn = ["AAPL": DailyAnalysisResult(
             highestClose: 250.0,
+            lowestClose: 150.0,
             swingLevelEntry: SwingLevelCacheEntry(breakoutPrice: 240.0, breakoutDate: "1/15/26", breakdownPrice: 180.0, breakdownDate: "6/15/25"),
             rsi: 62.5,
             dailyEMA: 195.0,

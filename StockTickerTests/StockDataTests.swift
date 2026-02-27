@@ -373,6 +373,78 @@ final class StockQuoteTests: XCTestCase {
         XCTAssertEqual(updated.highestClose, 200.0)
     }
 
+    // MARK: - 52-Week Low Properties
+
+    func testIsNear52WeekLow_priceAtLow_returnsTrue() {
+        let quote = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 102.0, lowestClose: 100.0)
+        XCTAssertTrue(quote.isNear52WeekLow)
+    }
+
+    func testIsNear52WeekLow_priceWithin2Percent_returnsTrue() {
+        // 100.0 * 1.02 = 102.0, price of 102.0 should be within range
+        let quote = StockQuote(symbol: "AAPL", price: 102.0, previousClose: 103.0, lowestClose: 100.0)
+        XCTAssertTrue(quote.isNear52WeekLow)
+    }
+
+    func testIsNear52WeekLow_priceAbove2Percent_returnsFalse() {
+        // 100.0 * 1.02 = 102.0, price of 102.01 should be outside range
+        let quote = StockQuote(symbol: "AAPL", price: 102.01, previousClose: 103.0, lowestClose: 100.0)
+        XCTAssertFalse(quote.isNear52WeekLow)
+    }
+
+    func testIsNear52WeekLow_priceBelowLow_returnsTrue() {
+        let quote = StockQuote(symbol: "AAPL", price: 99.0, previousClose: 102.0, lowestClose: 100.0)
+        XCTAssertTrue(quote.isNear52WeekLow)
+    }
+
+    func testIsNear52WeekLow_noLowestClose_returnsFalse() {
+        let quote = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 102.0)
+        XCTAssertFalse(quote.isNear52WeekLow)
+    }
+
+    func testIsNear52WeekLow_zeroLowestClose_returnsFalse() {
+        let quote = StockQuote(symbol: "AAPL", price: 0.0, previousClose: 0.0, lowestClose: 0.0)
+        XCTAssertFalse(quote.isNear52WeekLow)
+    }
+
+    func testWithLowestClose_preservesOtherFields() {
+        let quote = StockQuote(
+            symbol: "AAPL",
+            price: 150.0,
+            previousClose: 148.0,
+            session: .regular,
+            ytdStartPrice: 140.0,
+            marketCap: 3_000_000_000_000,
+            highestClose: 200.0
+        )
+        let updated = quote.withLowestClose(100.0)
+        XCTAssertEqual(updated.symbol, "AAPL")
+        XCTAssertEqual(updated.price, 150.0)
+        XCTAssertEqual(updated.ytdStartPrice, 140.0)
+        XCTAssertEqual(updated.marketCap, 3_000_000_000_000)
+        XCTAssertEqual(updated.highestClose, 200.0)
+        XCTAssertEqual(updated.lowestClose, 100.0)
+    }
+
+    func testWithHighestClose_preservesLowestClose() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, lowestClose: 100.0)
+        let updated = quote.withHighestClose(200.0)
+        XCTAssertEqual(updated.lowestClose, 100.0)
+        XCTAssertEqual(updated.highestClose, 200.0)
+    }
+
+    func testWithMarketCap_preservesLowestClose() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, lowestClose: 100.0)
+        let updated = quote.withMarketCap(3_000_000_000_000)
+        XCTAssertEqual(updated.lowestClose, 100.0)
+    }
+
+    func testWithYTDStartPrice_preservesLowestClose() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 148.0, lowestClose: 100.0)
+        let updated = quote.withYTDStartPrice(140.0)
+        XCTAssertEqual(updated.lowestClose, 100.0)
+    }
+
     // MARK: - yahooMarketState passthrough
 
     func testYahooMarketState_preservedThroughWithMethods() {
@@ -392,6 +464,9 @@ final class StockQuoteTests: XCTestCase {
 
         let withHigh = quote.withHighestClose(510.0)
         XCTAssertEqual(withHigh.yahooMarketState, "REGULAR")
+
+        let withLow = quote.withLowestClose(480.0)
+        XCTAssertEqual(withLow.yahooMarketState, "REGULAR")
     }
 
     func testYahooMarketState_defaultsToNil() {
