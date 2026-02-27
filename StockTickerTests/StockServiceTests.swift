@@ -1091,6 +1091,109 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
         XCTAssertNotNil(result?.weekCrossoverWeeksBelow, "Following Monday should include prior week's completed bar and detect crossover")
     }
 
+    // MARK: - Sneak Peek Current-Week Bar Collapsing
+
+    /// Yahoo may return multiple bars for the current week (e.g., yesterday's close +
+    /// today's intraday). The sneak peek should collapse them into a single current-week bar
+    /// using only the latest close, so intermediate values don't mask a crossover.
+    ///
+    /// Mirrors the NFLX scenario: stock is below 5W EMA for weeks, then rallies sharply
+    /// mid-week. Yahoo returns an intermediate bar (yesterday's close, slightly above EMA)
+    /// plus today's intraday bar (well above). Using all bars makes the "previous bar"
+    /// appear above the EMA, masking the crossover.
+    private func doubleBarCrossoverSetup() -> (MockHTTPClient, StockService) {
+        let mockClient = MockHTTPClient()
+
+        // 9 completed weekly bars + 2 current-week bars (intermediate + today)
+        let closes: [Double] = [100, 98, 96, 94, 92, 85, 83, 81, 79, 84, 110]
+        // 9 Mondays ending at Feb 16, then TWO current-week timestamps:
+        // Feb 23 00:00 ET (Monday, intermediate) and Feb 27 15:00 ET (Friday intraday)
+        var timestamps = crossoverTimestamps(count: 9)
+        let monday = makeETDate(year: 2026, month: 2, day: 23, hour: 0)
+        let friday = makeETDate(year: 2026, month: 2, day: 27, hour: 15)
+        timestamps.append(Int(monday.timeIntervalSince1970))
+        timestamps.append(Int(friday.timeIntervalSince1970))
+
+        let weeklyJSON = makeWeeklyJSON(closes: closes, timestamps: timestamps)
+        let weeklyURL = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=6mo&interval=1wk")!
+        let weeklyResp = HTTPURLResponse(url: weeklyURL, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        mockClient.responses[weeklyURL] = .success((weeklyJSON.data(using: .utf8)!, weeklyResp))
+        return (mockClient, StockService(httpClient: mockClient))
+    }
+
+    func testSneakPeek_doubleBar_collapsesCurrentWeekAndDetectsCrossover() async {
+        let (_, service) = doubleBarCrossoverSetup()
+        let friday2pm = makeETDate(year: 2026, month: 2, day: 27, hour: 14)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday2pm)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow,
+            "Should collapse double bar and detect crossover using completed + latest close")
+    }
+
+    func testSneakPeek_doubleBar_rawBarsWouldMissCrossover() async {
+        // Verify the intermediate bar masks the crossover when using all bars naively
+        let closes: [Double] = [100, 98, 96, 94, 92, 85, 83, 81, 79, 84, 110]
+        let crossover = EMAAnalysis.detectWeeklyCrossover(closes: closes)
+        XCTAssertNil(crossover, "All bars including intermediate should miss crossover")
+
+        // But completed + latest close should detect it
+        let collapsed: [Double] = [100, 98, 96, 94, 92, 85, 83, 81, 79, 110]
+        let collapsedCrossover = EMAAnalysis.detectWeeklyCrossover(closes: collapsed)
+        XCTAssertNotNil(collapsedCrossover, "Collapsed bars should detect the crossover")
+    }
+
+    // MARK: - Sneak Peek Fallback to Completed Bars
+
+    /// Crossover happened in the most recently completed week, and the current week continues
+    /// above. Even after collapsing current-week bars, the collapsed view has two consecutive
+    /// above bars. The completed-bars fallback catches this.
+    private func crossoverInCompletedWeekCloses() -> [Double] {
+        // period=5 SMA(100,98,96,94,92)=96
+        // Bars 5-8 below EMA, bar 9 crosses above, bar 10 (current week) stays above
+        [100, 98, 96, 94, 92, 85, 83, 81, 79, 110, 115]
+    }
+
+    func testSneakPeek_crossoverInCompletedWeek_fallsBackToCompletedBars() async {
+        let closes = crossoverInCompletedWeekCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        let friday2pm = makeETDate(year: 2026, month: 2, day: 20, hour: 14)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday2pm)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow,
+            "Sneak peek should fall back to completed bars when current week masks a crossover")
+        XCTAssertEqual(result?.weekCrossoverWeeksBelow, 5)
+    }
+
+    func testSneakPeek_crossdownInCompletedWeek_fallsBackToCompletedBars() async {
+        // Mirror scenario for crossdown: weeks above, then one crosses below, current week stays below
+        let closes: [Double] = [50, 52, 54, 56, 58, 65, 67, 69, 71, 40, 35]
+        let (_, service) = setupCrossoverMock(closes: closes)
+        let friday2pm = makeETDate(year: 2026, month: 2, day: 20, hour: 14)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: friday2pm)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossdownWeeksAbove,
+            "Sneak peek should fall back to completed bars for crossdown too")
+    }
+
+    func testNonSneakPeek_crossoverInCompletedWeek_detectedNormally() async {
+        let closes = crossoverInCompletedWeekCloses()
+        let (_, service) = setupCrossoverMock(closes: closes)
+        // Thursday — not sneak peek, uses completed bars only
+        let thursday = makeETDate(year: 2026, month: 2, day: 19, hour: 12)
+
+        let result = await service.fetchEMAEntry(symbol: "AAPL", precomputedDailyEMA: 150.0, now: thursday)
+
+        XCTAssertNotNil(result)
+        XCTAssertNotNil(result?.weekCrossoverWeeksBelow,
+            "Non-sneak-peek mode uses completed bars and should detect the crossover")
+    }
+
     // MARK: - Finnhub integration tests
 
     func testFinnhubRouting_indexSymbol_usesYahooDirectly() async {
