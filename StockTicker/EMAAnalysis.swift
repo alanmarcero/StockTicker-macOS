@@ -34,7 +34,7 @@ enum EMAAnalysis {
         guard last >= 1 else { return nil }
         let offset = period - 1
 
-        guard closes[offset + last] > emaValues[last] * 1.01,
+        guard closes[offset + last] > emaValues[last] * 1.02,
               closes[offset + last - 1] <= emaValues[last - 1] else { return nil }
 
         var weeksBelow = 1
@@ -60,7 +60,7 @@ enum EMAAnalysis {
         guard last >= 1 else { return nil }
         let offset = period - 1
 
-        guard closes[offset + last] < emaValues[last] * 0.99,
+        guard closes[offset + last] < emaValues[last] * 0.98,
               closes[offset + last - 1] > emaValues[last - 1] else { return nil }
 
         var weeksAbove = 1
