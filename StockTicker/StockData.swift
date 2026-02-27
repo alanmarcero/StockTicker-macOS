@@ -452,6 +452,23 @@ struct StockQuote: Identifiable, Sendable {
     var lowestCloseIsPositive: Bool {
         (lowestCloseChangePercent ?? 0) >= 0
     }
+
+    // MARK: - Green Status Predicates (shared by filter and coloring)
+
+    var isYTDGreen: Bool {
+        guard let pct = ytdChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct >= 0
+    }
+
+    var isHighGreen: Bool {
+        guard let pct = highestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct >= -5.0
+    }
+
+    var isLowGreen: Bool {
+        guard let pct = lowestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct > 5.0
+    }
 }
 
 // MARK: - Formatting Helpers

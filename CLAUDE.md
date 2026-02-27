@@ -35,7 +35,7 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-43 source files (~8,900 lines), 37 test files (~12,900 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+44 source files (~9,000 lines), 38 test files (~13,300 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
 **Core flow:** `MenuBarView` (main controller) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 
@@ -47,6 +47,7 @@ pgrep -x Stonks && echo "App is running"
 - 7 cache actors: YTD, Quarterly, HighestClose, ForwardPE, SwingLevel, RSI, EMA
 - Pure analysis: `EMAAnalysis`, `SwingAnalysis`, `RSIAnalysis`
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
+- `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
 - `Dictionary+Merge`: `mergeKeepingNew`/`mergeKeepingExisting`/`mergingKeepingExisting` extensions
 
 ## Design Patterns
@@ -60,6 +61,7 @@ pgrep -x Stonks && echo "App is running"
 - **`APIEndpoints.chartURL`** — two static URL builders (range+interval, period-based) for Yahoo chart API
 - **`fetchYahooCloses`/`fetchYahooClosesAndTimestamps`** — shared Yahoo decode helpers in `StockService`
 - **`partitionedBatchFetch<T>`** — generic Finnhub/Yahoo partitioned batch fetch in `StockService`
+- **Green predicates** — `StockQuote.isYTDGreen`/`isHighGreen`/`isLowGreen` are the single source of truth used by both `TickerDisplayBuilder` colors and `TickerFilter`
 
 ## Common Tasks
 

@@ -78,6 +78,7 @@ class MenuBarController: NSObject, ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var config: WatchlistConfig
     @Published var currentSortOption: SortOption
+    var currentFilter: TickerFilter { TickerFilter(rawValue: config.filterGreenFields) }
     @Published var yahooMarketState: String?
 
     // MARK: - Private State
@@ -234,6 +235,7 @@ class MenuBarController: NSObject, ObservableObject {
         menu.addItem(createCacheSubmenu())
         menu.addItem(createClosedMarketSubmenu())
         menu.addItem(createSortSubmenu())
+        menu.addItem(createFilterSubmenu())
         let apiErrorsItem = MenuItemFactory.action(title: "API Errors...", action: #selector(showDebugWindow), target: self, keyEquivalent: "d")
         apiErrorsItem.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(apiErrorsItem)
@@ -262,6 +264,19 @@ class MenuBarController: NSObject, ObservableObject {
             return item
         }
         return MenuItemFactory.submenu(title: "Sort By", items: items)
+    }
+
+    private func createFilterSubmenu() -> NSMenuItem {
+        var items: [NSMenuItem] = TickerFilter.allOptions.map { option -> NSMenuItem in
+            let item = MenuItemFactory.action(title: option.displayName, action: #selector(filterOptionToggled(_:)), target: self)
+            item.representedObject = option
+            item.state = currentFilter.contains(option) ? .on : .off
+            return item
+        }
+        items.append(.separator())
+        items.append(MenuItemFactory.action(title: "Clear Filters", action: #selector(clearFilters), target: self))
+        let title = currentFilter.isEmpty ? "Filter" : "Filter (Active)"
+        return MenuItemFactory.submenu(title: title, items: items)
     }
 
     private func createConfigSubmenu() -> NSMenuItem {
@@ -692,6 +707,7 @@ class MenuBarController: NSObject, ObservableObject {
 
         removeOldTickerItems(from: menu)
         updateSortMenuCheckmarks(in: menu)
+        updateFilterMenuCheckmarks(in: menu)
         insertTickerItems(into: menu)
     }
 
@@ -716,9 +732,21 @@ class MenuBarController: NSObject, ObservableObject {
         }
     }
 
+    private func updateFilterMenuCheckmarks(in menu: NSMenu) {
+        guard let filterItem = menu.items.first(where: { $0.title.hasPrefix("Filter") }),
+              let filterMenu = filterItem.submenu else { return }
+
+        for item in filterMenu.items {
+            guard let option = item.representedObject as? TickerFilter else { continue }
+            item.state = currentFilter.contains(option) ? .on : .off
+        }
+        filterItem.title = currentFilter.isEmpty ? "Filter" : "Filter (Active)"
+    }
+
     private func insertTickerItems(into menu: NSMenu) {
         var index = TickerInsertIndex.start
-        for symbol in currentSortOption.sort(config.watchlist, using: quotes) {
+        let filtered = currentFilter.filter(config.watchlist, using: quotes)
+        for symbol in currentSortOption.sort(filtered, using: quotes) {
             let menuItem = createTickerMenuItem(for: symbol)
             menu.insertItem(menuItem, at: index)
             index += 1
@@ -886,6 +914,27 @@ class MenuBarController: NSObject, ObservableObject {
         updateClosedMarketMenuCheckmarks()
         updateMenuBarDisplay()
         Task { await refreshAllQuotes() }
+    }
+
+    @objc private func filterOptionToggled(_ sender: NSMenuItem) {
+        guard let option = sender.representedObject as? TickerFilter else { return }
+        var filter = currentFilter
+        filter.formSymmetricDifference(option)
+        config.filterGreenFields = filter.rawValue
+        config.save()
+        updateMenuItems()
+        DispatchQueue.main.async { [weak self] in
+            self?.statusItem?.button?.performClick(nil)
+        }
+    }
+
+    @objc private func clearFilters() {
+        config.filterGreenFields = 0
+        config.save()
+        updateMenuItems()
+        DispatchQueue.main.async { [weak self] in
+            self?.statusItem?.button?.performClick(nil)
+        }
     }
 
     private func updateClosedMarketMenuCheckmarks() {

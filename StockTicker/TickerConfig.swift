@@ -70,6 +70,7 @@ struct WatchlistConfig: Codable, Equatable {
     var universe: [String]
     var finnhubApiKey: String
     var scannerBaseURL: String
+    var filterGreenFields: Int
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -123,6 +124,7 @@ struct WatchlistConfig: Codable, Equatable {
         case universe
         case finnhubApiKey
         case scannerBaseURL
+        case filterGreenFields
     }
 
     init(from decoder: Decoder) throws {
@@ -146,6 +148,7 @@ struct WatchlistConfig: Codable, Equatable {
         universe = try container.decodeIfPresent([String].self, forKey: .universe) ?? []
         finnhubApiKey = try container.decodeIfPresent(String.self, forKey: .finnhubApiKey) ?? ""
         scannerBaseURL = try container.decodeIfPresent(String.self, forKey: .scannerBaseURL) ?? ""
+        filterGreenFields = try container.decodeIfPresent(Int.self, forKey: .filterGreenFields) ?? 0
     }
 
     func encode(to encoder: Encoder) throws {
@@ -165,6 +168,7 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(universe, forKey: .universe)
         try container.encode(finnhubApiKey, forKey: .finnhubApiKey)
         try container.encode(scannerBaseURL, forKey: .scannerBaseURL)
+        try container.encode(filterGreenFields, forKey: .filterGreenFields)
     }
 
     init(
@@ -182,7 +186,8 @@ struct WatchlistConfig: Codable, Equatable {
         newsRefreshInterval: Int = 300,
         universe: [String] = [],
         finnhubApiKey: String = "",
-        scannerBaseURL: String = ""
+        scannerBaseURL: String = "",
+        filterGreenFields: Int = 0
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -199,6 +204,7 @@ struct WatchlistConfig: Codable, Equatable {
         self.universe = universe
         self.finnhubApiKey = finnhubApiKey
         self.scannerBaseURL = scannerBaseURL
+        self.filterGreenFields = filterGreenFields
     }
 }
 

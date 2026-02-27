@@ -88,6 +88,8 @@
 		U1000003232C5A0000000001 /* ThrottledTaskGroupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */; };
 		V1000001232C5A0000000001 /* Dictionary+Merge.swift in Sources */ = {isa = PBXBuildFile; fileRef = V1000002232C5A0000000001 /* Dictionary+Merge.swift */; };
 		V1000003232C5A0000000001 /* DictionaryMergeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = V1000004232C5A0000000001 /* DictionaryMergeTests.swift */; };
+		W1000001232C5A0000000001 /* TickerFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = W1000002232C5A0000000001 /* TickerFilter.swift */; };
+		W1000003232C5A0000000001 /* TickerFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = W1000004232C5A0000000001 /* TickerFilterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -185,6 +187,8 @@
 		U1000004232C5A0000000001 /* ThrottledTaskGroupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThrottledTaskGroupTests.swift; sourceTree = "<group>"; };
 		V1000002232C5A0000000001 /* Dictionary+Merge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Dictionary+Merge.swift"; sourceTree = "<group>"; };
 		V1000004232C5A0000000001 /* DictionaryMergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryMergeTests.swift; sourceTree = "<group>"; };
+		W1000002232C5A0000000001 /* TickerFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerFilter.swift; sourceTree = "<group>"; };
+		W1000004232C5A0000000001 /* TickerFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerFilterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,6 +266,7 @@
 				U1000002232C5A0000000001 /* ThrottledTaskGroup.swift */,
 				09832F562C5F76DC26553BB3 /* ScannerService.swift */,
 				V1000002232C5A0000000001 /* Dictionary+Merge.swift */,
+				W1000002232C5A0000000001 /* TickerFilter.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -315,6 +320,7 @@
 				B4CK000002000001A0000002 /* BackfillSchedulerTests.swift */,
 				6CFD6907FB6F0044614689A5 /* ScannerServiceTests.swift */,
 				V1000004232C5A0000000001 /* DictionaryMergeTests.swift */,
+				W1000004232C5A0000000001 /* TickerFilterTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -461,6 +467,7 @@
 				U1000001232C5A0000000001 /* ThrottledTaskGroup.swift in Sources */,
 				6475FBBDFA00C9B46040D108 /* ScannerService.swift in Sources */,
 				V1000001232C5A0000000001 /* Dictionary+Merge.swift in Sources */,
+				W1000001232C5A0000000001 /* TickerFilter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,6 +512,7 @@
 				B4CK000002000001A0000001 /* BackfillSchedulerTests.swift in Sources */,
 				42C253478E3759C5E185D852 /* ScannerServiceTests.swift in Sources */,
 				V1000003232C5A0000000001 /* DictionaryMergeTests.swift in Sources */,
+				W1000003232C5A0000000001 /* TickerFilterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

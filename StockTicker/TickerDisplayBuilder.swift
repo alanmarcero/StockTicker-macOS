@@ -15,17 +15,17 @@ extension StockQuote {
     var ytdColor: NSColor {
         guard let pct = ytdChangePercent else { return .secondaryLabelColor }
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
-        return pct >= 0 ? .systemGreen : .systemRed
+        return isYTDGreen ? .systemGreen : .systemRed
     }
     var highestCloseColor: NSColor {
         guard let pct = highestCloseChangePercent else { return .secondaryLabelColor }
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
-        return pct >= -5.0 ? .systemGreen : .systemRed
+        return isHighGreen ? .systemGreen : .systemRed
     }
     var lowestCloseColor: NSColor {
         guard let pct = lowestCloseChangePercent else { return .secondaryLabelColor }
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
-        return pct <= 5.0 ? .systemRed : .systemGreen
+        return isLowGreen ? .systemGreen : .systemRed
     }
 }
 

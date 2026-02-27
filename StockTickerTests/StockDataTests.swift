@@ -693,6 +693,74 @@ final class StockQuoteTests: XCTestCase {
         components.timeZone = TimeZone(identifier: "America/New_York")
         return Calendar.current.date(from: components)!
     }
+
+    // MARK: - Green Status Predicates
+
+    func testIsYTDGreen_positiveYTD_returnsTrue() {
+        let quote = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, ytdStartPrice: 100.0)
+        XCTAssertTrue(quote.isYTDGreen)
+    }
+
+    func testIsYTDGreen_negativeYTD_returnsFalse() {
+        let quote = StockQuote(symbol: "SPY", price: 90.0, previousClose: 91.0, ytdStartPrice: 100.0)
+        XCTAssertFalse(quote.isYTDGreen)
+    }
+
+    func testIsYTDGreen_nilYTD_returnsFalse() {
+        let quote = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
+        XCTAssertFalse(quote.isYTDGreen)
+    }
+
+    func testIsYTDGreen_nearZero_returnsFalse() {
+        let quote = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0, ytdStartPrice: 100.0)
+        XCTAssertFalse(quote.isYTDGreen)
+    }
+
+    func testIsHighGreen_within5Percent_returnsTrue() {
+        // price=97, highestClose=100 → -3% → green
+        let quote = StockQuote(symbol: "SPY", price: 97.0, previousClose: 96.0, highestClose: 100.0)
+        XCTAssertTrue(quote.isHighGreen)
+    }
+
+    func testIsHighGreen_beyond5Percent_returnsFalse() {
+        // price=90, highestClose=100 → -10% → red
+        let quote = StockQuote(symbol: "SPY", price: 90.0, previousClose: 89.0, highestClose: 100.0)
+        XCTAssertFalse(quote.isHighGreen)
+    }
+
+    func testIsHighGreen_nilHighestClose_returnsFalse() {
+        let quote = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
+        XCTAssertFalse(quote.isHighGreen)
+    }
+
+    func testIsHighGreen_exactBoundary_returnsTrue() {
+        // price=95, highestClose=100 → -5.0% → exactly -5.0 → green (>= -5.0)
+        let quote = StockQuote(symbol: "SPY", price: 95.0, previousClose: 94.0, highestClose: 100.0)
+        XCTAssertTrue(quote.isHighGreen)
+    }
+
+    func testIsLowGreen_above5Percent_returnsTrue() {
+        // price=110, lowestClose=100 → +10% → green
+        let quote = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, lowestClose: 100.0)
+        XCTAssertTrue(quote.isLowGreen)
+    }
+
+    func testIsLowGreen_within5Percent_returnsFalse() {
+        // price=103, lowestClose=100 → +3% → red
+        let quote = StockQuote(symbol: "SPY", price: 103.0, previousClose: 102.0, lowestClose: 100.0)
+        XCTAssertFalse(quote.isLowGreen)
+    }
+
+    func testIsLowGreen_nilLowestClose_returnsFalse() {
+        let quote = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
+        XCTAssertFalse(quote.isLowGreen)
+    }
+
+    func testIsLowGreen_exactBoundary_returnsFalse() {
+        // price=105, lowestClose=100 → +5.0% → exactly 5.0 → false (> 5.0 required)
+        let quote = StockQuote(symbol: "SPY", price: 105.0, previousClose: 104.0, lowestClose: 100.0)
+        XCTAssertFalse(quote.isLowGreen)
+    }
 }
 
 // MARK: - Formatting Helper Tests

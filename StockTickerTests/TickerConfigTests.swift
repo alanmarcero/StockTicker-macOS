@@ -793,4 +793,80 @@ final class WatchlistConfigManagerTests: XCTestCase {
 
         XCTAssertNotNil(mockFS.files[manager.configFileURL.path])
     }
+
+    // MARK: - filterGreenFields tests
+
+    func testDecoder_missingFilterGreenFields_defaultsToZero() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.filterGreenFields, 0)
+    }
+
+    func testDecoder_filterGreenFields_decodesCorrectly() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc",
+            "filterGreenFields": 5
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.filterGreenFields, 5)
+    }
+
+    func testEncoder_includesFilterGreenFields() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            filterGreenFields: 3
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["filterGreenFields"] as? Int, 3)
+    }
+
+    func testFilterGreenFields_roundTrip() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            filterGreenFields: 7
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.filterGreenFields, 7)
+    }
+
+    func testEquatable_differentFilterGreenFields_areNotEqual() {
+        let config1 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            filterGreenFields: 0
+        )
+        let config2 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            filterGreenFields: 3
+        )
+
+        XCTAssertNotEqual(config1, config2)
+    }
 }

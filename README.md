@@ -8,7 +8,7 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 
 ## Features
 
-- **Watchlist** — Track up to 128 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours.
+- **Watchlist** — Track up to 128 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours. Filterable by green status (YTD, High, Low) individually or in any combination.
 - **Scrolling index marquee** — SPX, DJI, NDX, VIX, RUT, and BTC scroll across the top of the dropdown. Switches to crypto (BTC, ETH, SOL, DOGE, XRP) when the market is closed.
 - **Extended hours** — Pre-market and after-hours price changes displayed alongside regular session data. Sortable by AH % (visible after 3:45 PM ET).
 - **Financial news** — Top headlines from Yahoo Finance and CNBC, clickable to open in your browser.
@@ -64,6 +64,7 @@ Edit via the menu: **Config > Edit Config** for full JSON, or **Edit Watchlist**
 | `newsRefreshInterval` | `Int` | `300` | Seconds between news refreshes |
 | `finnhubApiKey` | `String` | `""` | Finnhub API key (free at finnhub.io) |
 | `scannerBaseURL` | `String` | `""` | CloudFront URL for AWS EMA scanner results |
+| `filterGreenFields` | `Int` | `0` | Bitmask for green status filter (1=YTD, 2=High, 4=Low) |
 
 <details>
 <summary>Sort options</summary>
