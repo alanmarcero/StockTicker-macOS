@@ -35,7 +35,7 @@ private enum Timing {
     static let highlightFadeStep: CGFloat = 0.03
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
-    static let universeRefreshCadence = 4  // Every 4th refresh cycle (~60s at 15s interval)
+    static let universeRefreshCadence = 2  // Every 2nd refresh cycle (~60s at 30s interval)
     static let cacheRetryCadence = 4      // Retry missing cache entries every 4th cycle (~60s)
 }
 
