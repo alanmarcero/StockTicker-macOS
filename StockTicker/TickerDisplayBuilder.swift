@@ -116,6 +116,8 @@ enum TickerDisplayBuilder {
         let result = NSMutableAttributedString()
 
         if quote.isNear52WeekLow {
+            result.append(.styled("● ", font: MenuItemFactory.monoFont, color: .systemRed))
+        } else if quote.isApproaching52WeekLow {
             result.append(.styled("● ", font: MenuItemFactory.monoFont, color: .systemOrange))
         } else {
             result.append(.styled("  ", font: MenuItemFactory.monoFont))

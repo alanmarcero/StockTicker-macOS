@@ -227,8 +227,10 @@ class MenuBarController: NSObject, ObservableObject {
         let legendItem = NSMenuItem()
         legendItem.isEnabled = false
         let legendString = NSMutableAttributedString()
+        legendString.append(.styled("●", font: MenuItemFactory.monoFont, color: .systemRed))
+        legendString.append(.styled(" 2%  ", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
         legendString.append(.styled("●", font: MenuItemFactory.monoFont, color: .systemOrange))
-        legendString.append(.styled(" = Within 2% of 52W Low", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
+        legendString.append(.styled(" 5% of 52W Low", font: MenuItemFactory.monoFont, color: .secondaryLabelColor))
         legendItem.attributedTitle = legendString
         menu.addItem(legendItem)
 

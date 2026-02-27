@@ -237,7 +237,7 @@ final class TickerDisplayBuilderTests: XCTestCase {
 
     // MARK: - 52-Week Low Indicator
 
-    func testTickerTitle_near52WeekLow_showsOrangeDot() {
+    func testTickerTitle_near52WeekLow_showsRedDot() {
         let quote = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 102.0, lowestClose: 100.0)
         let highlight = HighlightConfig(
             isPingHighlighted: false, pingBackgroundColor: nil,
@@ -247,14 +247,30 @@ final class TickerDisplayBuilderTests: XCTestCase {
         let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
         XCTAssertTrue(result.string.hasPrefix("● "))
 
-        // Verify the dot is orange
+        var range = NSRange()
+        let attrs = result.attributes(at: 0, effectiveRange: &range)
+        let fgColor = attrs[.foregroundColor] as? NSColor
+        XCTAssertEqual(fgColor, .systemRed)
+    }
+
+    func testTickerTitle_approaching52WeekLow_showsOrangeDot() {
+        // 104.0 is within 5% but above 2% of lowest 100.0
+        let quote = StockQuote(symbol: "AAPL", price: 104.0, previousClose: 106.0, lowestClose: 100.0)
+        let highlight = HighlightConfig(
+            isPingHighlighted: false, pingBackgroundColor: nil,
+            isPersistentHighlighted: false, persistentHighlightColor: .yellow, persistentHighlightOpacity: 0.25
+        )
+
+        let result = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
+        XCTAssertTrue(result.string.hasPrefix("● "))
+
         var range = NSRange()
         let attrs = result.attributes(at: 0, effectiveRange: &range)
         let fgColor = attrs[.foregroundColor] as? NSColor
         XCTAssertEqual(fgColor, .systemOrange)
     }
 
-    func testTickerTitle_notNear52WeekLow_noOrangeDot() {
+    func testTickerTitle_notNear52WeekLow_noDot() {
         let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0, lowestClose: 100.0)
         let highlight = HighlightConfig(
             isPingHighlighted: false, pingBackgroundColor: nil,
@@ -266,7 +282,7 @@ final class TickerDisplayBuilderTests: XCTestCase {
         XCTAssertFalse(result.string.hasPrefix("● "))
     }
 
-    func testTickerTitle_noLowestClose_noOrangeDot() {
+    func testTickerTitle_noLowestClose_noDot() {
         let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
         let highlight = HighlightConfig(
             isPingHighlighted: false, pingBackgroundColor: nil,

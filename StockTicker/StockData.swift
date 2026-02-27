@@ -443,6 +443,11 @@ struct StockQuote: Identifiable, Sendable {
         guard let lowest = lowestClose, lowest > 0 else { return false }
         return price <= lowest * 1.02
     }
+
+    var isApproaching52WeekLow: Bool {
+        guard let lowest = lowestClose, lowest > 0 else { return false }
+        return price <= lowest * 1.05 && !isNear52WeekLow
+    }
 }
 
 // MARK: - Formatting Helpers
