@@ -120,6 +120,7 @@ class MenuBarController: NSObject, ObservableObject {
     var isFetchingDailyAnalysis = false
     private var refreshCycleCount = 0
     private var universeFinnhubBatchIndex = 0
+    private var universeYahooBatchIndex = 0
     let backfillScheduler = BackfillScheduler()
     var scannerEMAData: ScannerEMAData?
     private var quarterlyWindowController: QuarterlyPanelWindowController?
@@ -466,14 +467,30 @@ class MenuBarController: NSObject, ObservableObject {
             universeFinnhubBatchIndex += 1
         }
 
-        // Overflow equity symbols fall back to Yahoo this cycle
+        // Overflow equity symbols fall back to Yahoo this cycle, batched
         let batchSet = Set(batch)
         let overflow = finnhubSymbols.filter { !batchSet.contains($0) }
         let allYahoo = yahooSymbols + overflow
 
-        // Fetch in parallel
+        let yahooMaxPerCycle = ThrottledTaskGroup.YahooQuote.maxSymbolsPerCycle
+        let yahooBatch: [String]
+        if allYahoo.count <= yahooMaxPerCycle {
+            yahooBatch = allYahoo
+        } else {
+            let sorted = allYahoo.sorted()
+            let offset = (universeYahooBatchIndex * yahooMaxPerCycle) % sorted.count
+            let end = min(offset + yahooMaxPerCycle, sorted.count)
+            yahooBatch = Array(sorted[offset..<end])
+            universeYahooBatchIndex += 1
+        }
+
+        // Fetch in parallel: Finnhub at full speed, Yahoo throttled
         async let fQuotes = stockService.fetchFinnhubQuotes(symbols: batch)
-        async let yQuotes = stockService.fetchQuotes(symbols: allYahoo)
+        async let yQuotes = stockService.fetchQuotes(
+            symbols: yahooBatch,
+            maxConcurrency: ThrottledTaskGroup.YahooQuote.maxConcurrency,
+            delay: ThrottledTaskGroup.YahooQuote.delayNanoseconds
+        )
         var fetched = await yQuotes
         fetched.mergeKeepingNew(await fQuotes)
 
@@ -821,6 +838,7 @@ class MenuBarController: NSObject, ObservableObject {
         currentIndex = 0
         hasCompletedInitialLoad = false  // Reset so next refresh fetches all symbols
         universeFinnhubBatchIndex = 0
+        universeYahooBatchIndex = 0
         universeQuotes = [:]
         universeMarketCaps = [:]
         universeForwardPEs = [:]

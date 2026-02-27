@@ -6,6 +6,7 @@ protocol StockServiceProtocol: Sendable {
     func updateFinnhubApiKey(_ key: String) async
     func fetchQuote(symbol: String) async -> StockQuote?
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote]
+    func fetchQuotes(symbols: [String], maxConcurrency: Int, delay: UInt64) async -> [String: StockQuote]
     func fetchMarketState(symbol: String) async -> String?
     func fetchQuoteFields(symbols: [String]) async -> (marketCaps: [String: Double], forwardPEs: [String: Double])
     func fetchYTDStartPrice(symbol: String) async -> Double?
@@ -28,6 +29,12 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double], dailyAboveCounts: [String: Int]) async -> [String: EMACacheEntry]
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?, precomputedDailyAboveCount: Int?) async -> EMACacheEntry?
     func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote]
+}
+
+extension StockServiceProtocol {
+    func fetchQuotes(symbols: [String], maxConcurrency: Int, delay: UInt64) async -> [String: StockQuote] {
+        await fetchQuotes(symbols: symbols)
+    }
 }
 
 // MARK: - HTTP Client Protocol
@@ -151,6 +158,12 @@ actor StockService: StockServiceProtocol {
 
     func fetchQuotes(symbols: [String]) async -> [String: StockQuote] {
         await ThrottledTaskGroup.map(items: symbols) { symbol in
+            await self.fetchQuote(symbol: symbol)
+        }
+    }
+
+    func fetchQuotes(symbols: [String], maxConcurrency: Int, delay: UInt64) async -> [String: StockQuote] {
+        await ThrottledTaskGroup.map(items: symbols, maxConcurrency: maxConcurrency, delay: delay) { symbol in
             await self.fetchQuote(symbol: symbol)
         }
     }
