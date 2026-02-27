@@ -55,7 +55,7 @@ pgrep -x Stonks && echo "App is running"
 - **Protocol-based DI** for all major components (services, caches, file system, date provider)
 - **Actor isolation** for thread safety; `@MainActor` for state management
 - **`ThrottledTaskGroup`** — bounded concurrency with 4 modes (default, Backfill, FinnhubBackfill, FinnhubQuote). `SymbolRouting.partition()` splits symbols by API source.
-- **Two-tier symbol sets:** `allCacheSymbols` (watchlist + universe + indices) for most caches; `extraStatsSymbols` (watchlist + universe) for quarterly/forward P/E/Extra Stats
+- **Two-tier symbol sets:** `allCacheSymbols` (watchlist + universe + indices) for most caches; `extraStatsSymbols` (watchlist + universe) for quarterly/forward P/E/Extra Stats. Universe quotes always refresh in the background regardless of Extra Stats window visibility.
 - **`CacheStorage<T: Codable>`** — generic file I/O shared by all 7 cache actors
 - **`QuarterlyPanelData`** — DTO bundling data fields passed to Extra Stats view model/controller
 - **`APIEndpoints.chartURL`** — two static URL builders (range+interval, period-based) for Yahoo chart API

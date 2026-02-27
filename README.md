@@ -15,7 +15,7 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 - **Smart fetching** — Skips stock API calls on weekends, holidays, and after hours. Only crypto refreshes when the market is closed.
 - **Persistent highlights** — Background color highlighting for key symbols with configurable color and opacity.
 - **Market schedule** — NYSE open/close status with countdown timer and holiday awareness.
-- **Finnhub integration** — Optional Finnhub API key routes equity/ETF data through Finnhub with Yahoo fallback.
+- **Finnhub integration** — Optional Finnhub API key routes equity/ETF data through Finnhub with Yahoo fallback. Universe quotes refresh continuously in the background.
 
 ### Extra Stats Window (`Cmd+Opt+Q`)
 

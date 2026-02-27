@@ -446,7 +446,7 @@ class MenuBarController: NSObject, ObservableObject {
         guard !symbols.isEmpty else { return }
 
         let shouldFetch = isInitialLoad
-            || (isExtraStatsVisible && refreshCycleCount % Timing.universeRefreshCadence == 0)
+            || refreshCycleCount % Timing.universeRefreshCadence == 0
 
         guard shouldFetch else { return }
 
