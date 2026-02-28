@@ -2,6 +2,10 @@ output "cloudfront_url" {
   value = "https://${aws_cloudfront_distribution.results.domain_name}/results/latest.json"
 }
 
+output "web_app_url" {
+  value = "https://${aws_cloudfront_distribution.results.domain_name}/"
+}
+
 output "bucket_name" {
   value = aws_s3_bucket.scanner.id
 }

@@ -58,7 +58,10 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
           Service = "cloudfront.amazonaws.com"
         }
         Action   = "s3:GetObject"
-        Resource = "${aws_s3_bucket.scanner.arn}/results/*"
+        Resource = [
+          "${aws_s3_bucket.scanner.arn}/results/*",
+          "${aws_s3_bucket.scanner.arn}/app/*",
+        ]
         Condition = {
           StringEquals = {
             "AWS:SourceArn" = aws_cloudfront_distribution.results.arn

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMA Scanner</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    line-height: 1.5;
+  }
+
+  .banner {
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .banner h1 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-right: auto;
+  }
+
+  .banner .meta {
+    color: #8b949e;
+  }
+
+  .banner .meta strong {
+    color: #c9d1d9;
+    font-weight: 500;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .badge-sneak { background: #d2992233; color: #d29922; }
+  .badge-live  { background: #23883433; color: #3fb950; }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    padding: 0 24px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #8b949e;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .tab:hover { color: #c9d1d9; }
+
+  .tab.active {
+    color: #e6edf3;
+    border-bottom-color: #f78166;
+  }
+
+  .tab .count {
+    margin-left: 6px;
+    font-size: 12px;
+    background: #30363d;
+    color: #8b949e;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  .tab.active .count {
+    background: #f7816633;
+    color: #f78166;
+  }
+
+  .content {
+    padding: 16px 24px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th {
+    background: #161b22;
+    color: #8b949e;
+    font-weight: 500;
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid #30363d;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  th:hover { color: #c9d1d9; }
+
+  th .sort-arrow {
+    margin-left: 4px;
+    font-size: 11px;
+    opacity: 0.4;
+  }
+
+  th.sorted .sort-arrow { opacity: 1; color: #f78166; }
+
+  td {
+    padding: 6px 16px;
+    border-bottom: 1px solid #21262d;
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #161b22; }
+
+  td.symbol {
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+
+  .loading {
+    text-align: center;
+    padding: 48px;
+    color: #8b949e;
+    font-size: 15px;
+  }
+
+  .error-msg {
+    text-align: center;
+    padding: 48px;
+    color: #f85149;
+    font-size: 15px;
+  }
+
+  @media (max-width: 640px) {
+    .banner { padding: 10px 12px; gap: 12px; }
+    .tabs { padding: 0 12px; }
+    .content { padding: 12px; }
+    td, th { padding: 6px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <h1>EMA Scanner</h1>
+  <div id="meta"></div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content">
+  <div class="loading">Loading scan data&hellip;</div>
+</div>
+
+<script>
+const TAB_DEFS = [
+  { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','pctAbove','weeksBelow'] },
+  { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','pctBelow','weeksAbove'] },
+  { id: 'below',       label: 'Below',        file: '/results/latest-below.json',      key: 'below',       cols: ['symbol','close','ema','pctBelow','weeksBelow'] },
+  { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','pctAbove','count'] },
+  { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','pctAbove','count'] },
+];
+
+const COL_LABELS = {
+  symbol: 'Symbol', close: 'Close', ema: 'EMA',
+  pctAbove: '% Above', pctBelow: '% Below',
+  weeksBelow: 'Weeks Below', weeksAbove: 'Weeks Above', count: 'Count',
+};
+
+const NUM_COLS = new Set(['close','ema','pctAbove','pctBelow','weeksBelow','weeksAbove','count']);
+
+let data = {};
+let activeTab = TAB_DEFS[0].id;
+let sortCol = null;
+let sortAsc = true;
+
+async function fetchAll() {
+  const urls = [...new Set(TAB_DEFS.map(t => t.file))];
+  const results = await Promise.allSettled(urls.map(u => fetch(u).then(r => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  })));
+  const byUrl = {};
+  urls.forEach((u, i) => {
+    if (results[i].status === 'fulfilled') byUrl[u] = results[i].value;
+  });
+
+  const meta = byUrl[urls[0]] || byUrl[urls[1]] || byUrl[urls[2]];
+  if (meta) renderMeta(meta);
+
+  TAB_DEFS.forEach(t => {
+    const json = byUrl[t.file];
+    data[t.id] = json ? (json[t.key] || []) : [];
+  });
+
+  if (!Object.values(byUrl).length) {
+    document.getElementById('content').innerHTML = '<div class="error-msg">Failed to load scan data.</div>';
+    return;
+  }
+
+  renderTabs();
+  showTab(activeTab);
+}
+
+function renderMeta(json) {
+  const d = json.scanDate || '—';
+  const t = json.scanTime ? new Date(json.scanTime).toLocaleString() : '—';
+  const sneak = json.sneakPeek;
+  const syms = (json.symbolsScanned || 0).toLocaleString();
+  const errs = json.errors || 0;
+
+  const badge = sneak
+    ? '<span class="badge badge-sneak">Sneak Peek</span>'
+    : '<span class="badge badge-live">Live</span>';
+
+  document.getElementById('meta').innerHTML =
+    `${badge} ` +
+    `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
+    `<span class="meta">${syms} symbols</span>` +
+    (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
+}
+
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = TAB_DEFS.map(t =>
+    `<div class="tab${t.id === activeTab ? ' active' : ''}" data-tab="${t.id}">` +
+    `${t.label}<span class="count">${data[t.id].length}</span></div>`
+  ).join('');
+  el.querySelectorAll('.tab').forEach(tab =>
+    tab.addEventListener('click', () => {
+      activeTab = tab.dataset.tab;
+      sortCol = null;
+      sortAsc = true;
+      renderTabs();
+      showTab(activeTab);
+    })
+  );
+}
+
+function showTab(tabId) {
+  const def = TAB_DEFS.find(t => t.id === tabId);
+  let rows = [...(data[tabId] || [])];
+
+  if (sortCol) {
+    rows.sort((a, b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
+      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  }
+
+  const ths = def.cols.map(c => {
+    const isSorted = sortCol === c;
+    const arrow = isSorted ? (sortAsc ? '\u25B2' : '\u25BC') : '\u25B4';
+    const cls = [NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : ''].filter(Boolean).join(' ');
+    return `<th class="${cls}" data-col="${c}">${COL_LABELS[c]}<span class="sort-arrow">${arrow}</span></th>`;
+  }).join('');
+
+  const tds = rows.map(r =>
+    '<tr>' + def.cols.map(c => {
+      const v = r[c];
+      if (c === 'symbol') return `<td class="symbol">${esc(v)}</td>`;
+      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
+      return `<td>${esc(v)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody></table></div>`;
+
+  document.querySelectorAll('th[data-col]').forEach(th =>
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (sortCol === col) sortAsc = !sortAsc;
+      else { sortCol = col; sortAsc = NUM_COLS.has(col) ? false : true; }
+      showTab(tabId);
+    })
+  );
+}
+
+function fmtNum(col, v) {
+  if (v == null) return '—';
+  if (col === 'close' || col === 'ema') return v.toFixed(2);
+  if (col === 'pctAbove' || col === 'pctBelow') return v.toFixed(2) + '%';
+  return v.toLocaleString();
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+fetchAll();
+</script>
+</body>
+</html>
