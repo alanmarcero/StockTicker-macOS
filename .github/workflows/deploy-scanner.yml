@@ -3,7 +3,7 @@ name: Deploy AWS EMA Scanner
 on:
   push:
     branches: [main]
-    paths: ['aws-scanner/**']
+    paths: ['aws-scanner/**', '.github/workflows/deploy-scanner.yml']
 
 concurrency:
   group: deploy-scanner
