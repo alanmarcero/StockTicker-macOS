@@ -273,7 +273,13 @@ async function fetchAll() {
 
   TAB_DEFS.forEach(t => {
     const json = byUrl[t.file];
-    data[t.id] = json ? (json[t.key] || []) : [];
+    if (!json) { data[t.id] = []; return; }
+    // Backward compat: old format had "below" with "weeksBelow" field
+    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
+      data[t.id] = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
+    } else {
+      data[t.id] = json[t.key] || [];
+    }
   });
 
   if (!Object.values(byUrl).length) {
