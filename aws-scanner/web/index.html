@@ -50,7 +50,6 @@
   }
 
   .badge-sneak { background: #d2992233; color: #d29922; }
-  .badge-live  { background: #23883433; color: #3fb950; }
 
   .tabs {
     display: flex;
@@ -148,6 +147,53 @@
     color: #e6edf3;
   }
 
+  td.symbol a {
+    color: #e6edf3;
+    text-decoration: none;
+  }
+
+  td.symbol a:hover {
+    color: #f78166;
+  }
+
+  .filter-row td {
+    padding: 4px 16px;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+    position: sticky;
+    top: 33px;
+    z-index: 1;
+  }
+
+  .filter-row input {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    color: #c9d1d9;
+    font-size: 12px;
+    padding: 3px 6px;
+    outline: none;
+  }
+
+  .filter-row input:focus {
+    border-color: #58a6ff;
+  }
+
+  .filter-row input.filter-symbol {
+    width: 100%;
+  }
+
+  .filter-row input.filter-num {
+    width: 70px;
+    text-align: right;
+  }
+
+  .filter-row .num-filters {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+  }
+
   td.num { text-align: right; font-variant-numeric: tabular-nums; }
   th.num { text-align: right; }
 
@@ -187,25 +233,25 @@
 
 <script>
 const TAB_DEFS = [
-  { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','pctAbove','weeksBelow'] },
-  { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','pctBelow','weeksAbove'] },
-  { id: 'below',       label: 'Below',        file: '/results/latest-below.json',      key: 'below',       cols: ['symbol','close','ema','pctBelow','weeksBelow'] },
-  { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','pctAbove','count'] },
-  { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','pctAbove','count'] },
+  { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','weeksBelow'] },
+  { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','weeksAbove'] },
+  { id: 'below',       label: 'Below',        file: '/results/latest-below.json',      key: 'below',       cols: ['symbol','close','ema','weeksBelow'] },
+  { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','count'] },
+  { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','count'] },
 ];
 
 const COL_LABELS = {
   symbol: 'Symbol', close: 'Close', ema: 'EMA',
-  pctAbove: '% Above', pctBelow: '% Below',
   weeksBelow: 'Weeks Below', weeksAbove: 'Weeks Above', count: 'Count',
 };
 
-const NUM_COLS = new Set(['close','ema','pctAbove','pctBelow','weeksBelow','weeksAbove','count']);
+const NUM_COLS = new Set(['close','ema','weeksBelow','weeksAbove','count']);
 
 let data = {};
 let activeTab = TAB_DEFS[0].id;
 let sortCol = null;
 let sortAsc = true;
+let filters = {};
 
 async function fetchAll() {
   const urls = [...new Set(TAB_DEFS.map(t => t.file))];
@@ -242,28 +288,51 @@ function renderMeta(json) {
   const syms = (json.symbolsScanned || 0).toLocaleString();
   const errs = json.errors || 0;
 
-  const badge = sneak
-    ? '<span class="badge badge-sneak">Sneak Peek</span>'
-    : '<span class="badge badge-live">Live</span>';
+  const badge = sneak ? '<span class="badge badge-sneak">Sneak Peek</span> ' : '';
 
   document.getElementById('meta').innerHTML =
-    `${badge} ` +
+    badge +
     `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
     `<span class="meta">${syms} symbols</span>` +
     (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
 }
 
+function applyFilters(rows, cols) {
+  return rows.filter(r => {
+    for (const c of cols) {
+      const f = filters[c];
+      if (!f) continue;
+      if (c === 'symbol') {
+        if (f.text && !String(r[c]).toLowerCase().includes(f.text.toLowerCase())) return false;
+      } else {
+        const v = r[c];
+        if (v == null) return false;
+        if (f.min !== '' && f.min != null && v < Number(f.min)) return false;
+        if (f.max !== '' && f.max != null && v > Number(f.max)) return false;
+      }
+    }
+    return true;
+  });
+}
+
 function renderTabs() {
   const el = document.getElementById('tabs');
-  el.innerHTML = TAB_DEFS.map(t =>
-    `<div class="tab${t.id === activeTab ? ' active' : ''}" data-tab="${t.id}">` +
-    `${t.label}<span class="count">${data[t.id].length}</span></div>`
-  ).join('');
+  el.innerHTML = TAB_DEFS.map(t => {
+    const total = data[t.id].length;
+    const filtered = applyFilters(data[t.id], t.cols).length;
+    const isActive = t.id === activeTab;
+    const hasFilter = isActive && Object.keys(filters).length > 0 &&
+      Object.values(filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
+    const countText = hasFilter ? `${filtered} / ${total}` : `${total}`;
+    return `<div class="tab${isActive ? ' active' : ''}" data-tab="${t.id}">` +
+      `${t.label}<span class="count">${countText}</span></div>`;
+  }).join('');
   el.querySelectorAll('.tab').forEach(tab =>
     tab.addEventListener('click', () => {
       activeTab = tab.dataset.tab;
       sortCol = null;
       sortAsc = true;
+      filters = {};
       renderTabs();
       showTab(activeTab);
     })
@@ -273,6 +342,8 @@ function renderTabs() {
 function showTab(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
   let rows = [...(data[tabId] || [])];
+
+  rows = applyFilters(rows, def.cols);
 
   if (sortCol) {
     rows.sort((a, b) => {
@@ -289,17 +360,38 @@ function showTab(tabId) {
     return `<th class="${cls}" data-col="${c}">${COL_LABELS[c]}<span class="sort-arrow">${arrow}</span></th>`;
   }).join('');
 
+  const filterCells = def.cols.map(c => {
+    if (c === 'symbol') {
+      const val = filters[c]?.text || '';
+      return `<td><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter…" value="${esc(val)}"></td>`;
+    }
+    const f = filters[c] || {};
+    const minVal = f.min != null ? f.min : '';
+    const maxVal = f.max != null ? f.max : '';
+    return `<td class="num"><div class="num-filters">` +
+      `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
+      `<input type="number" class="filter-num" data-col="${c}" data-bound="max" placeholder="max" value="${maxVal}">` +
+      `</div></td>`;
+  }).join('');
+
   const tds = rows.map(r =>
     '<tr>' + def.cols.map(c => {
       const v = r[c];
-      if (c === 'symbol') return `<td class="symbol">${esc(v)}</td>`;
+      if (c === 'symbol') {
+        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+      }
       if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
       return `<td>${esc(v)}</td>`;
     }).join('') + '</tr>'
   ).join('');
 
   document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody></table></div>`;
+    `<div class="table-wrap"><table>` +
+    `<thead><tr>${ths}</tr></thead>` +
+    `<tr class="filter-row">${filterCells}</tr>` +
+    `<tbody>${tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody>` +
+    `</table></div>`;
 
   document.querySelectorAll('th[data-col]').forEach(th =>
     th.addEventListener('click', () => {
@@ -309,12 +401,33 @@ function showTab(tabId) {
       showTab(tabId);
     })
   );
+
+  document.querySelectorAll('.filter-row input').forEach(input => {
+    input.addEventListener('input', () => {
+      const col = input.dataset.col;
+      const bound = input.dataset.bound;
+      const cursorPos = input.selectionStart;
+      if (col === 'symbol') {
+        if (!filters[col]) filters[col] = {};
+        filters[col].text = input.value;
+      } else {
+        if (!filters[col]) filters[col] = {};
+        filters[col][bound] = input.value;
+      }
+      renderTabs();
+      showTab(tabId);
+      const selector = bound
+        ? `.filter-row input[data-col="${col}"][data-bound="${bound}"]`
+        : `.filter-row input[data-col="${col}"]`;
+      const restored = document.querySelector(selector);
+      if (restored) { restored.focus(); restored.selectionStart = restored.selectionEnd = cursorPos; }
+    });
+  });
 }
 
 function fmtNum(col, v) {
   if (v == null) return '—';
   if (col === 'close' || col === 'ema') return v.toFixed(2);
-  if (col === 'pctAbove' || col === 'pctBelow') return v.toFixed(2) + '%';
   return v.toLocaleString();
 }
 
