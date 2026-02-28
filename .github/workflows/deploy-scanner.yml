@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths: ['aws-scanner/**', '.github/workflows/deploy-scanner.yml']
+  workflow_dispatch:
 
 concurrency:
   group: deploy-scanner
