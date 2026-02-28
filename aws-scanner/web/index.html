@@ -398,8 +398,7 @@ function showTab(tabId) {
 
   document.getElementById('content').innerHTML =
     `<div class="table-wrap"><table>` +
-    `<thead><tr>${ths}</tr></thead>` +
-    `<tr class="filter-row">${filterCells}</tr>` +
+    `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
     `<tbody>${tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody>` +
     `</table></div>`;
 
