@@ -1,5 +1,5 @@
-resource "aws_scheduler_schedule" "weekly" {
-  name       = "ema-scanner-weekly"
+resource "aws_scheduler_schedule" "sneak_peek" {
+  name       = "ema-scanner-sneak-peek"
   group_name = "default"
 
   schedule_expression          = "cron(0 14 ? * FRI *)"
