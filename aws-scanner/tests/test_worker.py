@@ -25,7 +25,7 @@ UPTREND_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 CROSSDOWN_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 40.0]
 
 # Reusable empty batch for aggregation tests
-EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "crossdowns": [], "below": [], "dayAbove": [], "weekAbove": []}
+EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "crossdowns": [], "dayBelow": [], "weekBelow": [], "dayAbove": [], "weekAbove": []}
 
 
 def _timestamps_for(closes):
@@ -48,7 +48,7 @@ class TestProcessBatch:
     def test_crossover_detected(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["TEST"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["TEST"])
 
         assert len(crossovers) == 1
         assert crossovers[0]["symbol"] == "TEST"
@@ -60,7 +60,7 @@ class TestProcessBatch:
     def test_crossover_output_fields(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        crossovers, _, _, _, _, _ = _process_batch(["AAPL"])
+        crossovers, _, _, _, _, _, _ = _process_batch(["AAPL"])
 
         entry = crossovers[0]
         assert set(entry.keys()) == {"symbol", "close", "ema", "pctAbove", "weeksBelow"}
@@ -72,7 +72,7 @@ class TestProcessBatch:
     def test_crossover_ema_rounded_to_4_decimals(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        crossovers, _, _, _, _, _ = _process_batch(["X"])
+        crossovers, _, _, _, _, _, _ = _process_batch(["X"])
 
         ema_str = str(crossovers[0]["ema"])
         decimals = ema_str.split(".")[-1] if "." in ema_str else ""
@@ -81,61 +81,61 @@ class TestProcessBatch:
     def test_crossover_pct_above_rounded_to_2_decimals(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        crossovers, _, _, _, _, _ = _process_batch(["X"])
+        crossovers, _, _, _, _, _, _ = _process_batch(["X"])
 
         pct = crossovers[0]["pctAbove"]
         assert pct == round(pct, 2)
 
-    def test_below_detected_with_minimum_weeks(self):
+    def test_week_below_detected_with_minimum_weeks(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["TEST"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["TEST"])
 
-        assert len(below) == 1
-        assert below[0]["symbol"] == "TEST"
-        assert below[0]["weeksBelow"] == 3
-        assert below[0]["pctBelow"] > 0
+        assert len(week_below) == 1
+        assert week_below[0]["symbol"] == "TEST"
+        assert week_below[0]["count"] == 3
+        assert week_below[0]["pctBelow"] > 0
 
-    def test_below_output_fields(self):
+    def test_week_below_output_fields(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
 
-        _, _, below, _, _, _ = _process_batch(["X"])
+        _, _, _, week_below, _, _, _ = _process_batch(["X"])
 
-        entry = below[0]
-        assert set(entry.keys()) == {"symbol", "close", "ema", "pctBelow", "weeksBelow"}
+        entry = week_below[0]
+        assert set(entry.keys()) == {"symbol", "close", "ema", "pctBelow", "count"}
 
-    def test_below_not_detected_under_threshold(self):
+    def test_week_below_not_detected_under_threshold(self):
         closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 53.0]
         self.mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
 
-        _, _, below, _, _, _ = _process_batch(["TEST"])
+        _, _, _, week_below, _, _, _ = _process_batch(["TEST"])
 
-        assert len(below) == 0
+        assert len(week_below) == 0
 
-    def test_below_two_weeks_not_detected(self):
+    def test_week_below_two_weeks_not_detected(self):
         closes = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0]
         self.mock_yahoo.fetch_weekly_candles.return_value = (closes, _timestamps_for(closes))
 
-        _, _, below, _, _, _ = _process_batch(["TEST"])
+        _, _, _, week_below, _, _, _ = _process_batch(["TEST"])
 
-        assert len(below) == 0
+        assert len(week_below) == 0
 
     def test_uptrend_no_crossover_no_below(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["BULL"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["BULL"])
 
         assert len(crossovers) == 0
-        assert len(below) == 0
+        assert len(week_below) == 0
         assert len(errors) == 0
 
     def test_fetch_failure_records_error(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = None
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["FAIL"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["FAIL"])
 
         assert len(crossovers) == 0
-        assert len(below) == 0
+        assert len(week_below) == 0
         assert len(day_above) == 0
         assert len(week_above) == 0
         assert len(errors) == 1
@@ -145,10 +145,10 @@ class TestProcessBatch:
     def test_insufficient_data_skipped_no_error(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = ([100.0, 101.0, 102.0], [1, 2, 3])
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["SHORT"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["SHORT"])
 
         assert len(crossovers) == 0
-        assert len(below) == 0
+        assert len(week_below) == 0
         assert len(errors) == 0
 
     def test_multiple_symbols_rate_limited(self):
@@ -174,18 +174,19 @@ class TestProcessBatch:
 
         self.mock_yahoo.fetch_weekly_candles.side_effect = weekly_side_effect
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["OK", "FAIL", "OK2"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["OK", "FAIL", "OK2"])
 
         assert len(crossovers) == 2
         assert len(errors) == 1
         assert errors[0]["symbol"] == "FAIL"
 
     def test_empty_batch(self):
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch([])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch([])
 
         assert crossovers == []
         assert crossdowns == []
-        assert below == []
+        assert day_below == []
+        assert week_below == []
         assert day_above == []
         assert week_above == []
         assert errors == []
@@ -195,10 +196,10 @@ class TestProcessBatch:
     def test_all_failures(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = None
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(["A", "B", "C"])
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(["A", "B", "C"])
 
         assert len(crossovers) == 0
-        assert len(below) == 0
+        assert len(week_below) == 0
         assert len(day_above) == 0
         assert len(week_above) == 0
         assert len(errors) == 3
@@ -207,7 +208,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
         self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
-        _, _, _, day_above, _, _ = _process_batch(["BULL"])
+        _, _, _, _, day_above, _, _ = _process_batch(["BULL"])
 
         assert len(day_above) == 1
         assert day_above[0]["symbol"] == "BULL"
@@ -218,7 +219,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
         self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
-        _, _, _, day_above, _, _ = _process_batch(["X"])
+        _, _, _, _, day_above, _, _ = _process_batch(["X"])
 
         entry = day_above[0]
         assert set(entry.keys()) == {"symbol", "close", "ema", "pctAbove", "count"}
@@ -227,7 +228,7 @@ class TestProcessBatch:
     def test_week_above_detected(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
-        _, _, _, _, week_above, _ = _process_batch(["BULL"])
+        _, _, _, _, _, week_above, _ = _process_batch(["BULL"])
 
         assert len(week_above) == 1
         assert week_above[0]["symbol"] == "BULL"
@@ -237,7 +238,7 @@ class TestProcessBatch:
     def test_week_above_output_fields(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
 
-        _, _, _, _, week_above, _ = _process_batch(["X"])
+        _, _, _, _, _, week_above, _ = _process_batch(["X"])
 
         entry = week_above[0]
         assert set(entry.keys()) == {"symbol", "close", "ema", "pctAbove", "count"}
@@ -246,7 +247,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSOVER_CLOSES, _timestamps_for(CROSSOVER_CLOSES))
 
-        crossovers, _, _, _, _, errors = _process_batch(["TEST"])
+        crossovers, _, _, _, _, _, errors = _process_batch(["TEST"])
 
         assert len(crossovers) == 1
         assert len(errors) == 0
@@ -255,7 +256,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = (UPTREND_CLOSES, _timestamps_for(UPTREND_CLOSES))
         self.mock_yahoo.fetch_weekly_candles.return_value = None
 
-        _, _, _, day_above, _, errors = _process_batch(["TEST"])
+        _, _, _, _, day_above, _, errors = _process_batch(["TEST"])
 
         assert len(day_above) == 1
         assert len(errors) == 0
@@ -264,7 +265,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_weekly_candles.return_value = None
 
-        _, _, _, _, _, errors = _process_batch(["FAIL"])
+        _, _, _, _, _, _, errors = _process_batch(["FAIL"])
 
         assert len(errors) == 1
         assert errors[0]["symbol"] == "FAIL"
@@ -273,7 +274,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
         self.mock_yahoo.fetch_weekly_candles.return_value = (BELOW_CLOSES, _timestamps_for(BELOW_CLOSES))
 
-        _, _, _, day_above, week_above, _ = _process_batch(["BEAR"])
+        _, _, _, _, day_above, week_above, _ = _process_batch(["BEAR"])
 
         assert len(day_above) == 0
         assert len(week_above) == 0
@@ -281,7 +282,7 @@ class TestProcessBatch:
     def test_crossdown_detected(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSDOWN_CLOSES, _timestamps_for(CROSSDOWN_CLOSES))
 
-        _, crossdowns, _, _, _, _ = _process_batch(["TEST"])
+        _, crossdowns, _, _, _, _, _ = _process_batch(["TEST"])
 
         assert len(crossdowns) == 1
         assert crossdowns[0]["symbol"] == "TEST"
@@ -291,7 +292,7 @@ class TestProcessBatch:
     def test_crossdown_output_fields(self):
         self.mock_yahoo.fetch_weekly_candles.return_value = (CROSSDOWN_CLOSES, _timestamps_for(CROSSDOWN_CLOSES))
 
-        _, crossdowns, _, _, _, _ = _process_batch(["X"])
+        _, crossdowns, _, _, _, _, _ = _process_batch(["X"])
 
         entry = crossdowns[0]
         assert set(entry.keys()) == {"symbol", "close", "ema", "pctBelow", "weeksAbove"}
@@ -305,7 +306,7 @@ class TestWriteBatchResults:
 
     @patch("src.worker.app.s3")
     def test_writes_to_correct_key(self, mock_s3):
-        _write_batch_results("mybucket", "2026-02-22", 5, 50, 2, [], [], [], [], [])
+        _write_batch_results("mybucket", "2026-02-22", 5, 50, 2, [], [], [], [], [], [])
 
         mock_s3.put_object.assert_called_once()
         kwargs = mock_s3.put_object.call_args[1]
@@ -314,24 +315,25 @@ class TestWriteBatchResults:
 
     @patch("src.worker.app.s3")
     def test_batch_index_zero_padded(self, mock_s3):
-        _write_batch_results("b", "r", 0, 10, 0, [], [], [], [], [])
+        _write_batch_results("b", "r", 0, 10, 0, [], [], [], [], [], [])
         assert "batch-000.json" in mock_s3.put_object.call_args[1]["Key"]
 
-        _write_batch_results("b", "r", 99, 10, 0, [], [], [], [], [])
+        _write_batch_results("b", "r", 99, 10, 0, [], [], [], [], [], [])
         assert "batch-099.json" in mock_s3.put_object.call_args[1]["Key"]
 
-        _write_batch_results("b", "r", 159, 10, 0, [], [], [], [], [])
+        _write_batch_results("b", "r", 159, 10, 0, [], [], [], [], [], [])
         assert "batch-159.json" in mock_s3.put_object.call_args[1]["Key"]
 
     @patch("src.worker.app.s3")
     def test_body_contains_all_fields(self, mock_s3):
         crossovers = [{"symbol": "AAPL", "weeksBelow": 3}]
         crossdowns = [{"symbol": "NVDA", "weeksAbove": 5}]
-        below = [{"symbol": "MSFT", "weeksBelow": 4}]
+        day_below = [{"symbol": "AMZN", "count": 2}]
+        week_below = [{"symbol": "MSFT", "count": 4}]
         day_above = [{"symbol": "GOOG", "count": 5}]
         week_above = [{"symbol": "TSLA", "count": 3}]
 
-        _write_batch_results("b", "r", 0, 50, 2, crossovers, crossdowns, below, day_above, week_above)
+        _write_batch_results("b", "r", 0, 50, 2, crossovers, crossdowns, day_below, week_below, day_above, week_above)
 
         body = json.loads(mock_s3.put_object.call_args[1]["Body"])
         assert body["batchIndex"] == 0
@@ -339,7 +341,8 @@ class TestWriteBatchResults:
         assert body["errors"] == 2
         assert body["crossovers"] == crossovers
         assert body["crossdowns"] == crossdowns
-        assert body["below"] == below
+        assert body["dayBelow"] == day_below
+        assert body["weekBelow"] == week_below
         assert body["dayAbove"] == day_above
         assert body["weekAbove"] == week_above
 
@@ -396,7 +399,7 @@ class TestLambdaHandler:
         }
 
     def test_processes_sqs_message(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -412,7 +415,7 @@ class TestLambdaHandler:
         self.mock_write.assert_called_once()
 
     def test_last_batch_triggers_aggregation(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 2,
@@ -426,7 +429,7 @@ class TestLambdaHandler:
         self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 3, True)
 
     def test_non_last_batch_skips_aggregation(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -440,7 +443,7 @@ class TestLambdaHandler:
         self.mock_agg.assert_not_called()
 
     def test_errors_written_when_present(self):
-        self.mock_process.return_value = ([], [], [], [], [], [{"symbol": "BAD", "error": "fail"}])
+        self.mock_process.return_value = ([], [], [], [], [], [], [{"symbol": "BAD", "error": "fail"}])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -454,7 +457,7 @@ class TestLambdaHandler:
         self.mock_errors.assert_called_once()
 
     def test_errors_not_written_when_empty(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -474,7 +477,7 @@ class TestLambdaHandler:
         self.mock_process.assert_not_called()
 
     def test_single_batch_total_triggers_aggregation(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -488,7 +491,7 @@ class TestLambdaHandler:
         self.mock_agg.assert_called_once()
 
     def test_sneak_peek_defaults_to_true(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -501,7 +504,7 @@ class TestLambdaHandler:
         self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 1, True)
 
     def test_sneak_peek_false_passed_to_aggregation(self):
-        self.mock_process.return_value = ([], [], [], [], [], [])
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
         event = self._sqs_event([{
             "runId": "2026-02-22",
             "batchIndex": 0,
@@ -533,7 +536,8 @@ class TestAggregateResults:
                 "symbolsProcessed": 50,
                 "errors": 1,
                 "crossovers": [{"symbol": "AAPL", "weeksBelow": 5}],
-                "below": [{"symbol": "X", "weeksBelow": 4}],
+                "dayBelow": [{"symbol": "X", "count": 4}],
+                "weekBelow": [],
                 "dayAbove": [{"symbol": "GOOG", "count": 3}],
                 "weekAbove": [],
             },
@@ -541,7 +545,8 @@ class TestAggregateResults:
                 "symbolsProcessed": 50,
                 "errors": 0,
                 "crossovers": [{"symbol": "MSFT", "weeksBelow": 3}],
-                "below": [],
+                "dayBelow": [],
+                "weekBelow": [{"symbol": "Y", "count": 5}],
                 "dayAbove": [],
                 "weekAbove": [{"symbol": "TSLA", "count": 2}],
             },
@@ -558,9 +563,9 @@ class TestAggregateResults:
     def test_crossovers_sorted_by_weeks_below_descending(self):
         self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 0,
-             "crossovers": [{"symbol": "LOW", "weeksBelow": 3}], "below": []},
+             "crossovers": [{"symbol": "LOW", "weeksBelow": 3}]},
             {"symbolsProcessed": 50, "errors": 0,
-             "crossovers": [{"symbol": "HIGH", "weeksBelow": 8}], "below": []},
+             "crossovers": [{"symbol": "HIGH", "weeksBelow": 8}]},
         ]
 
         _aggregate_results("b", "r", 2)
@@ -569,23 +574,23 @@ class TestAggregateResults:
         assert crossovers[0]["symbol"] == "HIGH"
         assert crossovers[1]["symbol"] == "LOW"
 
-    def test_below_sorted_by_weeks_below_descending(self):
+    def test_week_below_sorted_by_count_descending(self):
         self.mock_read.side_effect = [
             {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
-             "below": [{"symbol": "LOW", "weeksBelow": 3}]},
+             "weekBelow": [{"symbol": "LOW", "count": 3}]},
             {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
-             "below": [{"symbol": "HIGH", "weeksBelow": 10}]},
+             "weekBelow": [{"symbol": "HIGH", "count": 10}]},
         ]
 
         _aggregate_results("b", "r", 2)
 
-        below = self.mock_put.call_args_list[2][0][2]["below"]
-        assert below[0]["symbol"] == "HIGH"
-        assert below[1]["symbol"] == "LOW"
+        below_data = self.mock_put.call_args_list[2][0][2]
+        assert below_data["weekBelow"][0]["symbol"] == "HIGH"
+        assert below_data["weekBelow"][1]["symbol"] == "LOW"
 
     def test_handles_missing_batch_file(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": []},
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": []},
             None,
         ]
 
@@ -673,7 +678,7 @@ class TestAggregateResults:
         _aggregate_results("b", "r", 1)
 
         data = self.mock_put.call_args_list[2][0][2]
-        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "below"}
+        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "dayBelow", "weekBelow"}
 
     def test_latest_above_json_has_required_fields(self):
         self.mock_read.return_value = EMPTY_BATCH
@@ -695,9 +700,9 @@ class TestAggregateResults:
 
     def test_error_counts_accumulate(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 3, "crossovers": [], "below": []},
-            {"symbolsProcessed": 50, "errors": 7, "crossovers": [], "below": []},
-            {"symbolsProcessed": 50, "errors": 5, "crossovers": [], "below": []},
+            {"symbolsProcessed": 50, "errors": 3, "crossovers": []},
+            {"symbolsProcessed": 50, "errors": 7, "crossovers": []},
+            {"symbolsProcessed": 50, "errors": 5, "crossovers": []},
         ]
 
         _aggregate_results("b", "r", 3)
@@ -708,9 +713,9 @@ class TestAggregateResults:
 
     def test_day_above_merged_and_sorted_by_count_descending(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": [],
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
              "dayAbove": [{"symbol": "LOW", "count": 2}], "weekAbove": []},
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": [],
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
              "dayAbove": [{"symbol": "HIGH", "count": 10}], "weekAbove": []},
         ]
 
@@ -723,9 +728,9 @@ class TestAggregateResults:
 
     def test_week_above_merged_and_sorted_by_count_descending(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": [],
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
              "dayAbove": [], "weekAbove": [{"symbol": "LOW", "count": 1}]},
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": [],
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [],
              "dayAbove": [], "weekAbove": [{"symbol": "HIGH", "count": 8}]},
         ]
 
@@ -738,7 +743,7 @@ class TestAggregateResults:
 
     def test_backward_compat_missing_above_keys(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": []},
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": []},
         ]
 
         _aggregate_results("b", "r", 1)
@@ -749,8 +754,8 @@ class TestAggregateResults:
 
     def test_crossdowns_merged_and_sorted_by_weeks_above_descending(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "crossdowns": [{"symbol": "LOW", "weeksAbove": 3}], "below": []},
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "crossdowns": [{"symbol": "HIGH", "weeksAbove": 8}], "below": []},
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "crossdowns": [{"symbol": "LOW", "weeksAbove": 3}]},
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "crossdowns": [{"symbol": "HIGH", "weeksAbove": 8}]},
         ]
 
         _aggregate_results("b", "r", 2)
@@ -776,7 +781,7 @@ class TestAggregateResults:
 
     def test_backward_compat_missing_crossdowns_key(self):
         self.mock_read.side_effect = [
-            {"symbolsProcessed": 50, "errors": 0, "crossovers": [], "below": []},
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": []},
         ]
 
         _aggregate_results("b", "r", 1)

@@ -73,7 +73,7 @@ def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -
     return weeks_above
 
 
-def count_weeks_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+def count_periods_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
     if len(closes) < period + 1:
         return None
 

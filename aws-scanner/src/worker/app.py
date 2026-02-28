@@ -25,9 +25,9 @@ def lambda_handler(event: dict, context) -> dict:
         sneak_peek: bool = message.get("sneakPeek", True)
         symbols: list[str] = message["symbols"]
 
-        crossovers, crossdowns, below, day_above, week_above, errors = _process_batch(symbols)
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(symbols)
 
-        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, below, day_above, week_above)
+        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above)
 
         if errors:
             _write_errors(bucket, run_id, batch_index, errors)
@@ -40,10 +40,11 @@ def lambda_handler(event: dict, context) -> dict:
 
 def _process_batch(
     symbols: list[str],
-) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
     crossovers: list[dict] = []
     crossdowns: list[dict] = []
-    below: list[dict] = []
+    day_below: list[dict] = []
+    week_below: list[dict] = []
     day_above: list[dict] = []
     week_above: list[dict] = []
     errors: list[dict] = []
@@ -64,9 +65,10 @@ def _process_batch(
             daily_closes = daily_result[0]
             daily_ema_value = ema.calculate(daily_closes)
             if daily_ema_value is not None:
+                last_close = daily_closes[-1]
+
                 daily_above_count = ema.count_periods_above(daily_closes)
                 if daily_above_count is not None:
-                    last_close = daily_closes[-1]
                     pct = round((last_close - daily_ema_value) / daily_ema_value * 100, 2)
                     day_above.append({
                         "symbol": symbol,
@@ -74,6 +76,17 @@ def _process_batch(
                         "ema": round(daily_ema_value, 4),
                         "pctAbove": pct,
                         "count": daily_above_count,
+                    })
+
+                daily_below_count = ema.count_periods_below(daily_closes)
+                if daily_below_count is not None:
+                    pct = round((daily_ema_value - last_close) / daily_ema_value * 100, 2)
+                    day_below.append({
+                        "symbol": symbol,
+                        "close": last_close,
+                        "ema": round(daily_ema_value, 4),
+                        "pctBelow": pct,
+                        "count": daily_below_count,
                     })
 
         if weekly_result is not None:
@@ -104,15 +117,15 @@ def _process_batch(
                         "weeksAbove": crossdown_weeks,
                     })
 
-                below_count = ema.count_weeks_below(closes)
-                if below_count is not None and below_count >= 3:
+                weekly_below_count = ema.count_periods_below(closes)
+                if weekly_below_count is not None and weekly_below_count >= 3:
                     pct_below = round((ema_value - last_close) / ema_value * 100, 2)
-                    below.append({
+                    week_below.append({
                         "symbol": symbol,
                         "close": last_close,
                         "ema": round(ema_value, 4),
                         "pctBelow": pct_below,
-                        "weeksBelow": below_count,
+                        "count": weekly_below_count,
                     })
 
                 weekly_above_count = ema.count_periods_above(closes)
@@ -126,7 +139,7 @@ def _process_batch(
                         "count": weekly_above_count,
                     })
 
-    return crossovers, crossdowns, below, day_above, week_above, errors
+    return crossovers, crossdowns, day_below, week_below, day_above, week_above, errors
 
 
 def _write_batch_results(
@@ -137,7 +150,8 @@ def _write_batch_results(
     error_count: int,
     crossovers: list[dict],
     crossdowns: list[dict],
-    below: list[dict],
+    day_below: list[dict],
+    week_below: list[dict],
     day_above: list[dict],
     week_above: list[dict],
 ) -> None:
@@ -147,7 +161,8 @@ def _write_batch_results(
         "errors": error_count,
         "crossovers": crossovers,
         "crossdowns": crossdowns,
-        "below": below,
+        "dayBelow": day_below,
+        "weekBelow": week_below,
         "dayAbove": day_above,
         "weekAbove": week_above,
     }
@@ -163,7 +178,8 @@ def _write_errors(bucket: str, run_id: str, batch_index: int, errors: list[dict]
 def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek: bool = True) -> None:
     all_crossovers: list[dict] = []
     all_crossdowns: list[dict] = []
-    all_below: list[dict] = []
+    all_day_below: list[dict] = []
+    all_week_below: list[dict] = []
     all_day_above: list[dict] = []
     all_week_above: list[dict] = []
     total_symbols = 0
@@ -177,7 +193,8 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek:
 
         all_crossovers.extend(batch.get("crossovers", []))
         all_crossdowns.extend(batch.get("crossdowns", []))
-        all_below.extend(batch.get("below", []))
+        all_day_below.extend(batch.get("dayBelow", []))
+        all_week_below.extend(batch.get("weekBelow", []))
         all_day_above.extend(batch.get("dayAbove", []))
         all_week_above.extend(batch.get("weekAbove", []))
         total_symbols += batch.get("symbolsProcessed", 0)
@@ -185,7 +202,8 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek:
 
     all_crossovers.sort(key=lambda x: x.get("weeksBelow", 0), reverse=True)
     all_crossdowns.sort(key=lambda x: x.get("weeksAbove", 0), reverse=True)
-    all_below.sort(key=lambda x: x.get("weeksBelow", 0), reverse=True)
+    all_day_below.sort(key=lambda x: x.get("count", 0), reverse=True)
+    all_week_below.sort(key=lambda x: x.get("count", 0), reverse=True)
     all_day_above.sort(key=lambda x: x.get("count", 0), reverse=True)
     all_week_above.sort(key=lambda x: x.get("count", 0), reverse=True)
 
@@ -203,7 +221,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek:
 
     crossover_result = {**base, "crossovers": all_crossovers}
     crossdown_result = {**base, "crossdowns": all_crossdowns}
-    below_result = {**base, "below": all_below}
+    below_result = {**base, "dayBelow": all_day_below, "weekBelow": all_week_below}
     above_result = {**base, "dayAbove": all_day_above, "weekAbove": all_week_above}
 
     _put_json(bucket, "results/latest.json", crossover_result)

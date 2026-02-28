@@ -1,6 +1,6 @@
 import pytest
 
-from src.worker.ema import DEFAULT_PERIOD, calculate, count_periods_above, count_weeks_below, detect_weekly_crossover, detect_weekly_crossdown
+from src.worker.ema import DEFAULT_PERIOD, calculate, count_periods_above, count_periods_below, detect_weekly_crossover, detect_weekly_crossdown
 
 
 def test_calculate_empty_closes_returns_none():
@@ -104,37 +104,37 @@ def test_detect_weekly_crossover_crossover_at_boundary():
     assert result == 1
 
 
-def test_count_weeks_below_no_data_returns_none():
-    result = count_weeks_below(closes=[])
+def test_count_periods_below_no_data_returns_none():
+    result = count_periods_below(closes=[])
     assert result is None
 
 
-def test_count_weeks_below_insufficient_data_returns_none():
-    result = count_weeks_below(closes=[100.0, 101.0, 102.0, 103.0, 104.0])
+def test_count_periods_below_insufficient_data_returns_none():
+    result = count_periods_below(closes=[100.0, 101.0, 102.0, 103.0, 104.0])
     assert result is None
 
 
-def test_count_weeks_below_above_ema_returns_none():
+def test_count_periods_below_above_ema_returns_none():
     closes = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
-    result = count_weeks_below(closes=closes)
+    result = count_periods_below(closes=closes)
     assert result is None
 
 
-def test_count_weeks_below_one_week_below():
+def test_count_periods_below_one_week_below():
     closes = [50.0, 52.0, 54.0, 56.0, 58.0, 56.0, 53.0]
-    result = count_weeks_below(closes=closes)
+    result = count_periods_below(closes=closes)
     assert result == 1
 
 
-def test_count_weeks_below_three_weeks_below():
+def test_count_periods_below_three_weeks_below():
     closes = [100.0, 102.0, 104.0, 106.0, 108.0, 100.0, 101.0, 101.0]
-    result = count_weeks_below(closes=closes)
+    result = count_periods_below(closes=closes)
     assert result == 3
 
 
-def test_count_weeks_below_at_boundary():
+def test_count_periods_below_at_boundary():
     closes = [50.0, 52.0, 54.0, 56.0, 58.0, 50.0]
-    result = count_weeks_below(closes=closes)
+    result = count_periods_below(closes=closes)
     assert result == 1
 
 

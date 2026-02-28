@@ -51,6 +51,9 @@
 
   .badge-sneak { background: #d2992233; color: #d29922; }
 
+  .meta-link { color: #8b949e; text-decoration: none; }
+  .meta-link:hover { color: #58a6ff; text-decoration: underline; }
+
   .tabs {
     display: flex;
     gap: 0;
@@ -235,7 +238,8 @@
 const TAB_DEFS = [
   { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','weeksBelow'] },
   { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','weeksAbove'] },
-  { id: 'below',       label: 'Below',        file: '/results/latest-below.json',      key: 'below',       cols: ['symbol','close','ema','weeksBelow'] },
+  { id: 'dayBelow',    label: 'Day Below',    file: '/results/latest-below.json',      key: 'dayBelow',    cols: ['symbol','close','ema','count'] },
+  { id: 'weekBelow',   label: 'Week Below',   file: '/results/latest-below.json',      key: 'weekBelow',   cols: ['symbol','close','ema','count'] },
   { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','count'] },
   { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','count'] },
 ];
@@ -293,7 +297,7 @@ function renderMeta(json) {
   document.getElementById('meta').innerHTML =
     badge +
     `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
-    `<span class="meta">${syms} symbols</span>` +
+    `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${syms} symbols</a></span>` +
     (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
 }
 
@@ -406,7 +410,6 @@ function showTab(tabId) {
     input.addEventListener('input', () => {
       const col = input.dataset.col;
       const bound = input.dataset.bound;
-      const cursorPos = input.selectionStart;
       if (col === 'symbol') {
         if (!filters[col]) filters[col] = {};
         filters[col].text = input.value;
@@ -415,14 +418,36 @@ function showTab(tabId) {
         filters[col][bound] = input.value;
       }
       renderTabs();
-      showTab(tabId);
-      const selector = bound
-        ? `.filter-row input[data-col="${col}"][data-bound="${bound}"]`
-        : `.filter-row input[data-col="${col}"]`;
-      const restored = document.querySelector(selector);
-      if (restored) { restored.focus(); restored.selectionStart = restored.selectionEnd = cursorPos; }
+      updateRows(tabId);
     });
   });
+}
+
+function updateRows(tabId) {
+  const def = TAB_DEFS.find(t => t.id === tabId);
+  let rows = [...(data[tabId] || [])];
+  rows = applyFilters(rows, def.cols);
+  if (sortCol) {
+    rows.sort((a, b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
+      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  }
+  const tbody = document.querySelector('.table-wrap tbody');
+  if (!tbody) return;
+  const tds = rows.map(r =>
+    '<tr>' + def.cols.map(c => {
+      const v = r[c];
+      if (c === 'symbol') {
+        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+      }
+      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
+      return `<td>${esc(v)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  tbody.innerHTML = tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>';
 }
 
 function fmtNum(col, v) {
