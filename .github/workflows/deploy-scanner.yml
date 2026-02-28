@@ -28,7 +28,6 @@ jobs:
           python -m pytest tests/ -v
 
   deploy:
-    if: false  # Disabled — re-enable when ready to deploy infrastructure
     needs: test
     runs-on: ubuntu-latest
     steps:
