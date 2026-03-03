@@ -14,6 +14,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var typeFilter: TickerFilter = []
     private(set) var configSymbols: Set<String> = []
     private(set) var personalWatchlist: Set<String> = []
+    @Published var contextMenuSymbol: String?
     var onWatchlistChange: ((String, Bool) -> Void)?
     var highlightColor: Color = .yellow
     var highlightOpacity: Double = 0.25
@@ -69,12 +70,27 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     func toggleHighlight(for symbol: String) {
+        contextMenuSymbol = nil
         guard !configSymbols.contains(symbol) else { return }
         if highlightedSymbols.contains(symbol) {
             highlightedSymbols.remove(symbol)
         } else {
             highlightedSymbols.insert(symbol)
         }
+    }
+
+    func setContextMenuSymbol(_ symbol: String) {
+        contextMenuSymbol = symbol
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            if self.contextMenuSymbol == symbol {
+                self.contextMenuSymbol = nil
+            }
+        }
+    }
+
+    func clearContextMenuSymbol() {
+        contextMenuSymbol = nil
     }
 
     func isInPersonalWatchlist(_ symbol: String) -> Bool {

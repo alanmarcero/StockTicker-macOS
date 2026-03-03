@@ -247,6 +247,7 @@ struct QuarterlyPanelView: View {
                     viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
                 ))
         )
+        .overlay(contextMenuOverlay(for: row.symbol))
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
@@ -318,6 +319,7 @@ struct QuarterlyPanelView: View {
                     viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
                 ))
         )
+        .overlay(contextMenuOverlay(for: row.symbol))
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
@@ -389,6 +391,7 @@ struct QuarterlyPanelView: View {
                     viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
                 ))
         )
+        .overlay(contextMenuOverlay(for: row.symbol))
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
@@ -443,6 +446,7 @@ struct QuarterlyPanelView: View {
                     viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
                 ))
         )
+        .overlay(contextMenuOverlay(for: row.symbol))
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
@@ -505,15 +509,24 @@ struct QuarterlyPanelView: View {
 
     @ViewBuilder
     private func watchlistContextMenu(for symbol: String) -> some View {
+        let _ = viewModel.setContextMenuSymbol(symbol)
         if viewModel.isInPersonalWatchlist(symbol) {
             Button("Remove from My Watchlist") {
                 viewModel.removeFromWatchlist(symbol)
+                viewModel.clearContextMenuSymbol()
             }
         } else {
             Button("Add to My Watchlist") {
                 viewModel.addToWatchlist(symbol)
+                viewModel.clearContextMenuSymbol()
             }
         }
+    }
+
+    private func contextMenuOverlay(for symbol: String) -> some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Color.accentColor.opacity(viewModel.contextMenuSymbol == symbol ? 0.2 : 0))
+            .animation(.easeInOut(duration: 0.15), value: viewModel.contextMenuSymbol)
     }
 
     private func rowView(_ row: QuarterlyRow) -> some View {
@@ -552,6 +565,7 @@ struct QuarterlyPanelView: View {
                     viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
                 ))
         )
+        .overlay(contextMenuOverlay(for: row.symbol))
         .contentShape(Rectangle())
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
