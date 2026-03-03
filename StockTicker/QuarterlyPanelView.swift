@@ -509,16 +509,15 @@ struct QuarterlyPanelView: View {
 
     @ViewBuilder
     private func watchlistContextMenu(for symbol: String) -> some View {
-        let _ = viewModel.setContextMenuSymbol(symbol)
         if viewModel.isInPersonalWatchlist(symbol) {
             Button("Remove from My Watchlist") {
                 viewModel.removeFromWatchlist(symbol)
-                viewModel.clearContextMenuSymbol()
+                viewModel.setContextMenuSymbol(symbol)
             }
         } else {
             Button("Add to My Watchlist") {
                 viewModel.addToWatchlist(symbol)
-                viewModel.clearContextMenuSymbol()
+                viewModel.setContextMenuSymbol(symbol)
             }
         }
     }

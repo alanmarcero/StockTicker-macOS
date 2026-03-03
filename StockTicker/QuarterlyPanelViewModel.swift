@@ -82,15 +82,11 @@ class QuarterlyPanelViewModel: ObservableObject {
     func setContextMenuSymbol(_ symbol: String) {
         contextMenuSymbol = symbol
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             if self.contextMenuSymbol == symbol {
                 self.contextMenuSymbol = nil
             }
         }
-    }
-
-    func clearContextMenuSymbol() {
-        contextMenuSymbol = nil
     }
 
     func isInPersonalWatchlist(_ symbol: String) -> Bool {
