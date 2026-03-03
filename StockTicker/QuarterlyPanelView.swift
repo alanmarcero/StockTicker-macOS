@@ -251,6 +251,7 @@ struct QuarterlyPanelView: View {
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
         }
+        .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
     private func emaTable(_ title: String, rows: [QuarterlyRow], columnLabel: String, suffix: String) -> some View {
@@ -321,6 +322,7 @@ struct QuarterlyPanelView: View {
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
         }
+        .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
     private func emaCrossTable(_ title: String, rows: [QuarterlyRow], columnLabel: String) -> some View {
@@ -391,6 +393,7 @@ struct QuarterlyPanelView: View {
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
         }
+        .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
     // MARK: - VIX Spike Views
@@ -444,6 +447,7 @@ struct QuarterlyPanelView: View {
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
         }
+        .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
     private var pinnedColumnHeaders: some View {
@@ -499,6 +503,19 @@ struct QuarterlyPanelView: View {
         .frame(width: width, alignment: alignment)
     }
 
+    @ViewBuilder
+    private func watchlistContextMenu(for symbol: String) -> some View {
+        if viewModel.isInPersonalWatchlist(symbol) {
+            Button("Remove from My Watchlist") {
+                viewModel.removeFromWatchlist(symbol)
+            }
+        } else {
+            Button("Add to My Watchlist") {
+                viewModel.addToWatchlist(symbol)
+            }
+        }
+    }
+
     private func rowView(_ row: QuarterlyRow) -> some View {
         HStack(spacing: 0) {
             Text(row.symbol)
@@ -539,6 +556,7 @@ struct QuarterlyPanelView: View {
         .onTapGesture {
             viewModel.toggleHighlight(for: row.symbol)
         }
+        .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
     private func cellView(_ change: Double?) -> some View {
@@ -700,6 +718,8 @@ class QuarterlyPanelWindowController {
         highlightColor: String = "yellow",
         highlightOpacity: Double = 0.25,
         data: QuarterlyPanelData,
+        personalWatchlist: Set<String> = [],
+        onWatchlistChange: ((String, Bool) -> Void)? = nil,
         isUniverseActive: Bool = false,
         refreshInterval: Int = 15,
         hasFinnhubApiKey: Bool = true
@@ -712,7 +732,8 @@ class QuarterlyPanelWindowController {
 
         let vm = QuarterlyPanelViewModel()
         vm.setupHighlights(symbols: highlightedSymbols, color: highlightColor, opacity: highlightOpacity)
-        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, isUniverseActive: isUniverseActive, refreshInterval: refreshInterval, hasFinnhubApiKey: hasFinnhubApiKey)
+        vm.onWatchlistChange = onWatchlistChange
+        vm.update(watchlist: watchlist, quarterInfos: quarterInfos, data: data, personalWatchlist: personalWatchlist, isUniverseActive: isUniverseActive, refreshInterval: refreshInterval, hasFinnhubApiKey: hasFinnhubApiKey)
         self.viewModel = vm
 
         let panelView = QuarterlyPanelView(viewModel: vm)

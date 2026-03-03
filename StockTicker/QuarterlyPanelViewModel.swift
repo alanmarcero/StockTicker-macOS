@@ -13,6 +13,8 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var filterText: String = ""
     @Published var typeFilter: TickerFilter = []
     private(set) var configSymbols: Set<String> = []
+    private(set) var personalWatchlist: Set<String> = []
+    var onWatchlistChange: ((String, Bool) -> Void)?
     var highlightColor: Color = .yellow
     var highlightOpacity: Double = 0.25
 
@@ -75,7 +77,20 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
     }
 
-    func update(watchlist: [String], quarterInfos: [QuarterInfo], data: QuarterlyPanelData, isUniverseActive: Bool = false, refreshInterval: Int = 15, hasFinnhubApiKey: Bool = true) {
+    func isInPersonalWatchlist(_ symbol: String) -> Bool {
+        personalWatchlist.contains(symbol)
+    }
+
+    func addToWatchlist(_ symbol: String) {
+        onWatchlistChange?(symbol, true)
+    }
+
+    func removeFromWatchlist(_ symbol: String) {
+        onWatchlistChange?(symbol, false)
+    }
+
+    func update(watchlist: [String], quarterInfos: [QuarterInfo], data: QuarterlyPanelData, personalWatchlist: Set<String> = [], isUniverseActive: Bool = false, refreshInterval: Int = 15, hasFinnhubApiKey: Bool = true) {
+        self.personalWatchlist = personalWatchlist
         self.quarters = quarterInfos
         self.isUniverseActive = isUniverseActive
         self.refreshInterval = refreshInterval

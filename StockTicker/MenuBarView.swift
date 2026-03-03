@@ -1040,6 +1040,17 @@ class MenuBarController: NSObject, ObservableObject {
             highlightColor: config.highlightColor,
             highlightOpacity: config.highlightOpacity,
             data: makeQuarterlyPanelData(),
+            personalWatchlist: Set(config.watchlist),
+            onWatchlistChange: { [weak self] symbol, shouldAdd in
+                guard let self else { return }
+                let newWatchlist: [String]
+                if shouldAdd {
+                    newWatchlist = WatchlistOperations.addSymbol(symbol, to: self.config.watchlist)
+                } else {
+                    newWatchlist = WatchlistOperations.removeSymbol(symbol, from: self.config.watchlist)
+                }
+                self.saveAndReload(newWatchlist: newWatchlist)
+            },
             isUniverseActive: !config.universe.isEmpty,
             refreshInterval: config.refreshInterval,
             hasFinnhubApiKey: !config.finnhubApiKey.isEmpty
