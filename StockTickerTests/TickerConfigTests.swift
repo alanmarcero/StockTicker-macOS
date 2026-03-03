@@ -853,6 +853,82 @@ final class WatchlistConfigManagerTests: XCTestCase {
         XCTAssertEqual(decoded.filterGreenFields, 7)
     }
 
+    // MARK: - watchlistSources tests
+
+    func testDecoder_missingWatchlistSources_defaultsToAll() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.watchlistSources, WatchlistSource.allSources.rawValue)
+    }
+
+    func testDecoder_watchlistSources_decodesCorrectly() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc",
+            "watchlistSources": 9
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.watchlistSources, 9)
+    }
+
+    func testEncoder_includesWatchlistSources() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            watchlistSources: 5
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["watchlistSources"] as? Int, 5)
+    }
+
+    func testWatchlistSources_roundTrip() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            watchlistSources: 11
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.watchlistSources, 11)
+    }
+
+    func testEquatable_differentWatchlistSources_areNotEqual() {
+        let config1 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            watchlistSources: 15
+        )
+        let config2 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            watchlistSources: 9
+        )
+
+        XCTAssertNotEqual(config1, config2)
+    }
+
     func testEquatable_differentFilterGreenFields_areNotEqual() {
         let config1 = WatchlistConfig(
             watchlist: ["SPY"],

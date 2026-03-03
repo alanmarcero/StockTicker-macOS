@@ -7,16 +7,18 @@ extension MenuBarController {
     // MARK: - Shared Helpers
 
     private var allWatchlistSymbols: [String] {
-        config.watchlist + config.indexSymbols.map { $0.symbol }
+        WatchlistSource.allSymbols(personalWatchlist: config.watchlist) + config.indexSymbols.map { $0.symbol }
     }
 
     var allCacheSymbols: [String] {
-        let combined = Set(config.watchlist + config.universe + config.indexSymbols.map { $0.symbol })
+        let allSourceSymbols = WatchlistSource.allSymbols(personalWatchlist: config.watchlist)
+        let combined = Set(allSourceSymbols + config.universe + config.indexSymbols.map { $0.symbol })
         return Array(combined)
     }
 
     var extraStatsSymbols: [String] {
-        let combined = Set(config.watchlist + config.universe)
+        let allSourceSymbols = WatchlistSource.allSymbols(personalWatchlist: config.watchlist)
+        let combined = Set(allSourceSymbols + config.universe)
         return Array(combined)
     }
 

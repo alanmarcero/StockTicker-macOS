@@ -79,6 +79,8 @@ class MenuBarController: NSObject, ObservableObject {
     @Published var config: WatchlistConfig
     @Published var currentSortOption: SortOption
     var currentFilter: TickerFilter { TickerFilter(rawValue: config.filterGreenFields) }
+    var currentWatchlistSource: WatchlistSource { WatchlistSource(rawValue: config.watchlistSources) }
+    var effectiveWatchlist: [String] { currentWatchlistSource.symbols(personalWatchlist: config.watchlist) }
     @Published var yahooMarketState: String?
 
     // MARK: - Private State
@@ -268,7 +270,19 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func createFilterSubmenu() -> NSMenuItem {
-        let makeItems: ([TickerFilter]) -> [NSMenuItem] = { options in
+        var items: [NSMenuItem] = []
+
+        // Source toggles
+        for source in WatchlistSource.allCases {
+            let item = MenuItemFactory.action(title: source.displayName, action: #selector(sourceOptionToggled(_:)), target: self)
+            item.representedObject = source
+            item.state = currentWatchlistSource.contains(source) ? .on : .off
+            items.append(item)
+        }
+        items.append(.separator())
+
+        // Property filters (green)
+        let makeFilterItems: ([TickerFilter]) -> [NSMenuItem] = { options in
             options.map { option -> NSMenuItem in
                 let item = MenuItemFactory.action(title: option.displayName, action: #selector(self.filterOptionToggled(_:)), target: self)
                 item.representedObject = option
@@ -276,12 +290,14 @@ class MenuBarController: NSObject, ObservableObject {
                 return item
             }
         }
-        var items = makeItems(TickerFilter.greenOptions)
+        items += makeFilterItems(TickerFilter.greenOptions)
         items.append(.separator())
-        items += makeItems(TickerFilter.typeOptions)
+        items += makeFilterItems(TickerFilter.typeOptions)
         items.append(.separator())
         items.append(MenuItemFactory.action(title: "Clear Filters", action: #selector(clearFilters), target: self))
-        let title = currentFilter.isEmpty ? "Filter" : "Filter (Active)"
+
+        let isFilterActive = !currentFilter.isEmpty || currentWatchlistSource != .allSources
+        let title = isFilterActive ? "Filter (Active)" : "Filter"
         return MenuItemFactory.submenu(title: title, items: items)
     }
 
@@ -350,6 +366,7 @@ class MenuBarController: NSObject, ObservableObject {
         let isWeekend = scheduleInfo.schedule.contains("Weekend")
         let isInitialLoad = !hasCompletedInitialLoad
 
+        let watchlist = effectiveWatchlist
         let closedMarketSymbol = config.menuBarAssetWhenClosed.symbol
         let indexSymbols = config.indexSymbols.map { $0.symbol }
         let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
@@ -357,7 +374,7 @@ class MenuBarController: NSObject, ObservableObject {
         let result: FetchResult
         if isInitialLoad {
             result = await QuoteFetchCoordinator.fetchInitialLoad(
-                service: stockService, watchlist: config.watchlist,
+                service: stockService, watchlist: watchlist,
                 indexSymbols: indexSymbols, alwaysOpenSymbols: alwaysOpenSymbols,
                 closedMarketSymbol: closedMarketSymbol, isWeekend: isWeekend
             )
@@ -368,12 +385,12 @@ class MenuBarController: NSObject, ObservableObject {
             )
         } else if scheduleInfo.state == .open {
             result = await QuoteFetchCoordinator.fetchRegularSession(
-                service: stockService, watchlist: config.watchlist,
+                service: stockService, watchlist: watchlist,
                 indexSymbols: indexSymbols, closedMarketSymbol: closedMarketSymbol
             )
         } else {
             result = await QuoteFetchCoordinator.fetchExtendedHours(
-                service: stockService, watchlist: config.watchlist,
+                service: stockService, watchlist: watchlist,
                 alwaysOpenSymbols: alwaysOpenSymbols, closedMarketSymbol: closedMarketSymbol
             )
         }
@@ -401,7 +418,7 @@ class MenuBarController: NSObject, ObservableObject {
         attachYTDPricesToQuotes()
 
         if isInitialLoad || scheduleInfo.state == .open {
-            let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: config.watchlist)
+            let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: watchlist)
             marketCaps.mergeKeepingNew(fetchedCaps)
             currentForwardPEs.mergeKeepingNew(fetchedPEs)
         }
@@ -430,7 +447,7 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
         guard isMenuOpen, !fetchedSymbols.isEmpty else { return }
-        config.watchlist.filter { fetchedSymbols.contains($0) }
+        effectiveWatchlist.filter { fetchedSymbols.contains($0) }
             .forEach { highlightIntensity[$0] = 1.0 }
         marqueeView?.triggerPing()
     }
@@ -438,8 +455,8 @@ class MenuBarController: NSObject, ObservableObject {
     // MARK: - Universe Quote Fetching
 
     private var universeOnlySymbols: [String] {
-        let watchlistSet = Set(config.watchlist)
-        return config.universe.filter { !watchlistSet.contains($0) }
+        let allSourceSet = Set(WatchlistSource.allSymbols(personalWatchlist: config.watchlist))
+        return config.universe.filter { !allSourceSet.contains($0) }
     }
 
     private var isExtraStatsVisible: Bool {
@@ -519,11 +536,12 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func cycleToNextTicker() {
-        guard !config.watchlist.isEmpty else { return }
+        let watchlist = effectiveWatchlist
+        guard !watchlist.isEmpty else { return }
 
         // Only cycle during regular market hours
         if currentMarketState == .open {
-            currentIndex = (currentIndex + 1) % config.watchlist.count
+            currentIndex = (currentIndex + 1) % watchlist.count
         }
         updateMenuBarDisplay()
     }
@@ -694,7 +712,8 @@ class MenuBarController: NSObject, ObservableObject {
     private func updateMenuBarDisplay() {
         guard let button = statusItem?.button else { return }
 
-        guard !config.watchlist.isEmpty else {
+        let watchlist = effectiveWatchlist
+        guard !watchlist.isEmpty else {
             button.title = Strings.emptyWatchlist
             return
         }
@@ -710,7 +729,8 @@ class MenuBarController: NSObject, ObservableObject {
             symbol = config.menuBarAssetWhenClosed.symbol
             showExtendedHours = false
         case .open:
-            symbol = config.watchlist[currentIndex]
+            let safeIndex = currentIndex % watchlist.count
+            symbol = watchlist[safeIndex]
             showExtendedHours = false
         }
 
@@ -759,15 +779,19 @@ class MenuBarController: NSObject, ObservableObject {
               let filterMenu = filterItem.submenu else { return }
 
         for item in filterMenu.items {
-            guard let option = item.representedObject as? TickerFilter else { continue }
-            item.state = currentFilter.contains(option) ? .on : .off
+            if let option = item.representedObject as? TickerFilter {
+                item.state = currentFilter.contains(option) ? .on : .off
+            } else if let source = item.representedObject as? WatchlistSource {
+                item.state = currentWatchlistSource.contains(source) ? .on : .off
+            }
         }
-        filterItem.title = currentFilter.isEmpty ? "Filter" : "Filter (Active)"
+        let isFilterActive = !currentFilter.isEmpty || currentWatchlistSource != .allSources
+        filterItem.title = isFilterActive ? "Filter (Active)" : "Filter"
     }
 
     private func insertTickerItems(into menu: NSMenu) {
         var index = TickerInsertIndex.start
-        let filtered = currentFilter.filter(config.watchlist, using: quotes)
+        let filtered = currentFilter.filter(effectiveWatchlist, using: quotes)
         for symbol in currentSortOption.sort(filtered, using: quotes) {
             let menuItem = createTickerMenuItem(for: symbol)
             menu.insertItem(menuItem, at: index)
@@ -951,8 +975,24 @@ class MenuBarController: NSObject, ObservableObject {
         }
     }
 
+    @objc private func sourceOptionToggled(_ sender: NSMenuItem) {
+        guard let option = sender.representedObject as? WatchlistSource else { return }
+        var sources = currentWatchlistSource
+        sources.formSymmetricDifference(option)
+        // Prevent disabling all sources
+        guard !sources.isEmpty else { return }
+        config.watchlistSources = sources.rawValue
+        currentIndex = 0
+        config.save()
+        updateMenuItems()
+        DispatchQueue.main.async { [weak self] in
+            self?.statusItem?.button?.performClick(nil)
+        }
+    }
+
     @objc private func clearFilters() {
         config.filterGreenFields = 0
+        config.watchlistSources = WatchlistSource.allSources.rawValue
         config.save()
         updateMenuItems()
         DispatchQueue.main.async { [weak self] in
