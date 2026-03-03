@@ -76,6 +76,6 @@ enum LayoutConfig {
     // MARK: - Watchlist
 
     enum Watchlist {
-        static let maxSize = 128
+        static let maxSize = 256
     }
 }

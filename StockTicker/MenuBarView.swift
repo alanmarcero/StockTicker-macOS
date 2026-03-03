@@ -268,12 +268,17 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func createFilterSubmenu() -> NSMenuItem {
-        var items: [NSMenuItem] = TickerFilter.allOptions.map { option -> NSMenuItem in
-            let item = MenuItemFactory.action(title: option.displayName, action: #selector(filterOptionToggled(_:)), target: self)
-            item.representedObject = option
-            item.state = currentFilter.contains(option) ? .on : .off
-            return item
+        let makeItems: ([TickerFilter]) -> [NSMenuItem] = { options in
+            options.map { option -> NSMenuItem in
+                let item = MenuItemFactory.action(title: option.displayName, action: #selector(self.filterOptionToggled(_:)), target: self)
+                item.representedObject = option
+                item.state = self.currentFilter.contains(option) ? .on : .off
+                return item
+            }
         }
+        var items = makeItems(TickerFilter.greenOptions)
+        items.append(.separator())
+        items += makeItems(TickerFilter.typeOptions)
         items.append(.separator())
         items.append(MenuItemFactory.action(title: "Clear Filters", action: #selector(clearFilters), target: self))
         let title = currentFilter.isEmpty ? "Filter" : "Filter (Active)"

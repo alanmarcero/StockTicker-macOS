@@ -459,6 +459,9 @@ struct StockQuote: Identifiable, Sendable {
         guard let pct = lowestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
         return pct > 5.0
     }
+
+    var isETF: Bool { marketCap == nil }
+    var isAsset: Bool { marketCap != nil }
 }
 
 // MARK: - Formatting Helpers
