@@ -116,6 +116,9 @@ class MenuBarController: NSObject, ObservableObject {
     var rsiValues: [String: Double] = [:]
     let emaCacheManager: EMACacheManager
     var emaEntries: [String: EMACacheEntry] = [:]
+    let vixSpikeCacheManager: VIXSpikeCacheManager
+    var vixSpikes: [VIXSpike] = []
+    var vixSpikePrices: [String: [String: Double]] = [:]
     var universeQuotes: [String: StockQuote] = [:]
     var universeMarketCaps: [String: Double] = [:]
     var universeForwardPEs: [String: Double] = [:]
@@ -143,7 +146,8 @@ class MenuBarController: NSObject, ObservableObject {
         forwardPECacheManager: ForwardPECacheManager = ForwardPECacheManager(),
         swingLevelCacheManager: SwingLevelCacheManager = SwingLevelCacheManager(),
         rsiCacheManager: RSICacheManager = RSICacheManager(),
-        emaCacheManager: EMACacheManager = EMACacheManager()
+        emaCacheManager: EMACacheManager = EMACacheManager(),
+        vixSpikeCacheManager: VIXSpikeCacheManager = VIXSpikeCacheManager()
     ) {
         self.stockService = stockService
         self.newsService = newsService
@@ -159,6 +163,7 @@ class MenuBarController: NSObject, ObservableObject {
         self.swingLevelCacheManager = swingLevelCacheManager
         self.rsiCacheManager = rsiCacheManager
         self.emaCacheManager = emaCacheManager
+        self.vixSpikeCacheManager = vixSpikeCacheManager
         self.lastRefreshTime = dateProvider.now()
 
         let loadedConfig = configManager.load(backfillDefaults: true)
@@ -180,6 +185,7 @@ class MenuBarController: NSObject, ObservableObject {
             await loadSwingLevelCache()
             await loadRSICache()
             await loadEMACache()
+            await loadVIXSpikeCache()
             await refreshAllQuotes()
             await refreshNews()
             await startBackfill()
@@ -424,6 +430,7 @@ class MenuBarController: NSObject, ObservableObject {
         }
         attachMarketCapsToQuotes()
         await refreshDailyAnalysisIfNeeded()
+        await refreshVIXSpikesIfNeeded()
         if refreshCycleCount % Timing.cacheRetryCadence == 0 {
             let backfillRunning = await backfillScheduler.isRunning
             if !backfillRunning {
@@ -1049,7 +1056,9 @@ class MenuBarController: NSObject, ObservableObject {
             swingLevelEntries: swingLevelEntries,
             rsiValues: rsiValues,
             emaEntries: emaEntries,
-            scannerEMAData: scannerEMAData
+            scannerEMAData: scannerEMAData,
+            vixSpikes: vixSpikes,
+            vixSpikePrices: vixSpikePrices
         )
     }
 

@@ -86,6 +86,18 @@ struct QuarterlyPanelView: View {
                 Divider()
                 priceBreaksTable("Breakdown", rows: viewModel.breakdownRows, isBreakout: false)
             }
+        } else if viewModel.isVIXSpikesMode {
+            ScrollView([.horizontal, .vertical]) {
+                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    Section(header: vixSpikePinnedHeaders) {
+                        ForEach(viewModel.rows) { row in
+                            vixSpikeRowView(row)
+                            Divider().opacity(0.3)
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
         } else {
             ScrollView([.horizontal, .vertical]) {
                 LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
@@ -328,6 +340,59 @@ struct QuarterlyPanelView: View {
         }
     }
 
+    // MARK: - VIX Spike Views
+
+    private var vixSpikePinnedHeaders: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                sortableHeader("Symbol", column: .symbol, width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+                sortableHeader("High", column: .highestClose, width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+                ForEach(Array(viewModel.vixSpikeHeaders.enumerated()), id: \.element.dateString) { _, spike in
+                    sortableHeader(
+                        "\(spike.dateString) (\(String(format: "%.1f", spike.vixClose)))",
+                        column: .quarter(spike.dateString),
+                        width: QuarterlyWindowSize.quarterColumnWidth + 20,
+                        alignment: .trailing
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6)
+            Divider()
+        }
+        .background(.background)
+    }
+
+    private func vixSpikeRowView(_ row: QuarterlyRow) -> some View {
+        HStack(spacing: 0) {
+            Text(row.symbol)
+                .font(.system(.body, design: .monospaced))
+                .fontWeight(.medium)
+                .frame(width: QuarterlyWindowSize.symbolColumnWidth, alignment: .leading)
+
+            highCellView(row.highestCloseChangePercent)
+                .frame(width: QuarterlyWindowSize.highColumnWidth, alignment: .trailing)
+
+            ForEach(Array(viewModel.vixSpikeHeaders.enumerated()), id: \.element.dateString) { _, spike in
+                cellView(row.quarterChanges[spike.dateString] ?? nil)
+                    .frame(width: QuarterlyWindowSize.quarterColumnWidth + 20, alignment: .trailing)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(viewModel.highlightColor.opacity(
+                    viewModel.highlightedSymbols.contains(row.symbol) ? viewModel.highlightOpacity : 0
+                ))
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            viewModel.toggleHighlight(for: row.symbol)
+        }
+    }
+
     private var pinnedColumnHeaders: some View {
         VStack(spacing: 0) {
             columnHeaders
@@ -495,6 +560,8 @@ struct QuarterlyPanelView: View {
             return "Breakout: % from highest significant high. Breakdown: % from lowest significant low. Swing analysis over trailing 3 years."
         case .emas:
             return "Closing Above: price above the 5-period EMA with at least 1 consecutive close above (count = consecutive closes above)."
+        case .vixSpikes:
+            return "Percent gain from each symbol's close on the VIX spike date to current price. Spike = peak VIX close in a cluster of days >= $20."
         case .miscStats:
             return "Aggregate statistics across the \(viewModel.isUniverseActive ? "universe" : "watchlist"). Updated every \(viewModel.refreshInterval)s."
         }
@@ -507,7 +574,7 @@ struct QuarterlyPanelView: View {
         if viewModel.isEMAsMode {
             return "Closing Cross: weekly close reversal after 3+ weeks on the other side. Crosses recalculate Fridays at 2 PM ET."
         }
-        if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode {
+        if viewModel.isPriceBreaksMode || viewModel.isMiscStatsMode || viewModel.isVIXSpikesMode {
             return ""
         }
         return "High: percent from highest daily close over trailing 3 years"

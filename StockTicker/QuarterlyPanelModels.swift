@@ -26,6 +26,7 @@ enum QuarterlyViewMode: String, CaseIterable {
     case forwardPE = "Forward P/E"
     case priceBreaks = "Price Breaks"
     case emas = "5 EMAs"
+    case vixSpikes = "VIX Spikes"
     case miscStats = "Misc Stats"
 }
 
@@ -64,6 +65,8 @@ struct QuarterlyPanelData {
     var rsiValues: [String: Double] = [:]
     var emaEntries: [String: EMACacheEntry] = [:]
     var scannerEMAData: ScannerEMAData? = nil
+    var vixSpikes: [VIXSpike] = []
+    var vixSpikePrices: [String: [String: Double]] = [:]
 }
 
 // MARK: - Sort Column

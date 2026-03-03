@@ -73,6 +73,8 @@ private final class TrackingMockStockService: StockServiceProtocol, @unchecked S
 
     func batchFetchDailyAnalysis(symbols: [String], period1: Int, period2: Int) async -> [String: DailyAnalysisResult] { [:] }
     func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote] { [:] }
+    func fetchVIXSpikes(period1: Int, period2: Int) async -> [VIXSpike]? { nil }
+    func fetchClosePricesOnDates(symbol: String, period1: Int, period2: Int, targetTimestamps: [Int]) async -> [String: Double]? { nil }
 }
 
 // MARK: - Tests
@@ -89,7 +91,8 @@ final class BackfillSchedulerTests: XCTestCase {
             forwardPE: ForwardPECacheManager(fileSystem: fs, dateProvider: dp),
             swingLevel: SwingLevelCacheManager(fileSystem: fs, dateProvider: dp),
             rsi: RSICacheManager(fileSystem: fs, dateProvider: dp),
-            ema: EMACacheManager(fileSystem: fs, dateProvider: dp)
+            ema: EMACacheManager(fileSystem: fs, dateProvider: dp),
+            vixSpike: VIXSpikeCacheManager(fileSystem: fs, dateProvider: dp)
         )
     }
 

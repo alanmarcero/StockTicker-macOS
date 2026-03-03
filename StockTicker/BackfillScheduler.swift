@@ -10,6 +10,7 @@ struct BackfillCaches: Sendable {
     let swingLevel: SwingLevelCacheManager
     let rsi: RSICacheManager
     let ema: EMACacheManager
+    let vixSpike: VIXSpikeCacheManager
 }
 
 // MARK: - Backfill Scheduler
@@ -27,6 +28,7 @@ actor BackfillScheduler {
         case weeklyEMA
         case forwardPE
         case quarterly
+        case vixSpikes
     }
 
     private var task: Task<Void, Never>?
@@ -80,6 +82,12 @@ actor BackfillScheduler {
                     await runQuarterlyPhase(
                         symbols: extraStatsSymbols, quarterInfos: quarterInfos,
                         stockService: stockService, cache: caches.quarterly,
+                        onBatchComplete: onBatchComplete
+                    )
+                case .vixSpikes:
+                    await runVIXSpikesPhase(
+                        symbols: extraStatsSymbols, period1: period1, period2: period2,
+                        stockService: stockService, cache: caches.vixSpike,
                         onBatchComplete: onBatchComplete
                     )
                 }
@@ -241,6 +249,38 @@ actor BackfillScheduler {
                 } else {
                     await cache.markNoData(quarter: qi.identifier, symbols: [symbol])
                 }
+                await cache.save()
+            }
+        }
+    }
+
+    private func runVIXSpikesPhase(
+        symbols: [String],
+        period1: Int,
+        period2: Int,
+        stockService: StockServiceProtocol,
+        cache: VIXSpikeCacheManager,
+        onBatchComplete: @escaping @Sendable (Phase) async -> Void
+    ) async {
+        // Fetch VIX spikes if not cached
+        var spikes = await cache.getSpikes()
+        if spikes.isEmpty {
+            guard let fetched = await stockService.fetchVIXSpikes(period1: period1, period2: period2) else { return }
+            await cache.setSpikes(fetched)
+            await cache.save()
+            spikes = fetched
+        }
+
+        guard !spikes.isEmpty else { return }
+
+        let targetTimestamps = spikes.map { $0.timestamp }
+        let missing = await cache.getMissingSymbols(from: symbols)
+
+        await processSymbols(missing, phase: .vixSpikes, onBatchComplete: onBatchComplete) { symbol in
+            if let prices = await stockService.fetchClosePricesOnDates(
+                symbol: symbol, period1: period1, period2: period2, targetTimestamps: targetTimestamps
+            ) {
+                await cache.setPrices(for: symbol, prices: prices)
                 await cache.save()
             }
         }

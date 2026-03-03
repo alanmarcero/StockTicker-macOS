@@ -29,6 +29,8 @@ protocol StockServiceProtocol: Sendable {
     func batchFetchEMAValues(symbols: [String], dailyEMAs: [String: Double], dailyAboveCounts: [String: Int]) async -> [String: EMACacheEntry]
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?, precomputedDailyAboveCount: Int?) async -> EMACacheEntry?
     func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote]
+    func fetchVIXSpikes(period1: Int, period2: Int) async -> [VIXSpike]?
+    func fetchClosePricesOnDates(symbol: String, period1: Int, period2: Int, targetTimestamps: [Int]) async -> [String: Double]?
 }
 
 extension StockServiceProtocol {

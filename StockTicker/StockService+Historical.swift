@@ -162,6 +162,36 @@ extension StockService {
         }
     }
 
+    // MARK: - VIX Spikes
+
+    func fetchVIXSpikes(period1: Int, period2: Int) async -> [VIXSpike]? {
+        guard let url = APIEndpoints.chartURL(symbol: "^VIX", period1: period1, period2: period2) else { return nil }
+        guard let result = await fetchYahooClosesAndTimestamps(symbol: "^VIX", url: url) else { return nil }
+        let spikes = VIXSpikeAnalysis.detectSpikes(closes: result.closes, timestamps: result.timestamps)
+        guard !spikes.isEmpty else { return nil }
+        return spikes
+    }
+
+    func fetchClosePricesOnDates(symbol: String, period1: Int, period2: Int, targetTimestamps: [Int]) async -> [String: Double]? {
+        guard !targetTimestamps.isEmpty else { return nil }
+        guard let url = APIEndpoints.chartURL(symbol: symbol, period1: period1, period2: period2) else { return nil }
+        guard let result = await fetchYahooClosesAndTimestamps(symbol: symbol, url: url) else { return nil }
+        guard !result.timestamps.isEmpty else { return nil }
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d/yy"
+
+        var prices: [String: Double] = [:]
+        for target in targetTimestamps {
+            let closestIndex = result.timestamps.enumerated().min(by: {
+                abs($0.element - target) < abs($1.element - target)
+            })!.offset
+            let dateString = dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(target)))
+            prices[dateString] = result.closes[closestIndex]
+        }
+        return prices
+    }
+
     // MARK: - Batch Helper
 
     func batchFetchHistoricalClosePrices(

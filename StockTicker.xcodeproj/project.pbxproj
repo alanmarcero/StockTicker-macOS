@@ -96,6 +96,10 @@
 		V1000003232C5A0000000001 /* DictionaryMergeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = V1000004232C5A0000000001 /* DictionaryMergeTests.swift */; };
 		W1000001232C5A0000000001 /* TickerFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = W1000002232C5A0000000001 /* TickerFilter.swift */; };
 		W1000003232C5A0000000001 /* TickerFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = W1000004232C5A0000000001 /* TickerFilterTests.swift */; };
+		X1000001232C5A0000000001 /* VIXSpikeAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000002232C5A0000000001 /* VIXSpikeAnalysis.swift */; };
+		X1000003232C5A0000000001 /* VIXSpikeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000004232C5A0000000001 /* VIXSpikeCache.swift */; };
+		X1000005232C5A0000000001 /* VIXSpikeAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */; };
+		X1000007232C5A0000000001 /* VIXSpikeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -201,6 +205,10 @@
 		V1000004232C5A0000000001 /* DictionaryMergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictionaryMergeTests.swift; sourceTree = "<group>"; };
 		W1000002232C5A0000000001 /* TickerFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerFilter.swift; sourceTree = "<group>"; };
 		W1000004232C5A0000000001 /* TickerFilterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickerFilterTests.swift; sourceTree = "<group>"; };
+		X1000002232C5A0000000001 /* VIXSpikeAnalysis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeAnalysis.swift; sourceTree = "<group>"; };
+		X1000004232C5A0000000001 /* VIXSpikeCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeCache.swift; sourceTree = "<group>"; };
+		X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeAnalysisTests.swift; sourceTree = "<group>"; };
+		X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeCacheTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -283,6 +291,8 @@
 				916CC560A6914073666F384A /* TopAUMETFs.swift */,
 				7C00914BC160FF0E0076D97D /* TopVolumeETFs.swift */,
 				D3C75BA7192A7A432FC97601 /* WatchlistSource.swift */,
+				X1000002232C5A0000000001 /* VIXSpikeAnalysis.swift */,
+				X1000004232C5A0000000001 /* VIXSpikeCache.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -339,6 +349,8 @@
 				W1000004232C5A0000000001 /* TickerFilterTests.swift */,
 				398380AEC59C9DC1E5E003F8 /* WatchlistSourceTests.swift */,
 				B63A6210542732C6F318390F /* BundledSymbolListTests.swift */,
+				X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */,
+				X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -490,6 +502,8 @@
 				06AF22B7737B1808E5B64D37 /* TopAUMETFs.swift in Sources */,
 				EB0DDFFB07E0E0BA25FA2E93 /* TopVolumeETFs.swift in Sources */,
 				4DF2167ABF7872E43E287EEC /* WatchlistSource.swift in Sources */,
+				X1000001232C5A0000000001 /* VIXSpikeAnalysis.swift in Sources */,
+				X1000003232C5A0000000001 /* VIXSpikeCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -537,6 +551,8 @@
 				W1000003232C5A0000000001 /* TickerFilterTests.swift in Sources */,
 				0C524EF45FB3900C67C904B7 /* WatchlistSourceTests.swift in Sources */,
 				9A1D06799571B7044A83E0F1 /* BundledSymbolListTests.swift in Sources */,
+				X1000005232C5A0000000001 /* VIXSpikeAnalysisTests.swift in Sources */,
+				X1000007232C5A0000000001 /* VIXSpikeCacheTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

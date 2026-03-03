@@ -28,12 +28,16 @@ class QuarterlyPanelViewModel: ObservableObject {
     var isForwardPEMode: Bool { viewMode == .forwardPE }
     var isPriceBreaksMode: Bool { viewMode == .priceBreaks }
     var isEMAsMode: Bool { viewMode == .emas }
+    var isVIXSpikesMode: Bool { viewMode == .vixSpikes }
     var isMiscStatsMode: Bool { viewMode == .miscStats }
     var hasScannerData: Bool { storedScannerEMAData != nil }
+
+    @Published var vixSpikeHeaders: [(dateString: String, vixClose: Double)] = []
 
     var shouldShowEmptyState: Bool {
         if isPriceBreaksMode { return breakoutRows.isEmpty && breakdownRows.isEmpty }
         if isEMAsMode { return emaDayRows.isEmpty && emaWeekRows.isEmpty && emaCrossRows.isEmpty && emaCrossdownRows.isEmpty && emaBelowRows.isEmpty }
+        if isVIXSpikesMode { return rows.isEmpty }
         return rows.isEmpty
     }
 
@@ -50,6 +54,8 @@ class QuarterlyPanelViewModel: ObservableObject {
     private var storedRSIValues: [String: Double] = [:]
     private var storedEMAEntries: [String: EMACacheEntry] = [:]
     private var storedScannerEMAData: ScannerEMAData?
+    private var storedVIXSpikes: [VIXSpike] = []
+    private var storedVIXSpikePrices: [String: [String: Double]] = [:]
 
     func setupHighlights(symbols: Set<String>, color: String, opacity: Double) {
         configSymbols = symbols
@@ -97,6 +103,8 @@ class QuarterlyPanelViewModel: ObservableObject {
         self.storedRSIValues = data.rsiValues
         self.storedEMAEntries = data.emaEntries
         self.storedScannerEMAData = data.scannerEMAData
+        self.storedVIXSpikes = data.vixSpikes
+        self.storedVIXSpikePrices = data.vixSpikePrices
     }
 
     func switchMode(_ mode: QuarterlyViewMode) {
@@ -117,6 +125,8 @@ class QuarterlyPanelViewModel: ObservableObject {
             return buildPriceBreaksRows()
         case .emas:
             return buildEMAsRows()
+        case .vixSpikes:
+            return buildVIXSpikeRows()
         case .miscStats:
             buildMiscStats()
             return []
@@ -269,6 +279,26 @@ class QuarterlyPanelViewModel: ObservableObject {
         emaBelowRows = belowRows
 
         return dayRows + weekRows + crossRows + crossdownRows + belowRows
+    }
+
+    private func buildVIXSpikeRows() -> [QuarterlyRow] {
+        vixSpikeHeaders = storedVIXSpikes.reversed().map { (dateString: $0.dateString, vixClose: $0.vixClose) }
+        return storedWatchlist.map { symbol in
+            var changes: [String: Double?] = [:]
+            let symbolPrices = storedVIXSpikePrices[symbol]
+            for spike in storedVIXSpikes {
+                guard let spikeClose = symbolPrices?[spike.dateString],
+                      spikeClose > 0,
+                      let quote = storedQuotes[symbol],
+                      !quote.isPlaceholder else {
+                    changes[spike.dateString] = nil
+                    continue
+                }
+                changes[spike.dateString] = ((quote.price - spikeClose) / spikeClose) * 100
+            }
+            let highPct = highestClosePercent(for: symbol)
+            return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes, currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
+        }
     }
 
     private func makeEMARow(symbol: String, suffix: String, count: Int) -> QuarterlyRow {
@@ -465,8 +495,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         if isPriceBreaksMode {
             breakoutRows.sort(by: comparator)
             breakdownRows.sort(by: comparator)
-        }
-        if isEMAsMode {
+        } else if isEMAsMode {
             emaDayRows.sort(by: comparator)
             emaWeekRows.sort(by: comparator)
             emaCrossRows.sort(by: comparator)

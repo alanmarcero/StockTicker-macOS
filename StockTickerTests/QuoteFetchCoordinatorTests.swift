@@ -126,6 +126,8 @@ final class MockStockService: StockServiceProtocol, @unchecked Sendable {
     func fetchFinnhubQuotes(symbols: [String]) async -> [String: StockQuote] {
         finnhubQuotesToReturn.filter { symbols.contains($0.key) }
     }
+    func fetchVIXSpikes(period1: Int, period2: Int) async -> [VIXSpike]? { nil }
+    func fetchClosePricesOnDates(symbol: String, period1: Int, period2: Int, targetTimestamps: [Int]) async -> [String: Double]? { nil }
 }
 
 // MARK: - Tests

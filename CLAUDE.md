@@ -35,7 +35,7 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-48 source files (~9,100 lines), 40 test files (~13,700 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+50 source files (~9,500 lines), 42 test files (~14,000 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
 **Core flow:** `MenuBarView` (main controller) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 
@@ -44,8 +44,8 @@ pgrep -x Stonks && echo "App is running"
 - `StockData.swift`: All data models (StockQuote, API response types)
 - `QuarterlyPanel{View,ViewModel,Models}`: Extra Stats window
 - `ScannerService`: AWS scanner API client (CloudFront), feature-flagged via `scannerBaseURL`
-- 7 cache actors: YTD, Quarterly, HighestClose, ForwardPE, SwingLevel, RSI, EMA
-- Pure analysis: `EMAAnalysis`, `SwingAnalysis`, `RSIAnalysis`
+- 8 cache actors: YTD, Quarterly, HighestClose, ForwardPE, SwingLevel, RSI, EMA, VIXSpike
+- Pure analysis: `EMAAnalysis`, `SwingAnalysis`, `RSIAnalysis`, `VIXSpikeAnalysis`
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
 - `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
 - `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, personal)
@@ -59,7 +59,7 @@ pgrep -x Stonks && echo "App is running"
 - **`ThrottledTaskGroup`** — bounded concurrency with 4 modes (default, Backfill, FinnhubBackfill, FinnhubQuote). `SymbolRouting.partition()` splits symbols by API source.
 - **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 4 sources (bundled $200B+ equities, top AUM ETFs, top volume ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
 - **Two-tier symbol sets:** `allCacheSymbols` (all watchlist sources + universe + indices) for most caches; `extraStatsSymbols` (all sources + universe) for quarterly/forward P/E/Extra Stats. Universe quotes always refresh in the background regardless of Extra Stats window visibility.
-- **`CacheStorage<T: Codable>`** — generic file I/O shared by all 7 cache actors
+- **`CacheStorage<T: Codable>`** — generic file I/O shared by all 8 cache actors
 - **`QuarterlyPanelData`** — DTO bundling data fields passed to Extra Stats view model/controller
 - **`APIEndpoints.chartURL`** — two static URL builders (range+interval, period-based) for Yahoo chart API
 - **`fetchYahooCloses`/`fetchYahooClosesAndTimestamps`** — shared Yahoo decode helpers in `StockService`

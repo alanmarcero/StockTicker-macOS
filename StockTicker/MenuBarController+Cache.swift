@@ -265,6 +265,81 @@ extension MenuBarController {
         emaEntries = await emaCacheManager.getAllEntries()
     }
 
+    // MARK: - VIX Spike Cache
+
+    func loadVIXSpikeCache() async {
+        await vixSpikeCacheManager.load()
+
+        if await vixSpikeCacheManager.needsDailyRefresh() {
+            await redetectVIXSpikes()
+        }
+
+        vixSpikes = await vixSpikeCacheManager.getSpikes()
+        vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
+    }
+
+    func refreshVIXSpikesIfNeeded() async {
+        guard await vixSpikeCacheManager.needsDailyRefresh() else { return }
+        await redetectVIXSpikes()
+
+        vixSpikes = await vixSpikeCacheManager.getSpikes()
+        vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
+    }
+
+    private func redetectVIXSpikes() async {
+        let now = dateProvider.now()
+        let fiveYearsAgo = Calendar.current.date(byAdding: .year, value: -5, to: now)!
+        let period1 = Int(fiveYearsAgo.timeIntervalSince1970)
+        let period2 = Int(now.timeIntervalSince1970)
+
+        if let newSpikes = await stockService.fetchVIXSpikes(period1: period1, period2: period2) {
+            let pricesCleared = await vixSpikeCacheManager.replaceSpikesAndClearIfChanged(newSpikes)
+            if pricesCleared {
+                await vixSpikeCacheManager.save()
+            }
+        } else {
+            // VIX fetch failed; just clear symbol prices for daily refresh
+            await vixSpikeCacheManager.clearForDailyRefresh()
+        }
+    }
+
+    func fetchMissingVIXSpikeData() async {
+        let now = dateProvider.now()
+        let fiveYearsAgo = Calendar.current.date(byAdding: .year, value: -5, to: now)!
+        let period1 = Int(fiveYearsAgo.timeIntervalSince1970)
+        let period2 = Int(now.timeIntervalSince1970)
+
+        // Fetch spikes if not cached
+        if await vixSpikeCacheManager.getSpikes().isEmpty {
+            guard let spikes = await stockService.fetchVIXSpikes(period1: period1, period2: period2) else { return }
+            await vixSpikeCacheManager.setSpikes(spikes)
+            await vixSpikeCacheManager.save()
+        }
+
+        let spikes = await vixSpikeCacheManager.getSpikes()
+        guard !spikes.isEmpty else { return }
+
+        let targetTimestamps = spikes.map { $0.timestamp }
+        let missing = await vixSpikeCacheManager.getMissingSymbols(from: extraStatsSymbols)
+        guard !missing.isEmpty else {
+            vixSpikes = spikes
+            vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
+            return
+        }
+
+        for symbol in missing {
+            if let prices = await stockService.fetchClosePricesOnDates(
+                symbol: symbol, period1: period1, period2: period2, targetTimestamps: targetTimestamps
+            ) {
+                await vixSpikeCacheManager.setPrices(for: symbol, prices: prices)
+            }
+        }
+        await vixSpikeCacheManager.save()
+
+        vixSpikes = spikes
+        vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
+    }
+
     // MARK: - Cache Retry
 
     private enum CacheRetry {
@@ -461,7 +536,8 @@ extension MenuBarController {
             forwardPE: forwardPECacheManager,
             swingLevel: swingLevelCacheManager,
             rsi: rsiCacheManager,
-            ema: emaCacheManager
+            ema: emaCacheManager,
+            vixSpike: vixSpikeCacheManager
         )
 
         await backfillScheduler.start(
@@ -497,6 +573,9 @@ extension MenuBarController {
             forwardPEData = await forwardPECacheManager.getAllData()
         case .quarterly:
             quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
+        case .vixSpikes:
+            vixSpikes = await vixSpikeCacheManager.getSpikes()
+            vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
         }
     }
 
@@ -509,6 +588,8 @@ extension MenuBarController {
         swingLevelEntries = await swingLevelCacheManager.getAllEntries()
         rsiValues = await rsiCacheManager.getAllValues()
         emaEntries = await emaCacheManager.getAllEntries()
+        vixSpikes = await vixSpikeCacheManager.getSpikes()
+        vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
     }
 
     // MARK: - Market Cap Attachment
