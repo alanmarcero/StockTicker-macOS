@@ -53,8 +53,61 @@ struct QuarterlyPanelView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
+            filterBar
         }
         .padding()
+    }
+
+    private var filterBar: some View {
+        HStack(spacing: 8) {
+            TextField("Search symbol", text: $viewModel.filterText)
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+                .frame(width: 120)
+                .onChange(of: viewModel.filterText) { _ in
+                    viewModel.rebuildRows()
+                }
+
+            filterToggle("ETFs", filter: .etf)
+            filterToggle("Assets", filter: .asset)
+
+            if !viewModel.filterText.isEmpty || !viewModel.typeFilter.isEmpty {
+                Button("Clear") {
+                    viewModel.filterText = ""
+                    viewModel.typeFilter = []
+                    viewModel.rebuildRows()
+                }
+                .font(.caption)
+                .buttonStyle(.plain)
+                .foregroundColor(.accentColor)
+            }
+
+            Spacer()
+        }
+    }
+
+    private func filterToggle(_ label: String, filter: TickerFilter) -> some View {
+        let isActive = viewModel.typeFilter.contains(filter)
+        return Button(label) {
+            if isActive {
+                viewModel.typeFilter = []
+            } else {
+                viewModel.typeFilter = filter
+            }
+            viewModel.rebuildRows()
+        }
+        .font(.caption)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            Capsule()
+                .fill(isActive ? Color.accentColor.opacity(0.25) : Color.clear)
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(isActive ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1)
+        )
+        .buttonStyle(.plain)
     }
 
     private var emptyState: some View {

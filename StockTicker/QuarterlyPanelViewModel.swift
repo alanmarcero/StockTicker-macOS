@@ -10,6 +10,8 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var quarters: [QuarterInfo] = []
     @Published var highlightedSymbols: Set<String> = []
     @Published var viewMode: QuarterlyViewMode = .sinceQuarter
+    @Published var filterText: String = ""
+    @Published var typeFilter: TickerFilter = []
     private(set) var configSymbols: Set<String> = []
     var highlightColor: Color = .yellow
     var highlightOpacity: Double = 0.25
@@ -113,6 +115,21 @@ class QuarterlyPanelViewModel: ObservableObject {
         applySorting()
     }
 
+    func rebuildRows() {
+        rows = buildRows(for: viewMode)
+        applySorting()
+    }
+
+    private func filteredWatchlist() -> [String] {
+        var symbols = storedWatchlist
+        if !filterText.isEmpty {
+            let search = filterText.uppercased()
+            symbols = symbols.filter { $0.uppercased().contains(search) }
+        }
+        symbols = typeFilter.filter(symbols, using: storedQuotes)
+        return symbols
+    }
+
     private func buildRows(for mode: QuarterlyViewMode) -> [QuarterlyRow] {
         switch mode {
         case .sinceQuarter:
@@ -134,7 +151,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func buildSinceQuarterRows() -> [QuarterlyRow] {
-        storedWatchlist.map { symbol in
+        filteredWatchlist().map { symbol in
             var changes: [String: Double?] = [:]
             for qi in quarters {
                 guard let quarterEndPrice = storedQuarterPrices[qi.identifier]?[symbol],
@@ -152,7 +169,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func buildDuringQuarterRows() -> [QuarterlyRow] {
-        storedWatchlist.map { symbol in
+        filteredWatchlist().map { symbol in
             var changes: [String: Double?] = [:]
             for qi in quarters {
                 var priorYear = qi.year
@@ -174,7 +191,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func buildForwardPERows() -> [QuarterlyRow] {
-        storedWatchlist.compactMap { symbol in
+        filteredWatchlist().compactMap { symbol in
             let symbolPEs = storedForwardPEData[symbol]
             guard let symbolPEs, !symbolPEs.isEmpty else { return nil }
 
@@ -190,7 +207,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     private func buildPriceBreaksRows() -> [QuarterlyRow] {
         var outRows: [QuarterlyRow] = []
         var bkdnRows: [QuarterlyRow] = []
-        for symbol in storedWatchlist {
+        for symbol in filteredWatchlist() {
             guard let entry = storedSwingLevelEntries[symbol],
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
             let symbolRSI = storedRSIValues[symbol]
@@ -213,9 +230,10 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func buildEMAsRows() -> [QuarterlyRow] {
+        let filtered = filteredWatchlist()
         var dayRows: [QuarterlyRow] = []
         var weekRows: [QuarterlyRow] = []
-        for symbol in storedWatchlist {
+        for symbol in filtered {
             guard let entry = storedEMAEntries[symbol],
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
             if let ema = entry.day, quote.price > ema, ema > 0, let aboveCount = entry.dayAboveCount {
@@ -227,7 +245,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
 
         var crossRows: [QuarterlyRow] = []
-        for symbol in storedWatchlist {
+        for symbol in filtered {
             guard let entry = storedEMAEntries[symbol],
                   let weeksBelow = entry.weekCrossoverWeeksBelow,
                   weeksBelow >= 3 else { continue }
@@ -235,7 +253,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
 
         var crossdownRows: [QuarterlyRow] = []
-        for symbol in storedWatchlist {
+        for symbol in filtered {
             guard let entry = storedEMAEntries[symbol],
                   let weeksAbove = entry.weekCrossdownWeeksAbove,
                   weeksAbove >= 3 else { continue }
@@ -243,7 +261,7 @@ class QuarterlyPanelViewModel: ObservableObject {
         }
 
         var belowRows: [QuarterlyRow] = []
-        for symbol in storedWatchlist {
+        for symbol in filtered {
             guard let entry = storedEMAEntries[symbol],
                   let ema = entry.week, ema > 0,
                   let weeksBelow = entry.weekBelowCount,
@@ -283,7 +301,7 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     private func buildVIXSpikeRows() -> [QuarterlyRow] {
         vixSpikeHeaders = storedVIXSpikes.reversed().map { (dateString: $0.dateString, vixClose: $0.vixClose) }
-        return storedWatchlist.map { symbol in
+        return filteredWatchlist().map { symbol in
             var changes: [String: Double?] = [:]
             let symbolPrices = storedVIXSpikePrices[symbol]
             for spike in storedVIXSpikes {
@@ -323,17 +341,18 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     func buildMiscStats() {
         let label = symbolSetLabel
+        let filtered = filteredWatchlist()
         miscStats = [
-            MiscStat(id: "within5pctOfHigh", description: "% of \(label) within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist)),
-            MiscStat(id: "indexesWithin5pctOfHigh", description: "% of indexes within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.indexSymbols.contains($0) })),
-            MiscStat(id: "sectorsWithin5pctOfHigh", description: "% of sectors within 5% of High", value: percentWithin5OfHigh(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
-            MiscStat(id: "avgYTDChange", description: "Average YTD change %", value: averageYTDChange()),
-            MiscStat(id: "pctPositiveYTD", description: "% of \(label) positive YTD", value: percentPositiveYTD(symbols: storedWatchlist)),
-            MiscStat(id: "sectorsPositiveYTD", description: "% of sectors positive YTD", value: percentPositiveYTD(symbols: storedWatchlist.filter { Self.sectorSymbols.contains($0) })),
-            MiscStat(id: "avgForwardPE", description: "Average forward P/E (equities)", value: averageForwardPE()),
-            MiscStat(id: "medianForwardPE", description: "Median forward P/E (equities)", value: medianForwardPE()),
-            MiscStat(id: "pctAbove5WEMA", description: "% of \(label) above 5W EMA", value: percentAbove5WEMA()),
-            MiscStat(id: "pctBelow5WEMA", description: "% of \(label) below 5W EMA", value: percentBelow5WEMA()),
+            MiscStat(id: "within5pctOfHigh", description: "% of \(label) within 5% of High", value: percentWithin5OfHigh(symbols: filtered)),
+            MiscStat(id: "indexesWithin5pctOfHigh", description: "% of indexes within 5% of High", value: percentWithin5OfHigh(symbols: filtered.filter { Self.indexSymbols.contains($0) })),
+            MiscStat(id: "sectorsWithin5pctOfHigh", description: "% of sectors within 5% of High", value: percentWithin5OfHigh(symbols: filtered.filter { Self.sectorSymbols.contains($0) })),
+            MiscStat(id: "avgYTDChange", description: "Average YTD change %", value: averageYTDChange(symbols: filtered)),
+            MiscStat(id: "pctPositiveYTD", description: "% of \(label) positive YTD", value: percentPositiveYTD(symbols: filtered)),
+            MiscStat(id: "sectorsPositiveYTD", description: "% of sectors positive YTD", value: percentPositiveYTD(symbols: filtered.filter { Self.sectorSymbols.contains($0) })),
+            MiscStat(id: "avgForwardPE", description: "Average forward P/E (equities)", value: averageForwardPE(symbols: filtered)),
+            MiscStat(id: "medianForwardPE", description: "Median forward P/E (equities)", value: medianForwardPE(symbols: filtered)),
+            MiscStat(id: "pctAbove5WEMA", description: "% of \(label) above 5W EMA", value: percentAbove5WEMA(symbols: filtered)),
+            MiscStat(id: "pctBelow5WEMA", description: "% of \(label) below 5W EMA", value: percentBelow5WEMA(symbols: filtered)),
         ]
     }
 
@@ -351,8 +370,8 @@ class QuarterlyPanelViewModel: ObservableObject {
         return String(format: "%.0f%%", (Double(within) / Double(total)) * 100)
     }
 
-    private func averageYTDChange() -> String {
-        let ytdPercents = storedWatchlist.compactMap { storedQuotes[$0]?.ytdChangePercent }
+    private func averageYTDChange(symbols: [String]) -> String {
+        let ytdPercents = symbols.compactMap { storedQuotes[$0]?.ytdChangePercent }
         guard !ytdPercents.isEmpty else { return QuarterlyFormatting.noData }
         let avg = ytdPercents.reduce(0, +) / Double(ytdPercents.count)
         return Formatting.signedPercent(avg, isPositive: avg >= 0)
@@ -365,25 +384,25 @@ class QuarterlyPanelViewModel: ObservableObject {
         return String(format: "%.0f%%", (Double(positive) / Double(ytdPercents.count)) * 100)
     }
 
-    private func averageForwardPE() -> String {
-        let pes = storedWatchlist.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }
+    private func averageForwardPE(symbols: [String]) -> String {
+        let pes = symbols.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }
         guard !pes.isEmpty else { return QuarterlyFormatting.noData }
         let avg = pes.reduce(0, +) / Double(pes.count)
         return String(format: "%.1f", avg)
     }
 
-    private func medianForwardPE() -> String {
-        let pes = storedWatchlist.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }.sorted()
+    private func medianForwardPE(symbols: [String]) -> String {
+        let pes = symbols.compactMap { storedCurrentForwardPEs[$0] }.filter { $0 > 0 }.sorted()
         guard !pes.isEmpty else { return QuarterlyFormatting.noData }
         let mid = pes.count / 2
         let median = pes.count.isMultiple(of: 2) ? (pes[mid - 1] + pes[mid]) / 2 : pes[mid]
         return String(format: "%.1f", median)
     }
 
-    private func percentAbove5WEMA() -> String {
+    private func percentAbove5WEMA(symbols: [String]) -> String {
         var total = 0
         var above = 0
-        for symbol in storedWatchlist {
+        for symbol in symbols {
             guard let entry = storedEMAEntries[symbol],
                   let weekEMA = entry.week, weekEMA > 0,
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
@@ -394,10 +413,10 @@ class QuarterlyPanelViewModel: ObservableObject {
         return String(format: "%.0f%%", (Double(above) / Double(total)) * 100)
     }
 
-    private func percentBelow5WEMA() -> String {
+    private func percentBelow5WEMA(symbols: [String]) -> String {
         var total = 0
         var below = 0
-        for symbol in storedWatchlist {
+        for symbol in symbols {
             guard let entry = storedEMAEntries[symbol],
                   let weekEMA = entry.week, weekEMA > 0,
                   let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
