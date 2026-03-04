@@ -32,14 +32,8 @@
     margin-right: auto;
   }
 
-  .banner .meta {
-    color: #8b949e;
-  }
-
-  .banner .meta strong {
-    color: #c9d1d9;
-    font-weight: 500;
-  }
+  .banner .meta { color: #8b949e; }
+  .banner .meta strong { color: #c9d1d9; font-weight: 500; }
 
   .badge {
     display: inline-block;
@@ -61,10 +55,14 @@
     border-bottom: 1px solid #30363d;
     padding: 0 24px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .tab {
     padding: 10px 20px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
     cursor: pointer;
     font-size: 14px;
     color: #8b949e;
@@ -95,9 +93,64 @@
     color: #f78166;
   }
 
-  .content {
-    padding: 16px 24px;
+  /* Source toggles */
+  .source-toggles {
+    display: flex;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #0d1117;
+    flex-wrap: wrap;
+    align-items: center;
   }
+
+  .source-btn {
+    padding: 5px 14px;
+    min-height: 32px;
+    border-radius: 16px;
+    border: 1px solid #30363d;
+    background: transparent;
+    color: #8b949e;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .source-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
+
+  .source-btn.active {
+    background: #1f6feb33;
+    border-color: #58a6ff;
+    color: #58a6ff;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 24px 2px;
+    background: #0d1117;
+    font-size: 13px;
+  }
+
+  .row-count { color: #8b949e; }
+
+  .reset-btn {
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid #30363d;
+    background: transparent;
+    color: #8b949e;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .reset-btn:hover { border-color: #f85149; color: #f85149; }
+
+  .content { padding: 16px 24px; }
 
   .table-wrap {
     overflow-x: auto;
@@ -145,19 +198,20 @@
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #161b22; }
 
-  td.symbol {
-    font-weight: 600;
-    color: #e6edf3;
-  }
+  /* Row striping */
+  tbody tr:nth-child(odd) td { background: #0d1117; }
+  tbody tr:nth-child(even) td { background: #111820; }
+  tbody tr:hover td { background: #161b22; }
 
-  td.symbol a {
-    color: #e6edf3;
-    text-decoration: none;
-  }
+  td.symbol { font-weight: 600; color: #e6edf3; }
+  td.symbol a { color: #e6edf3; text-decoration: none; }
+  td.symbol a:hover { color: #f78166; }
 
-  td.symbol a:hover {
-    color: #f78166;
-  }
+  /* Color coding */
+  .pct-positive { color: #3fb950; }
+  .pct-negative { color: #f85149; }
+  .close-above { color: #3fb950; }
+  .close-below { color: #f85149; }
 
   .filter-row td {
     padding: 4px 16px;
@@ -175,16 +229,12 @@
     color: #c9d1d9;
     font-size: 12px;
     padding: 3px 6px;
+    min-height: 36px;
     outline: none;
   }
 
-  .filter-row input:focus {
-    border-color: #58a6ff;
-  }
-
-  .filter-row input.filter-symbol {
-    width: 100%;
-  }
+  .filter-row input:focus { border-color: #58a6ff; }
+  .filter-row input.filter-symbol { width: 100%; }
 
   .filter-row input.filter-num {
     width: 70px;
@@ -215,10 +265,26 @@
   }
 
   @media (max-width: 640px) {
-    .banner { padding: 10px 12px; gap: 12px; }
+    .banner {
+      padding: 10px 12px;
+      gap: 8px;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .banner h1 { margin-right: 0; }
     .tabs { padding: 0 12px; }
+    .source-toggles { padding: 10px 12px; }
+    .toolbar { padding: 6px 12px 2px; }
     .content { padding: 12px; }
     td, th { padding: 6px 10px; }
+    .filter-row input.filter-num { width: 60px; }
+  }
+
+  @media (max-width: 480px) {
+    .tab { padding: 8px 12px; font-size: 13px; }
+    .source-btn { padding: 4px 10px; font-size: 12px; }
+    .filter-row input.filter-num { width: 50px; }
+    td, th { padding: 5px 8px; font-size: 13px; }
   }
 </style>
 </head>
@@ -230,85 +296,140 @@
 </div>
 
 <div class="tabs" id="tabs"></div>
+<div class="source-toggles" id="source-toggles"></div>
+<div class="toolbar" id="toolbar"></div>
 <div class="content" id="content">
   <div class="loading">Loading scan data&hellip;</div>
 </div>
 
 <script>
+const WATCHLIST_SOURCES = [
+  { id: 'all', label: 'All', symbols: null },
+  { id: 'megaCap', label: '$200B+', symbols: new Set(['AAPL','ABBV','ABT','ACN','ADBE','AMD','AMGN','AMZN','AVGO','AXP','BA','BAC','BRK-B','BX','CAT','CI','CMCSA','COP','COST','CRM','CRWD','CSCO','CVX','DE','DHR','DIS','ETN','GE','GEV','GILD','GOOG','GOOGL','GS','HD','HON','IBM','INTC','INTU','ISRG','JNJ','JPM','KO','LIN','LLY','LMT','LOW','MA','MCD','MDLZ','MRK','MS','MSFT','MU','NEE','NFLX','NKE','NOW','NVDA','ORCL','PEP','PFE','PG','PGR','PLTR','PM','PYPL','QCOM','RTX','SBUX','SCHW','SHW','SPGI','T','TJX','TMO','TMUS','TSLA','TXN','UNH','UNP','UPS','V','VRTX','VZ','WFC','WMT','XOM']) },
+  { id: 'topAUM', label: 'Top AUM ETFs', symbols: new Set(['SPY','IVV','VOO','VTI','QQQ','VEA','VTV','IEFA','BND','AGG','VWO','IWM','IEMG','VIG','VUG','IJR','VXUS','GLD','IJH','SCHD','VGT','XLK','BNDX','VO','IWF','VCIT','XLV','ITOT','BSV','DIA']) },
+  { id: 'topVol', label: 'Top Vol ETFs', symbols: new Set(['SPY','QQQ','IWM','EEM','XLF','HYG','SMH','GDX','SLV','IBIT']) },
+  { id: 'spdr', label: 'SPDR', symbols: new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','XLE','SPDW','GLDM','SPYV','XLI','XLC','MDY','XLU','XLY','SDY','XLP','SPEM','SPMD','SPSM','SPTM','SPTL','SPIB','SPHY','SPTI','SPAB','SPSB','XBI','XLRE','JNK','SPYD','XLB','SPMB','XAR','SPTS','CWB','SRLN','FEZ','SJNK','GNR','XME','SLYV','SLYG','TOTL','BILS','KRE','SHM','TFI','HYMB','FLRN','MDYG','CWI','MDYV','XOP','KOMP','SPYX','EBND','SPBO','TIPX','RWR','XHB','XSD','BWX','QUS','XNTK','SPGM']) },
+  { id: 'vanguard', label: 'Vanguard', symbols: new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']) },
+];
+
+const DEFAULT_FILTERS = {
+  close: { min: 5 },
+  count: { min: 5 },
+  weeksBelow: { min: 5 },
+  weeksAbove: { min: 5 },
+};
+
 const TAB_DEFS = [
-  { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','weeksBelow'] },
-  { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','weeksAbove'] },
-  { id: 'dayBelow',    label: 'Day Below',    file: '/results/latest-below.json',      key: 'dayBelow',    cols: ['symbol','close','ema','count'] },
-  { id: 'weekBelow',   label: 'Week Below',   file: '/results/latest-below.json',      key: 'weekBelow',   cols: ['symbol','close','ema','count'] },
-  { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','count'] },
-  { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','count'] },
+  { id: 'crossovers',  label: 'Crossovers',  file: '/results/latest.json',           key: 'crossovers',  cols: ['symbol','close','ema','pct','weeksBelow'], pctField: 'pctAbove' },
+  { id: 'crossdowns',  label: 'Crossdowns',  file: '/results/latest-crossdown.json',  key: 'crossdowns',  cols: ['symbol','close','ema','pct','weeksAbove'], pctField: 'pctBelow' },
+  { id: 'dayBelow',    label: 'Day Below',    file: '/results/latest-below.json',      key: 'dayBelow',    cols: ['symbol','close','ema','pct','count'],      pctField: 'pctBelow' },
+  { id: 'weekBelow',   label: 'Week Below',   file: '/results/latest-below.json',      key: 'weekBelow',   cols: ['symbol','close','ema','pct','count'],      pctField: 'pctBelow' },
+  { id: 'dayAbove',    label: 'Day Above',    file: '/results/latest-above.json',      key: 'dayAbove',    cols: ['symbol','close','ema','pct','count'],      pctField: 'pctAbove' },
+  { id: 'weekAbove',   label: 'Week Above',   file: '/results/latest-above.json',      key: 'weekAbove',   cols: ['symbol','close','ema','pct','count'],      pctField: 'pctAbove' },
 ];
 
 const COL_LABELS = {
-  symbol: 'Symbol', close: 'Close', ema: 'EMA',
+  symbol: 'Symbol', close: 'Close', ema: 'EMA', pct: '% EMA',
   weeksBelow: 'Weeks Below', weeksAbove: 'Weeks Above', count: 'Count',
 };
 
-const NUM_COLS = new Set(['close','ema','weeksBelow','weeksAbove','count']);
+const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','count']);
 
 let data = {};
 let activeTab = TAB_DEFS[0].id;
 let sortCol = null;
 let sortAsc = true;
 let filters = {};
+let activeSources = new Set(['all']);
 
-async function fetchAll() {
-  const urls = [...new Set(TAB_DEFS.map(t => t.file))];
-  const results = await Promise.allSettled(urls.map(u => fetch(u).then(r => {
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
-  })));
-  const byUrl = {};
-  urls.forEach((u, i) => {
-    if (results[i].status === 'fulfilled') byUrl[u] = results[i].value;
-  });
+/* ── Hash persistence ── */
 
-  const meta = byUrl[urls[0]] || byUrl[urls[1]] || byUrl[urls[2]];
-  if (meta) renderMeta(meta);
+function readHash() {
+  const h = location.hash.replace('#', '');
+  if (h && TAB_DEFS.some(t => t.id === h)) activeTab = h;
+}
 
-  TAB_DEFS.forEach(t => {
-    const json = byUrl[t.file];
-    if (!json) { data[t.id] = []; return; }
-    // Backward compat: old format had "below" with "weeksBelow" field
-    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
-      data[t.id] = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
-    } else {
-      data[t.id] = json[t.key] || [];
-    }
-  });
+function writeHash() {
+  history.replaceState(null, '', '#' + activeTab);
+}
 
-  if (!Object.values(byUrl).length) {
-    document.getElementById('content').innerHTML = '<div class="error-msg">Failed to load scan data.</div>';
-    return;
+/* ── Source toggles ── */
+
+function renderSourceToggles() {
+  const el = document.getElementById('source-toggles');
+  el.innerHTML = WATCHLIST_SOURCES.map(s => {
+    const cls = activeSources.has(s.id) ? ' active' : '';
+    return `<button class="source-btn${cls}" data-source="${s.id}">${s.label}</button>`;
+  }).join('');
+  el.querySelectorAll('.source-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.source;
+      if (id === 'all') {
+        activeSources = new Set(['all']);
+      } else {
+        activeSources.delete('all');
+        if (activeSources.has(id)) activeSources.delete(id);
+        else activeSources.add(id);
+        if (activeSources.size === 0) activeSources.add('all');
+      }
+      renderSourceToggles();
+      renderTabs();
+      showTab(activeTab);
+    })
+  );
+}
+
+function matchesSources(symbol) {
+  if (activeSources.has('all')) return true;
+  for (const id of activeSources) {
+    const src = WATCHLIST_SOURCES.find(s => s.id === id);
+    if (src && src.symbols && src.symbols.has(symbol)) return true;
   }
-
-  renderTabs();
-  showTab(activeTab);
+  return false;
 }
 
-function renderMeta(json) {
-  const d = json.scanDate || '—';
-  const t = json.scanTime ? new Date(json.scanTime).toLocaleString() : '—';
-  const sneak = json.sneakPeek;
-  const syms = (json.symbolsScanned || 0).toLocaleString();
-  const errs = json.errors || 0;
+/* ── Default filters ── */
 
-  const badge = sneak ? '<span class="badge badge-sneak">Sneak Peek</span> ' : '';
-
-  document.getElementById('meta').innerHTML =
-    badge +
-    `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
-    `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${syms} symbols</a></span>` +
-    (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
+function initDefaultFilters(cols) {
+  filters = {};
+  for (const c of cols) {
+    if (DEFAULT_FILTERS[c]) filters[c] = { ...DEFAULT_FILTERS[c] };
+  }
 }
+
+/* ── Toolbar ── */
+
+function renderToolbar(filteredCount, totalCount) {
+  const el = document.getElementById('toolbar');
+  el.innerHTML =
+    `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
+    `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>`;
+  document.getElementById('reset-filters-btn').addEventListener('click', () => {
+    activeSources = new Set(['all']);
+    const def = TAB_DEFS.find(t => t.id === activeTab);
+    initDefaultFilters(def.cols);
+    renderSourceToggles();
+    renderTabs();
+    showTab(activeTab);
+  });
+}
+
+/* ── Sorting ── */
+
+function sortRows(rows) {
+  if (!sortCol) return rows;
+  return rows.sort((a, b) => {
+    const av = a[sortCol], bv = b[sortCol];
+    if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
+    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  });
+}
+
+/* ── Filtering ── */
 
 function applyFilters(rows, cols) {
   return rows.filter(r => {
+    if (!matchesSources(r.symbol)) return false;
     for (const c of cols) {
       const f = filters[c];
       if (!f) continue;
@@ -325,11 +446,42 @@ function applyFilters(rows, cols) {
   });
 }
 
+/* ── Row rendering ── */
+
+function renderRowHTML(r, cols, pctField) {
+  return '<tr>' + cols.map(c => {
+    const v = r[c];
+    if (c === 'symbol') {
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+    }
+    if (c === 'pct') {
+      const cls = v > 0 ? 'pct-positive' : v < 0 ? 'pct-negative' : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
+    if (c === 'close') {
+      const cls = r.close > r.ema ? 'close-above' : r.close < r.ema ? 'close-below' : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
+    if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
+    return `<td>${esc(v)}</td>`;
+  }).join('') + '</tr>';
+}
+
+function renderTbodyHTML(rows, cols, pctField) {
+  if (rows.length === 0) {
+    return `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>`;
+  }
+  return rows.map(r => renderRowHTML(r, cols, pctField)).join('');
+}
+
+/* ── Tabs ── */
+
 function renderTabs() {
   const el = document.getElementById('tabs');
   el.innerHTML = TAB_DEFS.map(t => {
-    const total = data[t.id].length;
-    const filtered = applyFilters(data[t.id], t.cols).length;
+    const total = data[t.id] ? data[t.id].filter(r => matchesSources(r.symbol)).length : 0;
+    const filtered = data[t.id] ? applyFilters(data[t.id], t.cols).length : 0;
     const isActive = t.id === activeTab;
     const hasFilter = isActive && Object.keys(filters).length > 0 &&
       Object.values(filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
@@ -342,26 +494,25 @@ function renderTabs() {
       activeTab = tab.dataset.tab;
       sortCol = null;
       sortAsc = true;
-      filters = {};
+      const def = TAB_DEFS.find(t => t.id === activeTab);
+      initDefaultFilters(def.cols);
+      writeHash();
       renderTabs();
       showTab(activeTab);
     })
   );
 }
 
+/* ── Main tab display ── */
+
 function showTab(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
-  let rows = [...(data[tabId] || [])];
+  const allRows = data[tabId] || [];
+  let rows = applyFilters([...allRows], def.cols);
+  sortRows(rows);
 
-  rows = applyFilters(rows, def.cols);
-
-  if (sortCol) {
-    rows.sort((a, b) => {
-      const av = a[sortCol], bv = b[sortCol];
-      if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
-      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-    });
-  }
+  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
+  renderToolbar(rows.length, totalSourced);
 
   const ths = def.cols.map(c => {
     const isSorted = sortCol === c;
@@ -373,7 +524,7 @@ function showTab(tabId) {
   const filterCells = def.cols.map(c => {
     if (c === 'symbol') {
       const val = filters[c]?.text || '';
-      return `<td><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter…" value="${esc(val)}"></td>`;
+      return `<td><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
     }
     const f = filters[c] || {};
     const minVal = f.min != null ? f.min : '';
@@ -384,22 +535,10 @@ function showTab(tabId) {
       `</div></td>`;
   }).join('');
 
-  const tds = rows.map(r =>
-    '<tr>' + def.cols.map(c => {
-      const v = r[c];
-      if (c === 'symbol') {
-        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-      }
-      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
-      return `<td>${esc(v)}</td>`;
-    }).join('') + '</tr>'
-  ).join('');
-
   document.getElementById('content').innerHTML =
     `<div class="table-wrap"><table>` +
     `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
-    `<tbody>${tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody>` +
+    `<tbody>${renderTbodyHTML(rows, def.cols, def.pctField)}</tbody>` +
     `</table></div>`;
 
   document.querySelectorAll('th[data-col]').forEach(th =>
@@ -430,34 +569,24 @@ function showTab(tabId) {
 
 function updateRows(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
-  let rows = [...(data[tabId] || [])];
-  rows = applyFilters(rows, def.cols);
-  if (sortCol) {
-    rows.sort((a, b) => {
-      const av = a[sortCol], bv = b[sortCol];
-      if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
-      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-    });
-  }
+  const allRows = data[tabId] || [];
+  let rows = applyFilters([...allRows], def.cols);
+  sortRows(rows);
+
+  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
+  renderToolbar(rows.length, totalSourced);
+
   const tbody = document.querySelector('.table-wrap tbody');
   if (!tbody) return;
-  const tds = rows.map(r =>
-    '<tr>' + def.cols.map(c => {
-      const v = r[c];
-      if (c === 'symbol') {
-        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-      }
-      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
-      return `<td>${esc(v)}</td>`;
-    }).join('') + '</tr>'
-  ).join('');
-  tbody.innerHTML = tds || '<tr><td colspan="' + def.cols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>';
+  tbody.innerHTML = renderTbodyHTML(rows, def.cols, def.pctField);
 }
 
+/* ── Formatting ── */
+
 function fmtNum(col, v) {
-  if (v == null) return '—';
+  if (v == null) return '\u2014';
   if (col === 'close' || col === 'ema') return v.toFixed(2);
+  if (col === 'pct') return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   return v.toLocaleString();
 }
 
@@ -465,6 +594,72 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+/* ── Meta ── */
+
+function renderMeta(json) {
+  const d = json.scanDate || '\u2014';
+  const t = json.scanTime ? new Date(json.scanTime).toLocaleString() : '\u2014';
+  const sneak = json.sneakPeek;
+  const syms = (json.symbolsScanned || 0).toLocaleString();
+  const errs = json.errors || 0;
+
+  const badge = sneak ? '<span class="badge badge-sneak">Sneak Peek</span> ' : '';
+
+  document.getElementById('meta').innerHTML =
+    badge +
+    `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
+    `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${syms} symbols</a></span>` +
+    (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
+}
+
+/* ── Fetch & init ── */
+
+async function fetchAll() {
+  readHash();
+
+  const urls = [...new Set(TAB_DEFS.map(t => t.file))];
+  const results = await Promise.allSettled(urls.map(u => fetch(u).then(r => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  })));
+  const byUrl = {};
+  urls.forEach((u, i) => {
+    if (results[i].status === 'fulfilled') byUrl[u] = results[i].value;
+  });
+
+  const meta = byUrl[urls[0]] || byUrl[urls[1]] || byUrl[urls[2]];
+  if (meta) renderMeta(meta);
+
+  TAB_DEFS.forEach(t => {
+    const json = byUrl[t.file];
+    if (!json) { data[t.id] = []; return; }
+    // Backward compat: old format had "below" with "weeksBelow" field
+    let rows;
+    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
+      rows = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
+    } else {
+      rows = json[t.key] || [];
+    }
+    // Normalize pct field
+    data[t.id] = rows.map(r => ({
+      ...r,
+      pct: r[t.pctField] != null ? r[t.pctField] : null,
+    }));
+  });
+
+  if (!Object.values(byUrl).length) {
+    document.getElementById('content').innerHTML = '<div class="error-msg">Failed to load scan data.</div>';
+    return;
+  }
+
+  const def = TAB_DEFS.find(t => t.id === activeTab);
+  initDefaultFilters(def.cols);
+  renderSourceToggles();
+  renderTabs();
+  writeHash();
+  showTab(activeTab);
 }
 
 fetchAll();
