@@ -229,6 +229,11 @@ class MenuBarController: NSObject, ObservableObject {
         pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         self.popover = pop
 
+        if let popoverWindow = pop.contentViewController?.view.window {
+            popoverWindow.isOpaque = true
+            popoverWindow.backgroundColor = .windowBackgroundColor
+        }
+
         NSApp.activate(ignoringOtherApps: true)
         isPopoverOpen = true
         highlightIntensity.removeAll()
