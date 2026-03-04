@@ -51,7 +51,7 @@ pgrep -x Stonks && echo "App is running"
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
 - `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
 - `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, personal)
-- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`: Bundled symbol lists (87 equities $200B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs)
+- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`: Bundled symbol lists (89 equities $200B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs)
 - `Dictionary+Merge`: `mergeKeepingNew`/`mergeKeepingExisting`/`mergingKeepingExisting` extensions
 
 ## Design Patterns
