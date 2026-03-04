@@ -340,7 +340,8 @@ let activeTab = TAB_DEFS[0].id;
 let sortCol = null;
 let sortAsc = true;
 let filters = {};
-let activeSources = new Set(['all']);
+const ALL_SPECIFIC_SOURCES = new Set(WATCHLIST_SOURCES.filter(s => s.id !== 'all').map(s => s.id));
+let activeSources = new Set(ALL_SPECIFIC_SOURCES);
 
 /* ── Hash persistence ── */
 
@@ -365,12 +366,11 @@ function renderSourceToggles() {
     btn.addEventListener('click', () => {
       const id = btn.dataset.source;
       if (id === 'all') {
-        activeSources = new Set(['all']);
+        activeSources = new Set(ALL_SPECIFIC_SOURCES);
       } else {
-        activeSources.delete('all');
         if (activeSources.has(id)) activeSources.delete(id);
         else activeSources.add(id);
-        if (activeSources.size === 0) activeSources.add('all');
+        if (activeSources.size === 0) activeSources = new Set(ALL_SPECIFIC_SOURCES);
       }
       renderSourceToggles();
       renderTabs();
@@ -380,7 +380,6 @@ function renderSourceToggles() {
 }
 
 function matchesSources(symbol) {
-  if (activeSources.has('all')) return true;
   for (const id of activeSources) {
     const src = WATCHLIST_SOURCES.find(s => s.id === id);
     if (src && src.symbols && src.symbols.has(symbol)) return true;
@@ -405,7 +404,7 @@ function renderToolbar(filteredCount, totalCount) {
     `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
     `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>`;
   document.getElementById('reset-filters-btn').addEventListener('click', () => {
-    activeSources = new Set(['all']);
+    activeSources = new Set(ALL_SPECIFIC_SOURCES);
     const def = TAB_DEFS.find(t => t.id === activeTab);
     initDefaultFilters(def.cols);
     renderSourceToggles();
