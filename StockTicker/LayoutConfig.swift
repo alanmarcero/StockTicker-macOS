@@ -76,7 +76,7 @@ enum LayoutConfig {
     // MARK: - Popover
 
     enum Popover {
-        static let width: CGFloat = 580
+        static let width: CGFloat = 680
         static let height: CGFloat = 650
     }
 
