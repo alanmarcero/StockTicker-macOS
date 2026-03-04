@@ -359,7 +359,9 @@ function writeHash() {
 function renderSourceToggles() {
   const el = document.getElementById('source-toggles');
   el.innerHTML = WATCHLIST_SOURCES.map(s => {
-    const cls = activeSources.has(s.id) ? ' active' : '';
+    const allSelected = activeSources.size === ALL_SPECIFIC_SOURCES.size;
+    const isActive = s.id === 'all' ? allSelected : activeSources.has(s.id);
+    const cls = isActive ? ' active' : '';
     return `<button class="source-btn${cls}" data-source="${s.id}">${s.label}</button>`;
   }).join('');
   el.querySelectorAll('.source-btn').forEach(btn =>
