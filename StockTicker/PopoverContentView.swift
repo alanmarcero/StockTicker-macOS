@@ -1,5 +1,154 @@
 import SwiftUI
 
+// MARK: - Equatable Ticker Row
+
+struct TickerRowData: Equatable {
+    let symbol: String
+    let hasValidQuote: Bool
+    let displayColor: Color
+    let paddedSymbol: String
+    let paddedMarketCap: String
+    let paddedChangePercent: String
+    let ytdText: String?
+    let ytdColor: Color
+    let highText: String?
+    let highColor: Color
+    let lowText: String?
+    let lowColor: Color
+    let extHoursText: String?
+    let extHoursColor: Color
+    let highlightIntensity: CGFloat
+    let highlightBgColor: Color
+    let isPersistentHighlighted: Bool
+    let persistentHighlightColor: Color
+    let persistentHighlightOpacity: Double
+
+    static func from(
+        symbol: String,
+        quote: StockQuote?,
+        intensity: CGFloat,
+        isPersistentHighlighted: Bool,
+        highlightColor: String,
+        highlightOpacity: Double
+    ) -> TickerRowData {
+        let hasValid = quote.map { !$0.isPlaceholder } ?? false
+        let q: StockQuote? = hasValid ? quote : nil
+
+        return TickerRowData(
+            symbol: symbol,
+            hasValidQuote: hasValid,
+            displayColor: q?.swiftUIDisplayColor ?? .secondary,
+            paddedSymbol: padded(symbol, to: LayoutConfig.Ticker.symbolWidth),
+            paddedMarketCap: padded(q?.formattedMarketCap ?? "", to: LayoutConfig.Ticker.marketCapWidth),
+            paddedChangePercent: padded(q?.formattedChangePercent ?? "", to: LayoutConfig.Ticker.percentWidth),
+            ytdText: q?.formattedYTDChangePercent.map { padded("YTD: \($0)", to: LayoutConfig.Ticker.ytdWidth) },
+            ytdColor: q?.swiftUIYTDColor ?? .secondary,
+            highText: q?.formattedHighestCloseChangePercent.map { padded("High: \($0)", to: LayoutConfig.Ticker.highWidth) },
+            highColor: q?.swiftUIHighestCloseColor ?? .secondary,
+            lowText: q?.formattedLowestCloseChangePercent.map { padded("Low: \($0)", to: LayoutConfig.Ticker.lowWidth) },
+            lowColor: q?.swiftUILowestCloseColor ?? .secondary,
+            extHoursText: buildExtHoursText(quote: q),
+            extHoursColor: buildExtHoursColor(quote: q),
+            highlightIntensity: intensity,
+            highlightBgColor: q.map { Color(nsColor: $0.highlightColor) } ?? .clear,
+            isPersistentHighlighted: isPersistentHighlighted,
+            persistentHighlightColor: ColorMapping.color(from: highlightColor),
+            persistentHighlightOpacity: highlightOpacity
+        )
+    }
+
+    private static func buildExtHoursText(quote: StockQuote?) -> String? {
+        guard let q = quote, q.isInExtendedHoursPeriod(), let label = q.extendedHoursPeriodLabel() else { return nil }
+        if q.shouldShowExtendedHours(), let ext = q.formattedExtendedHoursChangePercent {
+            return "  \(label): \(ext)"
+        }
+        return "  \(label): --"
+    }
+
+    private static func buildExtHoursColor(quote: StockQuote?) -> Color {
+        guard let q = quote, q.isInExtendedHoursPeriod(), q.extendedHoursPeriodLabel() != nil else { return .secondary }
+        if q.shouldShowExtendedHours(), q.formattedExtendedHoursChangePercent != nil {
+            return q.swiftUIExtendedHoursColor
+        }
+        return .secondary
+    }
+
+    private static func padded(_ string: String, to length: Int) -> String {
+        string.count >= length ? string : string.padding(toLength: length, withPad: " ", startingAt: 0)
+    }
+}
+
+struct TickerRowView: View, Equatable {
+    let data: TickerRowData
+    let onTap: () -> Void
+
+    static func == (lhs: TickerRowView, rhs: TickerRowView) -> Bool {
+        lhs.data == rhs.data
+    }
+
+    var body: some View {
+        Button { onTap() } label: { content }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 2)
+            .background(background)
+    }
+
+    private var content: some View {
+        HStack(spacing: 0) {
+            if data.hasValidQuote {
+                Text(data.paddedSymbol)
+                    .foregroundColor(data.displayColor)
+                Text(" ")
+                Text(data.paddedMarketCap)
+                    .foregroundColor(data.displayColor)
+                Text(" ")
+                Text(data.paddedChangePercent)
+                    .foregroundColor(data.displayColor)
+
+                if let ytd = data.ytdText {
+                    Text("  ")
+                    Text(ytd)
+                        .foregroundColor(data.ytdColor)
+                }
+                if let high = data.highText {
+                    Text("  ")
+                    Text(high)
+                        .foregroundColor(data.highColor)
+                }
+                if let low = data.lowText {
+                    Text("  ")
+                    Text(low)
+                        .foregroundColor(data.lowColor)
+                }
+                if let ext = data.extHoursText {
+                    Text(ext)
+                        .foregroundColor(data.extHoursColor)
+                }
+            } else {
+                Text("\(data.symbol) --")
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .font(.system(size: LayoutConfig.Font.size, design: .monospaced))
+    }
+
+    private var background: some View {
+        Group {
+            if data.highlightIntensity > 0.01, data.hasValidQuote {
+                data.highlightBgColor
+                    .opacity(Double(data.highlightIntensity) * 0.6)
+            } else if data.isPersistentHighlighted {
+                data.persistentHighlightColor
+                    .opacity(data.persistentHighlightOpacity)
+            } else {
+                Color.clear
+            }
+        }
+    }
+}
+
 // MARK: - Popover Content View
 
 struct PopoverContentView: View {
@@ -233,83 +382,19 @@ struct PopoverContentView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(controller.sortedFilteredSymbols, id: \.self) { symbol in
-                    tickerRow(symbol: symbol)
-                }
-            }
-        }
-    }
-
-    private func tickerRow(symbol: String) -> some View {
-        let quote = controller.quotes[symbol]
-        let intensity = controller.highlightIntensity[symbol] ?? 0
-        let isPersistentHighlighted = controller.config.highlightedSymbols.contains(symbol)
-
-        return Button {
-            controller.openYahooFinance(symbol: symbol)
-        } label: {
-            tickerRowContent(symbol: symbol, quote: quote)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 2)
-        .background(tickerRowBackground(intensity: intensity, isPersistent: isPersistentHighlighted, quote: quote))
-    }
-
-    private func tickerRowContent(symbol: String, quote: StockQuote?) -> some View {
-        HStack(spacing: 0) {
-            if let quote = quote, !quote.isPlaceholder {
-                Text(padded(symbol, to: LayoutConfig.Ticker.symbolWidth))
-                    .foregroundColor(quote.swiftUIDisplayColor)
-                Text(" ")
-                Text(padded(quote.formattedMarketCap, to: LayoutConfig.Ticker.marketCapWidth))
-                    .foregroundColor(quote.swiftUIDisplayColor)
-                Text(" ")
-                Text(padded(quote.formattedChangePercent, to: LayoutConfig.Ticker.percentWidth))
-                    .foregroundColor(quote.swiftUIDisplayColor)
-
-                if let ytd = quote.formattedYTDChangePercent {
-                    Text("  ")
-                    Text(padded("YTD: \(ytd)", to: LayoutConfig.Ticker.ytdWidth))
-                        .foregroundColor(quote.swiftUIYTDColor)
-                }
-                if let high = quote.formattedHighestCloseChangePercent {
-                    Text("  ")
-                    Text(padded("High: \(high)", to: LayoutConfig.Ticker.highWidth))
-                        .foregroundColor(quote.swiftUIHighestCloseColor)
-                }
-                if let low = quote.formattedLowestCloseChangePercent {
-                    Text("  ")
-                    Text(padded("Low: \(low)", to: LayoutConfig.Ticker.lowWidth))
-                        .foregroundColor(quote.swiftUILowestCloseColor)
-                }
-                if quote.isInExtendedHoursPeriod(), let label = quote.extendedHoursPeriodLabel() {
-                    if quote.shouldShowExtendedHours(), let ext = quote.formattedExtendedHoursChangePercent {
-                        Text("  \(label): \(ext)")
-                            .foregroundColor(quote.swiftUIExtendedHoursColor)
-                    } else {
-                        Text("  \(label): --")
-                            .foregroundColor(.secondary)
+                    let data = TickerRowData.from(
+                        symbol: symbol,
+                        quote: controller.quotes[symbol],
+                        intensity: controller.highlightIntensity[symbol] ?? 0,
+                        isPersistentHighlighted: controller.config.highlightedSymbols.contains(symbol),
+                        highlightColor: controller.config.highlightColor,
+                        highlightOpacity: controller.config.highlightOpacity
+                    )
+                    TickerRowView(data: data) {
+                        controller.openYahooFinance(symbol: symbol)
                     }
+                    .equatable()
                 }
-            } else {
-                Text("\(symbol) --")
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-        }
-        .font(.system(size: LayoutConfig.Font.size, design: .monospaced))
-    }
-
-    private func tickerRowBackground(intensity: CGFloat, isPersistent: Bool, quote: StockQuote?) -> some View {
-        Group {
-            if intensity > 0.01, let quote = quote {
-                Color(nsColor: quote.highlightColor)
-                    .opacity(Double(intensity) * 0.6)
-            } else if isPersistent {
-                ColorMapping.color(from: controller.config.highlightColor)
-                    .opacity(controller.config.highlightOpacity)
-            } else {
-                Color.clear
             }
         }
     }
@@ -368,7 +453,4 @@ struct PopoverContentView: View {
             .buttonStyle(.plain)
     }
 
-    private func padded(_ string: String, to length: Int) -> String {
-        string.count >= length ? string : string.padding(toLength: length, withPad: " ", startingAt: 0)
-    }
 }

@@ -32,10 +32,16 @@ private enum Strings {
 // MARK: - Timing Constants
 
 private enum Timing {
-    static let highlightFadeStep: CGFloat = 0.03
+    static let highlightFadeStep: CGFloat = 0.12
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
     static let universeRefreshCadence = 2  // Every 2nd refresh cycle (~60s at 30s interval)
+
+    static let countdownFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
     static let cacheRetryCadence = 4      // Retry missing cache entries every 4th cycle (~60s)
 }
 
@@ -315,7 +321,6 @@ class MenuBarController: NSObject, ObservableObject {
         if changed {
             objectWillChange.send()
         }
-        updateCountdown()
     }
 
     // MARK: - Data Refresh
@@ -360,13 +365,8 @@ class MenuBarController: NSObject, ObservableObject {
             )
         }
 
-        if result.shouldMergeQuotes {
-            self.quotes.mergeKeepingNew(result.quotes)
-            self.indexQuotes.mergeKeepingNew(result.indexQuotes)
-        } else {
-            self.quotes = result.quotes
-            self.indexQuotes = result.indexQuotes
-        }
+        self.quotes.mergeKeepingNew(result.quotes)
+        self.indexQuotes.mergeKeepingNew(result.indexQuotes)
         self.yahooMarketState = result.yahooMarketState
         if currentSortOption.isExtendedHoursSort {
             let state = MarketState(fromYahooState: result.yahooMarketState)
@@ -580,9 +580,7 @@ class MenuBarController: NSObject, ObservableObject {
         let elapsed = dateProvider.now().timeIntervalSince(lastRefreshTime)
         let remaining = max(0, Int(TimeInterval(config.refreshInterval) - elapsed))
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "h:mm a"
-        let lastTime = formatter.string(from: lastRefreshTime)
+        let lastTime = Timing.countdownFormatter.string(from: lastRefreshTime)
         countdownText = String(format: Strings.countdownFormat, lastTime, remaining)
     }
 
