@@ -73,6 +73,13 @@ enum LayoutConfig {
         static let rsiColumnWidth: CGFloat = 55
     }
 
+    // MARK: - Popover
+
+    enum Popover {
+        static let width: CGFloat = 580
+        static let height: CGFloat = 650
+    }
+
     // MARK: - Watchlist
 
     enum Watchlist {

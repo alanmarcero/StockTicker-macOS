@@ -114,8 +114,9 @@ class QuarterlyPanelViewModel: ObservableObject {
         applySorting()
     }
 
-    func refresh(data: QuarterlyPanelData) {
+    func refresh(data: QuarterlyPanelData, personalWatchlist: Set<String>? = nil) {
         guard !quarters.isEmpty else { return }
+        if let personalWatchlist { self.personalWatchlist = personalWatchlist }
         applyData(data)
 
         rows = buildRows(for: viewMode)

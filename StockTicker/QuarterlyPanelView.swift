@@ -781,8 +781,8 @@ class QuarterlyPanelWindowController {
         window = newWindow
     }
 
-    func refresh(data: QuarterlyPanelData) {
+    func refresh(data: QuarterlyPanelData, personalWatchlist: Set<String>? = nil) {
         guard let window = window, window.isVisible else { return }
-        viewModel?.refresh(data: data)
+        viewModel?.refresh(data: data, personalWatchlist: personalWatchlist)
     }
 }

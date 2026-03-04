@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 // MARK: - Color Helpers
 
@@ -27,6 +28,14 @@ extension StockQuote {
         if abs(pct) < TradingHours.nearZeroThreshold { return .labelColor }
         return isLowGreen ? .systemGreen : .systemRed
     }
+
+    // MARK: - SwiftUI Color Equivalents
+
+    var swiftUIDisplayColor: Color { Color(nsColor: displayColor) }
+    var swiftUIYTDColor: Color { Color(nsColor: ytdColor) }
+    var swiftUIHighestCloseColor: Color { Color(nsColor: highestCloseColor) }
+    var swiftUILowestCloseColor: Color { Color(nsColor: lowestCloseColor) }
+    var swiftUIExtendedHoursColor: Color { Color(nsColor: extendedHoursColor) }
 }
 
 // MARK: - Attributed String Helpers

@@ -35,11 +35,13 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-50 source files (~9,500 lines), 42 test files (~14,000 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+52 source files (~9,900 lines), 43 test files (~14,300 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
-**Core flow:** `MenuBarView` (main controller) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
+**Core flow:** `MenuBarView` (`MenuBarController` as `ObservableObject`) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. Menu bar click shows `NSPopover` hosting `PopoverContentView` (SwiftUI) which reads `@Published` properties reactively. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 
 **Key modules:**
+- `PopoverContentView`: SwiftUI view hosted in NSPopover — header, controls, news, ticker list, footer
+- `MarqueeViewRepresentable`: NSViewRepresentable wrapper for `MarqueeView`
 - `StockService` + extensions: API client split by concern (historical, EMA, market cap, Finnhub, forward P/E)
 - `StockData.swift`: All data models (StockQuote, API response types)
 - `QuarterlyPanel{View,ViewModel,Models}`: Extra Stats window

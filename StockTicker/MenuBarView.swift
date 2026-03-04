@@ -43,33 +43,14 @@ private enum Timing {
 
 @MainActor
 class MenuBarController: NSObject, ObservableObject {
-    // MARK: - Constants
-
-    private enum MenuTag {
-        static let marketStatus = 1001
-        static let countdown = 1002
-        static let indexLine = 1003
-        static let headline1 = 1004
-        static let headline2 = 1005
-        static let headline3 = 1006
-        static let headline4 = 1007
-        static let headline5 = 1008
-        static let headline6 = 1009
-        static let allHeadlines = [headline1, headline2, headline3, headline4, headline5, headline6]
-    }
-
-    private enum TickerInsertIndex {
-        static let start = 11  // After market status, countdown, index line, separator, 6 headlines, separator
-    }
-
     // MARK: - Dependencies
 
     let stockService: StockServiceProtocol
     private let newsService: NewsServiceProtocol
     private let scannerService: ScannerServiceProtocol
-    private let configManager: WatchlistConfigManager
-    private let marketSchedule: MarketSchedule
-    private let urlOpener: URLOpener
+    let configManager: WatchlistConfigManager
+    let marketSchedule: MarketSchedule
+    let urlOpener: URLOpener
     let dateProvider: DateProvider
 
     // MARK: - Published State
@@ -83,20 +64,27 @@ class MenuBarController: NSObject, ObservableObject {
     var effectiveWatchlist: [String] { currentWatchlistSource.symbols(personalWatchlist: config.watchlist) }
     @Published var yahooMarketState: String?
 
+    // MARK: - Popover State
+
+    @Published var newsItems: [NewsItem] = []
+    @Published var highlightIntensity: [String: CGFloat] = [:]
+    @Published var countdownText: String = ""
+    @Published var marketStatusState: MarketState = .closed
+    @Published var marketScheduleText: String = ""
+    @Published var marketHolidayName: String?
+    var marqueeView: MarqueeView?
+    var isPopoverOpen = false
+
     // MARK: - Private State
 
     private var statusItem: NSStatusItem?
     private let timerManager = TimerManager()
     var indexQuotes: [String: StockQuote] = [:]
-    private var newsItems: [NewsItem] = []
-    private var marqueeView: MarqueeView?
     private var editorWindowController: WatchlistEditorWindowController?
     private var debugWindowController: DebugWindowController?
     private var lastRefreshTime: Date
-    private var countdownMenuItem: NSMenuItem?
-    private var highlightIntensity: [String: CGFloat] = [:]
-    private var tickerMenuItems: [String: NSMenuItem] = [:]
-    private var isMenuOpen = false
+    private var popover: NSPopover?
+    private var eventMonitor: Any?
     private var hasCompletedInitialLoad = false
     let ytdCacheManager: YTDCacheManager
     var ytdPrices: [String: Double] = [:]
@@ -199,128 +187,98 @@ class MenuBarController: NSObject, ObservableObject {
         guard let button = statusItem?.button else { return }
         button.title = Strings.loading
         button.font = MenuItemFactory.monoFontMedium
-        setupMenu()
-    }
-
-    private func setupMenu() {
-        let menu = NSMenu()
-
-        menu.addItem(MenuItemFactory.disabled(title: "NYSE: --", tag: MenuTag.marketStatus))
-
-        let countdownItem = MenuItemFactory.disabled(title: "Refreshing in --s", tag: MenuTag.countdown)
-        menu.addItem(countdownItem)
-        self.countdownMenuItem = countdownItem
+        button.action = #selector(togglePopover)
+        button.target = self
 
         let marqueeFrame = NSRect(x: 0, y: 0, width: MarqueeConfig.viewWidth, height: MarqueeConfig.viewHeight)
-        let marquee = MarqueeView(frame: marqueeFrame)
-        self.marqueeView = marquee
-        let indexItem = NSMenuItem()
-        indexItem.view = marquee
-        indexItem.tag = MenuTag.indexLine
-        menu.addItem(indexItem)
-
-        menu.addItem(.separator())
-
-        for (index, tag) in MenuTag.allHeadlines.enumerated() {
-            let title = index == 0 ? "Loading news..." : ""
-            let headline = MenuItemFactory.action(
-                title: title, action: #selector(openNewsArticle(_:)), target: self
-            )
-            headline.tag = tag
-            headline.isHidden = index > 0
-            menu.addItem(headline)
-        }
-
-        menu.addItem(.separator())
-        menu.addItem(.separator())  // Ticker items inserted before this
-
-        menu.addItem(MenuItemFactory.action(title: "Edit Watchlist...", action: #selector(editWatchlistHere), target: self, keyEquivalent: ","))
-
-        let quarterlyItem = MenuItemFactory.action(title: "Extra Stats...", action: #selector(showQuarterlyPanel), target: self, keyEquivalent: "q")
-        quarterlyItem.keyEquivalentModifierMask = [.command, .option]
-        menu.addItem(quarterlyItem)
-
-        menu.addItem(createConfigSubmenu())
-        menu.addItem(createCacheSubmenu())
-        menu.addItem(createClosedMarketSubmenu())
-        menu.addItem(createSortSubmenu())
-        menu.addItem(createFilterSubmenu())
-        let apiErrorsItem = MenuItemFactory.action(title: "API Errors...", action: #selector(showDebugWindow), target: self, keyEquivalent: "d")
-        apiErrorsItem.keyEquivalentModifierMask = [.command, .option]
-        menu.addItem(apiErrorsItem)
-        menu.addItem(.separator())
-        menu.addItem(MenuItemFactory.action(title: "Quit", action: #selector(quitApp), target: self, keyEquivalent: "q"))
-
-        menu.delegate = self
-        statusItem?.menu = menu
+        marqueeView = MarqueeView(frame: marqueeFrame)
     }
 
-    private func createClosedMarketSubmenu() -> NSMenuItem {
-        let items = ClosedMarketAsset.allCases.map { asset -> NSMenuItem in
-            let item = MenuItemFactory.action(title: asset.displayName, action: #selector(closedMarketAssetSelected(_:)), target: self)
-            item.representedObject = asset
-            item.state = (asset == config.menuBarAssetWhenClosed) ? .on : .off
-            return item
+    // MARK: - Popover Management
+
+    @objc private func togglePopover() {
+        if popover?.isShown == true {
+            closePopover()
+        } else {
+            showPopover()
         }
-        return MenuItemFactory.submenu(title: "Closed Market Display", items: items)
     }
 
-    private func createSortSubmenu() -> NSMenuItem {
-        let items = SortOption.allCases.map { option -> NSMenuItem in
-            let item = MenuItemFactory.action(title: option.rawValue, action: #selector(sortOptionSelected(_:)), target: self)
-            item.representedObject = option
-            if option.isExtendedHoursSort { item.isHidden = true }
-            return item
+    private func showPopover() {
+        guard let button = statusItem?.button else { return }
+
+        let contentView = PopoverContentView(controller: self)
+        let hostingController = NSHostingController(rootView: contentView)
+        hostingController.view.frame = NSRect(
+            x: 0, y: 0,
+            width: LayoutConfig.Popover.width,
+            height: LayoutConfig.Popover.height
+        )
+
+        let pop = NSPopover()
+        pop.contentSize = NSSize(width: LayoutConfig.Popover.width, height: LayoutConfig.Popover.height)
+        pop.behavior = .transient
+        pop.contentViewController = hostingController
+        pop.delegate = self
+        pop.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        self.popover = pop
+
+        NSApp.activate(ignoringOtherApps: true)
+        isPopoverOpen = true
+        highlightIntensity.removeAll()
+        startHighlightTimer()
+        marqueeView?.startScrolling()
+
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handlePopoverKeyEvent(event)
         }
-        return MenuItemFactory.submenu(title: "Sort By", items: items)
     }
 
-    private func createFilterSubmenu() -> NSMenuItem {
-        var items: [NSMenuItem] = []
-
-        // Source toggles
-        for source in WatchlistSource.allCases {
-            let item = MenuItemFactory.action(title: source.displayName, action: #selector(sourceOptionToggled(_:)), target: self)
-            item.representedObject = source
-            item.state = currentWatchlistSource.contains(source) ? .on : .off
-            items.append(item)
-        }
-        items.append(.separator())
-
-        // Property filters (green)
-        let makeFilterItems: ([TickerFilter]) -> [NSMenuItem] = { options in
-            options.map { option -> NSMenuItem in
-                let item = MenuItemFactory.action(title: option.displayName, action: #selector(self.filterOptionToggled(_:)), target: self)
-                item.representedObject = option
-                item.state = self.currentFilter.contains(option) ? .on : .off
-                return item
-            }
-        }
-        items += makeFilterItems(TickerFilter.greenOptions)
-        items.append(.separator())
-        items += makeFilterItems(TickerFilter.typeOptions)
-        items.append(.separator())
-        items.append(MenuItemFactory.action(title: "Clear Filters", action: #selector(clearFilters), target: self))
-
-        let isFilterActive = !currentFilter.isEmpty || currentWatchlistSource != .allSources
-        let title = isFilterActive ? "Filter (Active)" : "Filter"
-        return MenuItemFactory.submenu(title: title, items: items)
+    func closePopover() {
+        popover?.performClose(nil)
+        cleanupPopover()
     }
 
-    private func createConfigSubmenu() -> NSMenuItem {
-        let items = [
-            MenuItemFactory.action(title: "Edit Config...", action: #selector(editConfigJson), target: self),
-            MenuItemFactory.action(title: "Reset Config to Default", action: #selector(resetConfigToDefault), target: self)
-        ]
-        return MenuItemFactory.submenu(title: "Config", items: items)
+    private func cleanupPopover() {
+        isPopoverOpen = false
+        stopHighlightTimer()
+        highlightIntensity.removeAll()
+        marqueeView?.stopScrolling()
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
     }
 
-    private func createCacheSubmenu() -> NSMenuItem {
-        let items = [
-            MenuItemFactory.action(title: "Clear All Caches", action: #selector(clearAllCaches), target: self),
-            MenuItemFactory.action(title: "Clear 5-EMA Cache", action: #selector(clearEMACache), target: self)
-        ]
-        return MenuItemFactory.submenu(title: "Cache", items: items)
+    private func handlePopoverKeyEvent(_ event: NSEvent) -> NSEvent? {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // Cmd+Q → Quit
+        if flags == .command, event.charactersIgnoringModifiers == "q" {
+            quitApp()
+            return nil
+        }
+        // Cmd+, → Edit Watchlist
+        if flags == .command, event.charactersIgnoringModifiers == "," {
+            editWatchlistHere()
+            return nil
+        }
+        // Cmd+Opt+Q → Extra Stats
+        if flags == [.command, .option], event.charactersIgnoringModifiers == "q" {
+            showQuarterlyPanel()
+            return nil
+        }
+        // Cmd+Opt+D → API Errors
+        if flags == [.command, .option], event.charactersIgnoringModifiers == "d" {
+            showDebugWindow()
+            return nil
+        }
+        // Escape → Close popover
+        if event.keyCode == 53 {
+            closePopover()
+            return nil
+        }
+        return event
     }
 
     // MARK: - Timer Management
@@ -348,14 +306,15 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func updateHighlights() {
+        var changed = false
         for symbol in highlightIntensity.keys {
             guard let intensity = highlightIntensity[symbol], intensity > 0 else { continue }
             highlightIntensity[symbol] = max(0, intensity - Timing.highlightFadeStep)
-
-            guard let menuItem = tickerMenuItems[symbol], let quote = quotes[symbol] else { continue }
-            applyTickerStyle(to: menuItem, quote: quote, symbol: symbol)
+            changed = true
         }
-
+        if changed {
+            objectWillChange.send()
+        }
         updateCountdown()
     }
 
@@ -443,17 +402,16 @@ class MenuBarController: NSObject, ObservableObject {
 
         await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
 
-        quarterlyWindowController?.refresh(data: makeQuarterlyPanelData())
+        quarterlyWindowController?.refresh(data: makeQuarterlyPanelData(), personalWatchlist: Set(config.watchlist))
 
         updateMenuBarDisplay()
-        updateMenuItems()
         updateMarketStatus()
         updateCountdown()
         updateIndexLine()
     }
 
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
-        guard isMenuOpen, !fetchedSymbols.isEmpty else { return }
+        guard isPopoverOpen, !fetchedSymbols.isEmpty else { return }
         effectiveWatchlist.filter { fetchedSymbols.contains($0) }
             .forEach { highlightIntensity[$0] = 1.0 }
         marqueeView?.triggerPing()
@@ -614,57 +572,6 @@ class MenuBarController: NSObject, ObservableObject {
     func refreshNews() async {
         guard config.showNewsHeadlines else { return }
         newsItems = await newsService.fetchNews()
-        updateNewsDisplay()
-    }
-
-    private func updateNewsDisplay() {
-        guard let menu = statusItem?.menu else { return }
-
-        let headlineItems = MenuTag.allHeadlines.compactMap { menu.item(withTag: $0) }
-
-        guard config.showNewsHeadlines, !newsItems.isEmpty else {
-            headlineItems.first?.title = Strings.noNewsAvailable
-            headlineItems.first?.representedObject = nil
-            headlineItems.first?.isHidden = false
-            headlineItems.dropFirst().forEach { $0.isHidden = true }
-            return
-        }
-
-        for (index, menuItem) in headlineItems.enumerated() {
-            if index < newsItems.count {
-                let newsItem = newsItems[index]
-                menuItem.attributedTitle = makeNewsHeadlineAttributedTitle(newsItem)
-                menuItem.representedObject = newsItem
-                menuItem.isHidden = false
-            } else {
-                menuItem.isHidden = true
-            }
-        }
-    }
-
-    private func makeNewsHeadlineAttributedTitle(_ item: NewsItem) -> NSAttributedString {
-        // Truncate headline to configured max length
-        let maxLength = LayoutConfig.Headlines.maxLength
-        let headline = item.headline.count > maxLength
-            ? String(item.headline.prefix(maxLength - 3)) + "..."
-            : item.headline
-
-        // Top-from-source headlines use bold proportional font
-        let font = item.isTopFromSource ? MenuItemFactory.headlineFontBold : MenuItemFactory.headlineFont
-
-        if item.isTopFromSource {
-            let highlightColor = ColorMapping.nsColor(from: config.highlightColor)
-            let backgroundColor = highlightColor.withAlphaComponent(config.highlightOpacity)
-            return .styled(headline, font: font, color: .labelColor, backgroundColor: backgroundColor)
-        }
-
-        return .styled(headline, font: font, color: .labelColor)
-    }
-
-    @objc private func openNewsArticle(_ sender: NSMenuItem) {
-        guard let newsItem = sender.representedObject as? NewsItem,
-              let url = newsItem.link else { return }
-        urlOpener.openInBrowser(url)
     }
 
     // MARK: - UI Updates
@@ -676,30 +583,16 @@ class MenuBarController: NSObject, ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
         let lastTime = formatter.string(from: lastRefreshTime)
-        countdownMenuItem?.title = String(format: Strings.countdownFormat, lastTime, remaining)
-
-        guard isMenuOpen else { return }
-        statusItem?.menu?.update()
+        countdownText = String(format: Strings.countdownFormat, lastTime, remaining)
     }
 
     private func updateMarketStatus() {
-        guard let marketStatusItem = statusItem?.menu?.item(withTag: MenuTag.marketStatus) else { return }
-
         let (localState, scheduleText, holidayName) = marketSchedule.getTodaySchedule()
         let state = yahooMarketState.map { MarketState(fromYahooState: $0) } ?? localState
 
-        marketStatusItem.attributedTitle = makeMarketStatusAttributedTitle(state: state, scheduleText: scheduleText, holidayName: holidayName)
-    }
-
-    private func makeMarketStatusAttributedTitle(state: MarketState, scheduleText: String, holidayName: String?) -> NSAttributedString {
-        let scheduleString = holidayName.map { "\(scheduleText) (\($0))" } ?? scheduleText
-
-        let result = NSMutableAttributedString()
-        result.append(Strings.nysePrefix, font: .systemFont(ofSize: Layout.headerFontSize, weight: .medium))
-        result.append("\u{25CF} ", font: .systemFont(ofSize: Layout.headerFontSize - 2), color: state.color)
-        result.append(state.rawValue, font: .systemFont(ofSize: Layout.headerFontSize, weight: .bold), color: state.color)
-        result.append(" \u{2022} \(scheduleString)", font: .systemFont(ofSize: Layout.scheduleFontSize), color: .secondaryLabelColor)
-        return result
+        marketStatusState = state
+        marketScheduleText = scheduleText
+        marketHolidayName = holidayName
     }
 
     private var currentMarketState: MarketState {
@@ -749,115 +642,33 @@ class MenuBarController: NSObject, ObservableObject {
         button.attributedTitle = TickerDisplayBuilder.menuBarTitle(for: quote, showExtendedHours: showExtendedHours)
     }
 
-    // MARK: - Menu Item Management
+    // MARK: - Sorted & Filtered Tickers
 
-    private func updateMenuItems() {
-        guard let menu = statusItem?.menu else { return }
-
-        removeOldTickerItems(from: menu)
-        updateSortMenuCheckmarks(in: menu)
-        updateFilterMenuCheckmarks(in: menu)
-        insertTickerItems(into: menu)
-    }
-
-    private func removeOldTickerItems(from menu: NSMenu) {
-        let index = TickerInsertIndex.start
-        while index < menu.items.count, !menu.items[index].isSeparatorItem {
-            menu.removeItem(at: index)
-        }
-    }
-
-    private func updateSortMenuCheckmarks(in menu: NSMenu) {
-        guard let sortItem = menu.items.first(where: { $0.title == "Sort By" }),
-              let sortMenu = sortItem.submenu else { return }
-
-        let isExtended = currentMarketState == .preMarket || currentMarketState == .afterHours
-        for item in sortMenu.items {
-            guard let option = item.representedObject as? SortOption else { continue }
-            item.state = (option == currentSortOption) ? .on : .off
-            if option.isExtendedHoursSort {
-                item.isHidden = !isExtended
-            }
-        }
-    }
-
-    private func updateFilterMenuCheckmarks(in menu: NSMenu) {
-        guard let filterItem = menu.items.first(where: { $0.title.hasPrefix("Filter") }),
-              let filterMenu = filterItem.submenu else { return }
-
-        for item in filterMenu.items {
-            if let option = item.representedObject as? TickerFilter {
-                item.state = currentFilter.contains(option) ? .on : .off
-            } else if let source = item.representedObject as? WatchlistSource {
-                item.state = currentWatchlistSource.contains(source) ? .on : .off
-            }
-        }
-        let isFilterActive = !currentFilter.isEmpty || currentWatchlistSource != .allSources
-        filterItem.title = isFilterActive ? "Filter (Active)" : "Filter"
-    }
-
-    private func insertTickerItems(into menu: NSMenu) {
-        var index = TickerInsertIndex.start
+    var sortedFilteredSymbols: [String] {
         let filtered = currentFilter.filter(effectiveWatchlist, using: quotes)
-        for symbol in currentSortOption.sort(filtered, using: quotes) {
-            let menuItem = createTickerMenuItem(for: symbol)
-            menu.insertItem(menuItem, at: index)
-            index += 1
-        }
-    }
-
-    private func createTickerMenuItem(for symbol: String) -> NSMenuItem {
-        let menuItem = NSMenuItem(title: "", action: #selector(openYahooFinance(_:)), keyEquivalent: "")
-        menuItem.target = self
-        menuItem.representedObject = symbol
-
-        guard let quote = quotes[symbol], !quote.isPlaceholder else {
-            menuItem.attributedTitle = .styled("\(symbol) --", font: MenuItemFactory.monoFont)
-            return menuItem
-        }
-
-        applyTickerStyle(to: menuItem, quote: quote, symbol: symbol)
-        tickerMenuItems[symbol] = menuItem
-        return menuItem
-    }
-
-    private func applyTickerStyle(to menuItem: NSMenuItem, quote: StockQuote, symbol: String) {
-        let intensity = highlightIntensity[symbol] ?? 0.0
-        let isPingHighlighted = intensity > Timing.highlightIntensityThreshold
-        let pingBgColor: NSColor? = isPingHighlighted
-            ? quote.highlightColor.withAlphaComponent(intensity * Timing.highlightAlphaMultiplier)
-            : nil
-
-        let isPersistentHighlighted = config.highlightedSymbols.contains(symbol)
-        let persistentColor = ColorMapping.nsColor(from: config.highlightColor)
-        let persistentOpacity = config.highlightOpacity
-
-        let highlight = HighlightConfig(
-            isPingHighlighted: isPingHighlighted,
-            pingBackgroundColor: pingBgColor,
-            isPersistentHighlighted: isPersistentHighlighted,
-            persistentHighlightColor: persistentColor,
-            persistentHighlightOpacity: persistentOpacity
-        )
-        menuItem.attributedTitle = TickerDisplayBuilder.tickerTitle(quote: quote, highlight: highlight)
+        return currentSortOption.sort(filtered, using: quotes)
     }
 
     // MARK: - Actions
 
-    @objc private func openYahooFinance(_ sender: NSMenuItem) {
-        guard let symbol = sender.representedObject as? String,
-              let url = URL(string: "https://finance.yahoo.com/quote/\(symbol)") else { return }
+    func openYahooFinance(symbol: String) {
+        guard let url = URL(string: "https://finance.yahoo.com/quote/\(symbol)") else { return }
         urlOpener.openInBrowser(url)
     }
 
-    @objc private func editWatchlistHere() {
+    func openNewsArticle(_ newsItem: NewsItem) {
+        guard let url = newsItem.link else { return }
+        urlOpener.openInBrowser(url)
+    }
+
+    func editWatchlistHere() {
         editorWindowController = WatchlistEditorWindowController()
         editorWindowController?.showEditor(currentWatchlist: config.watchlist) { [weak self] newWatchlist in
             self?.saveAndReload(newWatchlist: newWatchlist)
         }
     }
 
-    @objc private func editConfigJson() {
+    func editConfigJson() {
         configManager.openConfigFile()
     }
 
@@ -890,7 +701,7 @@ class MenuBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func resetConfigToDefault() {
+    func resetConfigToDefault() {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Reset Config to Default"
@@ -902,7 +713,7 @@ class MenuBarController: NSObject, ObservableObject {
         reloadConfig()
     }
 
-    @objc private func clearAllCaches() {
+    func clearAllCaches() {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = "Clear Cache"
@@ -939,7 +750,7 @@ class MenuBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func clearEMACache() {
+    func clearEMACache() {
         emaEntries = [:]
         Task {
             await emaCacheManager.clearForDailyRefresh()
@@ -948,77 +759,42 @@ class MenuBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func sortOptionSelected(_ sender: NSMenuItem) {
-        guard let option = sender.representedObject as? SortOption else { return }
+    func selectSortOption(_ option: SortOption) {
         currentSortOption = option
         config.sortDirection = option.configString
         config.save()
-        updateMenuItems()
-
-        // Reopen menu to keep it visible after sort change
-        DispatchQueue.main.async { [weak self] in
-            self?.statusItem?.button?.performClick(nil)
-        }
     }
 
-    @objc private func closedMarketAssetSelected(_ sender: NSMenuItem) {
-        guard let asset = sender.representedObject as? ClosedMarketAsset else { return }
+    func selectClosedMarketAsset(_ asset: ClosedMarketAsset) {
         config.menuBarAssetWhenClosed = asset
         config.save()
-        updateClosedMarketMenuCheckmarks()
         updateMenuBarDisplay()
         Task { await refreshAllQuotes() }
     }
 
-    @objc private func filterOptionToggled(_ sender: NSMenuItem) {
-        guard let option = sender.representedObject as? TickerFilter else { return }
+    func toggleFilter(_ option: TickerFilter) {
         var filter = currentFilter
         filter.formSymmetricDifference(option)
         config.filterGreenFields = filter.rawValue
         config.save()
-        updateMenuItems()
-        DispatchQueue.main.async { [weak self] in
-            self?.statusItem?.button?.performClick(nil)
-        }
     }
 
-    @objc private func sourceOptionToggled(_ sender: NSMenuItem) {
-        guard let option = sender.representedObject as? WatchlistSource else { return }
+    func toggleSource(_ source: WatchlistSource) {
         var sources = currentWatchlistSource
-        sources.formSymmetricDifference(option)
-        // Prevent disabling all sources
+        sources.formSymmetricDifference(source)
         guard !sources.isEmpty else { return }
         config.watchlistSources = sources.rawValue
         currentIndex = 0
         config.save()
-        updateMenuItems()
-        DispatchQueue.main.async { [weak self] in
-            self?.statusItem?.button?.performClick(nil)
-        }
     }
 
-    @objc private func clearFilters() {
+    func clearFilters() {
         config.filterGreenFields = 0
         config.watchlistSources = WatchlistSource.allSources.rawValue
         config.save()
-        updateMenuItems()
-        DispatchQueue.main.async { [weak self] in
-            self?.statusItem?.button?.performClick(nil)
-        }
     }
 
-    private func updateClosedMarketMenuCheckmarks() {
-        guard let menu = statusItem?.menu,
-              let closedMarketItem = menu.items.first(where: { $0.title == "Closed Market Display" }),
-              let submenu = closedMarketItem.submenu else { return }
-
-        for item in submenu.items {
-            guard let asset = item.representedObject as? ClosedMarketAsset else { continue }
-            item.state = (asset == config.menuBarAssetWhenClosed) ? .on : .off
-        }
-    }
-
-    @objc private func showQuarterlyPanel() {
+    func showQuarterlyPanel() {
         if quarterlyWindowController == nil {
             quarterlyWindowController = QuarterlyPanelWindowController()
         }
@@ -1073,51 +849,36 @@ class MenuBarController: NSObject, ObservableObject {
         )
     }
 
-    @objc private func showDebugWindow() {
+    func showDebugWindow() {
         if debugWindowController == nil {
             debugWindowController = DebugWindowController()
         }
         debugWindowController?.showWindow()
     }
 
-    @objc private func quitApp() {
+    func quitApp() {
         NSApplication.shared.terminate(nil)
     }
 }
 
 // MARK: - Market State Color
 
-private extension MarketState {
-    var color: NSColor {
+extension MarketState {
+    var swiftUIColor: Color {
         switch self {
-        case .open: return .systemGreen
-        case .preMarket, .afterHours: return .systemOrange
-        case .closed: return .systemRed
+        case .open: return .green
+        case .preMarket, .afterHours: return .orange
+        case .closed: return .red
         }
     }
 }
 
-// MARK: - NSMenuDelegate
+// MARK: - NSPopoverDelegate
 
-extension MenuBarController: NSMenuDelegate {
-    nonisolated func menuWillOpen(_ menu: NSMenu) {
+extension MenuBarController: NSPopoverDelegate {
+    nonisolated func popoverDidClose(_ notification: Notification) {
         Task { @MainActor in
-            isMenuOpen = true
-            highlightIntensity.removeAll()
-            updateMenuItems()
-            updateNewsDisplay()
-            startHighlightTimer()
-            marqueeView?.startScrolling()
-        }
-    }
-
-    nonisolated func menuDidClose(_ menu: NSMenu) {
-        Task { @MainActor in
-            isMenuOpen = false
-            stopHighlightTimer()
-            tickerMenuItems.removeAll()
-            highlightIntensity.removeAll()
-            marqueeView?.stopScrolling()
+            cleanupPopover()
         }
     }
 }

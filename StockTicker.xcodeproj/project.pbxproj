@@ -23,6 +23,7 @@
 		7440B79A21A13F2BE1B5DE0B /* SwingLevelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861AE7343DEEE398A04F177D /* SwingLevelCache.swift */; };
 		7CEC2285F7EA4E076FEDA406 /* SwingLevelCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02F621783D2F0DD580F0AB7 /* SwingLevelCacheTests.swift */; };
 		80968955CD736935C5EBE952 /* HighestCloseCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C29186FAEA57A1B6F14F793 /* HighestCloseCache.swift */; };
+		81CABA62BD8AD203145C0957 /* MarqueeViewRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2748DFDBB548881256F30540 /* MarqueeViewRepresentable.swift */; };
 		9A1D06799571B7044A83E0F1 /* BundledSymbolListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63A6210542732C6F318390F /* BundledSymbolListTests.swift */; };
 		A0F4EC22722D58DD4EE40B8D /* EMAAnalysis.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D729CD03F3A4931C3B52D68 /* EMAAnalysis.swift */; };
 		A1000001232C5A0000000001 /* StockTickerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000002232C5A0000000001 /* StockTickerApp.swift */; };
@@ -48,6 +49,7 @@
 		C1000001232C5A0000000001 /* NewsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000002232C5A0000000001 /* NewsData.swift */; };
 		C1000003232C5A0000000001 /* NewsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000004232C5A0000000001 /* NewsService.swift */; };
 		C1000005232C5A0000000001 /* NewsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1000006232C5A0000000001 /* NewsServiceTests.swift */; };
+		D0A5312C2B774910D7175FD0 /* PopoverContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC9349CA9B0500A91C87149 /* PopoverContentView.swift */; };
 		D1000001232C5A0000000001 /* LayoutConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1000002232C5A0000000001 /* LayoutConfig.swift */; };
 		D6F7153F10617DB563794B99 /* MegaCapEquities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 114AC643CD8A9B01C1947555 /* MegaCapEquities.swift */; };
 		DC2D4ECA92D8AE305884F775 /* EMACache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63FBB50A666BA159D154609A /* EMACache.swift */; };
@@ -59,6 +61,7 @@
 		F1000005232C5A0000000001 /* MenuItemFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000006232C5A0000000001 /* MenuItemFactory.swift */; };
 		F7E1D1E9793A /* RequestLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DF135EBDBF /* RequestLogger.swift */; };
 		F8099AD65466 /* DebugWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FB09302BBF /* DebugWindow.swift */; };
+		FC2150601B7172AA72D0D512 /* PopoverContentViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25BC165A4EDFDCDC5C5BEBC6 /* PopoverContentViewTests.swift */; };
 		G1000001232C5A0000000001 /* MarqueeViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G1000002232C5A0000000001 /* MarqueeViewTests.swift */; };
 		G1000003232C5A0000000001 /* MenuItemFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G1000004232C5A0000000001 /* MenuItemFactoryTests.swift */; };
 		H1000001232C5A0000000001 /* QuarterlyCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = H1000002232C5A0000000001 /* QuarterlyCache.swift */; };
@@ -118,7 +121,10 @@
 		0101010101010101C0000002 /* QuarterlyPanelViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuarterlyPanelViewModel.swift; sourceTree = "<group>"; };
 		09832F562C5F76DC26553BB3 /* ScannerService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerService.swift; sourceTree = "<group>"; };
 		114AC643CD8A9B01C1947555 /* MegaCapEquities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MegaCapEquities.swift; sourceTree = "<group>"; };
+		25BC165A4EDFDCDC5C5BEBC6 /* PopoverContentViewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PopoverContentViewTests.swift; sourceTree = "<group>"; };
+		2748DFDBB548881256F30540 /* MarqueeViewRepresentable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MarqueeViewRepresentable.swift; sourceTree = "<group>"; };
 		398380AEC59C9DC1E5E003F8 /* WatchlistSourceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchlistSourceTests.swift; sourceTree = "<group>"; };
+		5AC9349CA9B0500A91C87149 /* PopoverContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PopoverContentView.swift; sourceTree = "<group>"; };
 		63FBB50A666BA159D154609A /* EMACache.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EMACache.swift; sourceTree = "<group>"; };
 		6CFD6907FB6F0044614689A5 /* ScannerServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScannerServiceTests.swift; sourceTree = "<group>"; };
 		7C00914BC160FF0E0076D97D /* TopVolumeETFs.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TopVolumeETFs.swift; sourceTree = "<group>"; };
@@ -293,6 +299,8 @@
 				D3C75BA7192A7A432FC97601 /* WatchlistSource.swift */,
 				X1000002232C5A0000000001 /* VIXSpikeAnalysis.swift */,
 				X1000004232C5A0000000001 /* VIXSpikeCache.swift */,
+				5AC9349CA9B0500A91C87149 /* PopoverContentView.swift */,
+				2748DFDBB548881256F30540 /* MarqueeViewRepresentable.swift */,
 			);
 			path = StockTicker;
 			sourceTree = "<group>";
@@ -351,6 +359,7 @@
 				B63A6210542732C6F318390F /* BundledSymbolListTests.swift */,
 				X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */,
 				X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */,
+				25BC165A4EDFDCDC5C5BEBC6 /* PopoverContentViewTests.swift */,
 			);
 			path = StockTickerTests;
 			sourceTree = "<group>";
@@ -504,6 +513,8 @@
 				4DF2167ABF7872E43E287EEC /* WatchlistSource.swift in Sources */,
 				X1000001232C5A0000000001 /* VIXSpikeAnalysis.swift in Sources */,
 				X1000003232C5A0000000001 /* VIXSpikeCache.swift in Sources */,
+				D0A5312C2B774910D7175FD0 /* PopoverContentView.swift in Sources */,
+				81CABA62BD8AD203145C0957 /* MarqueeViewRepresentable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -553,6 +564,7 @@
 				9A1D06799571B7044A83E0F1 /* BundledSymbolListTests.swift in Sources */,
 				X1000005232C5A0000000001 /* VIXSpikeAnalysisTests.swift in Sources */,
 				X1000007232C5A0000000001 /* VIXSpikeCacheTests.swift in Sources */,
+				FC2150601B7172AA72D0D512 /* PopoverContentViewTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
