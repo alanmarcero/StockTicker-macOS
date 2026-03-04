@@ -28,7 +28,7 @@ enum LayoutConfig {
     // MARK: - Index Marquee
 
     enum Marquee {
-        static let width: CGFloat = 500
+        static let width: CGFloat = Popover.width
         static let height: CGFloat = 18
     }
 

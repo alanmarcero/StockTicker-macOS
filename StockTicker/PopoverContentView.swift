@@ -175,15 +175,18 @@ struct PopoverContentView: View {
 
     private var headerSection: some View {
         VStack(spacing: 4) {
-            marketStatusRow
-            Text(controller.countdownText)
-                .font(.system(size: LayoutConfig.Font.scheduleSize, design: .monospaced))
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 4) {
+                marketStatusRow
+                Text(controller.countdownText)
+                    .font(.system(size: LayoutConfig.Font.scheduleSize, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
             MarqueeViewRepresentable(marqueeView: controller.marqueeView ?? MarqueeView(frame: .zero))
-                .frame(width: LayoutConfig.Marquee.width, height: LayoutConfig.Marquee.height)
+                .frame(maxWidth: .infinity)
+                .frame(height: LayoutConfig.Marquee.height)
         }
-        .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
