@@ -60,7 +60,8 @@ class MenuBarController: NSObject, ObservableObject {
     @Published var config: WatchlistConfig
     @Published var currentSortOption: SortOption
     var currentFilter: TickerFilter { TickerFilter(rawValue: config.filterGreenFields) }
-    var effectiveWatchlist: [String] { WatchlistSource.allSources.symbols(personalWatchlist: config.watchlist) }
+    @Published var currentWatchlistSource: WatchlistSource = .allSources
+    var effectiveWatchlist: [String] { currentWatchlistSource.symbols(personalWatchlist: config.watchlist) }
     @Published var yahooMarketState: String?
 
     // MARK: - Popover State
@@ -778,8 +779,17 @@ class MenuBarController: NSObject, ObservableObject {
         config.save()
     }
 
+    func toggleSource(_ source: WatchlistSource) {
+        var sources = currentWatchlistSource
+        sources.formSymmetricDifference(source)
+        guard !sources.isEmpty else { return }
+        currentWatchlistSource = sources
+        currentIndex = 0
+    }
+
     func clearFilters() {
         config.filterGreenFields = 0
+        currentWatchlistSource = .allSources
         config.save()
     }
 
