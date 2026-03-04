@@ -10,6 +10,8 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.topAUMETFs.rawValue, 2)
         XCTAssertEqual(WatchlistSource.topVolETFs.rawValue, 4)
         XCTAssertEqual(WatchlistSource.personal.rawValue, 8)
+        XCTAssertEqual(WatchlistSource.stateStreetETFs.rawValue, 16)
+        XCTAssertEqual(WatchlistSource.vanguardETFs.rawValue, 32)
     }
 
     func testAllSources_containsAllBits() {
@@ -18,11 +20,13 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(all.contains(.topAUMETFs))
         XCTAssertTrue(all.contains(.topVolETFs))
         XCTAssertTrue(all.contains(.personal))
-        XCTAssertEqual(all.rawValue, 15)
+        XCTAssertTrue(all.contains(.stateStreetETFs))
+        XCTAssertTrue(all.contains(.vanguardETFs))
+        XCTAssertEqual(all.rawValue, 63)
     }
 
-    func testAllCases_hasFourSources() {
-        XCTAssertEqual(WatchlistSource.allCases.count, 4)
+    func testAllCases_hasSixSources() {
+        XCTAssertEqual(WatchlistSource.allCases.count, 6)
     }
 
     // MARK: - Display names
@@ -43,6 +47,14 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.personal.displayName, "My Watchlist")
     }
 
+    func testDisplayName_stateStreetETFs() {
+        XCTAssertEqual(WatchlistSource.stateStreetETFs.displayName, "SPDR")
+    }
+
+    func testDisplayName_vanguardETFs() {
+        XCTAssertEqual(WatchlistSource.vanguardETFs.displayName, "Vanguard")
+    }
+
     // MARK: - symbols()
 
     func testSymbols_personalOnly_returnsPersonalWatchlist() {
@@ -55,6 +67,18 @@ final class WatchlistSourceTests: XCTestCase {
         let source = WatchlistSource.megaCap
         let result = source.symbols(personalWatchlist: [])
         XCTAssertEqual(result, MegaCapEquities.symbols)
+    }
+
+    func testSymbols_stateStreetOnly_returnsStateStreetSymbols() {
+        let source = WatchlistSource.stateStreetETFs
+        let result = source.symbols(personalWatchlist: [])
+        XCTAssertEqual(result, StateStreetETFs.symbols)
+    }
+
+    func testSymbols_vanguardOnly_returnsVanguardSymbols() {
+        let source = WatchlistSource.vanguardETFs
+        let result = source.symbols(personalWatchlist: [])
+        XCTAssertEqual(result, VanguardETFs.symbols)
     }
 
     func testSymbols_allSources_deduplicates() {
@@ -90,6 +114,8 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(result.contains(MegaCapEquities.symbols[0]))
         XCTAssertTrue(result.contains(TopAUMETFs.symbols[0]))
         XCTAssertTrue(result.contains(TopVolumeETFs.symbols[0]))
+        XCTAssertTrue(result.contains(StateStreetETFs.symbols[0]))
+        XCTAssertTrue(result.contains(VanguardETFs.symbols[0]))
     }
 
     // MARK: - allBundledSymbols
@@ -99,6 +125,12 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertFalse(bundled.contains("CUSTOM_SYMBOL"))
         XCTAssertTrue(bundled.contains("AAPL"))
         XCTAssertTrue(bundled.contains("SPY"))
+    }
+
+    func testAllBundledSymbols_includesNewSources() {
+        let bundled = WatchlistSource.allBundledSymbols
+        XCTAssertTrue(bundled.contains("GLD"))   // StateStreet
+        XCTAssertTrue(bundled.contains("VOO"))   // Vanguard
     }
 
     // MARK: - Codable
@@ -112,6 +144,13 @@ final class WatchlistSourceTests: XCTestCase {
 
     func testCodable_allSources_roundTrip() throws {
         let source = WatchlistSource.allSources
+        let data = try JSONEncoder().encode(source)
+        let decoded = try JSONDecoder().decode(WatchlistSource.self, from: data)
+        XCTAssertEqual(decoded, source)
+    }
+
+    func testCodable_newSources_roundTrip() throws {
+        let source: WatchlistSource = [.stateStreetETFs, .vanguardETFs]
         let data = try JSONEncoder().encode(source)
         let decoded = try JSONDecoder().decode(WatchlistSource.self, from: data)
         XCTAssertEqual(decoded, source)

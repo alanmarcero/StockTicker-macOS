@@ -250,7 +250,7 @@ struct WatchlistConfig: Codable, Equatable {
         finnhubApiKey: String = "",
         scannerBaseURL: String = "",
         filterGreenFields: Int = 0,
-        watchlistSources: Int = 15  // WatchlistSource.allSources.rawValue
+        watchlistSources: Int = 63  // WatchlistSource.allSources.rawValue
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval

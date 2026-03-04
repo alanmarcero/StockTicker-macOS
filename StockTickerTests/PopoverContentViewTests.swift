@@ -126,6 +126,8 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         controller.toggleSource(.megaCap)
         controller.toggleSource(.topAUMETFs)
         controller.toggleSource(.topVolETFs)
+        controller.toggleSource(.stateStreetETFs)
+        controller.toggleSource(.vanguardETFs)
         // Personal is the last one — toggling it off should be prevented
         controller.toggleSource(.personal)
         XCTAssertFalse(controller.currentWatchlistSource.isEmpty)
