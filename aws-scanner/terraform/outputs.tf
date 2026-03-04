@@ -17,3 +17,7 @@ output "orchestrator_arn" {
 output "worker_arn" {
   value = aws_lambda_function.worker.arn
 }
+
+output "cloudfront_distribution_id" {
+  value = aws_cloudfront_distribution.results.id
+}

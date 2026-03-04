@@ -47,6 +47,8 @@ jobs:
           aws-region: us-east-1
 
       - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
 
       - name: Terraform init
         run: |
@@ -65,3 +67,11 @@ jobs:
         run: |
           cd aws-scanner/terraform
           terraform apply -auto-approve tfplan
+
+      - name: Deploy web dashboard
+        run: |
+          cd aws-scanner/terraform
+          BUCKET=$(terraform output -raw bucket_name)
+          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+          aws s3 cp ../web/index.html "s3://${BUCKET}/app/index.html" --content-type "text/html"
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/app/*"
