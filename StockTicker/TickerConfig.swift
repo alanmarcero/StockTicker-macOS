@@ -71,7 +71,6 @@ struct WatchlistConfig: Codable, Equatable {
     var finnhubApiKey: String
     var scannerBaseURL: String
     var filterGreenFields: Int
-    var watchlistSources: Int
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -184,7 +183,6 @@ struct WatchlistConfig: Codable, Equatable {
         case finnhubApiKey
         case scannerBaseURL
         case filterGreenFields
-        case watchlistSources
     }
 
     init(from decoder: Decoder) throws {
@@ -209,7 +207,6 @@ struct WatchlistConfig: Codable, Equatable {
         finnhubApiKey = try container.decodeIfPresent(String.self, forKey: .finnhubApiKey) ?? ""
         scannerBaseURL = try container.decodeIfPresent(String.self, forKey: .scannerBaseURL) ?? ""
         filterGreenFields = try container.decodeIfPresent(Int.self, forKey: .filterGreenFields) ?? 0
-        watchlistSources = try container.decodeIfPresent(Int.self, forKey: .watchlistSources) ?? WatchlistSource.allSources.rawValue
     }
 
     func encode(to encoder: Encoder) throws {
@@ -230,7 +227,6 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(finnhubApiKey, forKey: .finnhubApiKey)
         try container.encode(scannerBaseURL, forKey: .scannerBaseURL)
         try container.encode(filterGreenFields, forKey: .filterGreenFields)
-        try container.encode(watchlistSources, forKey: .watchlistSources)
     }
 
     init(
@@ -249,8 +245,7 @@ struct WatchlistConfig: Codable, Equatable {
         universe: [String] = [],
         finnhubApiKey: String = "",
         scannerBaseURL: String = "",
-        filterGreenFields: Int = 0,
-        watchlistSources: Int = 63  // WatchlistSource.allSources.rawValue
+        filterGreenFields: Int = 0
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -268,7 +263,6 @@ struct WatchlistConfig: Codable, Equatable {
         self.finnhubApiKey = finnhubApiKey
         self.scannerBaseURL = scannerBaseURL
         self.filterGreenFields = filterGreenFields
-        self.watchlistSources = watchlistSources
     }
 }
 

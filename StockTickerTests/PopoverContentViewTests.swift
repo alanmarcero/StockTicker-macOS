@@ -121,25 +121,11 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         XCTAssertFalse(controller.currentFilter.contains(.greenYTD))
     }
 
-    func testToggleSource_preventsDroppingAllSources() {
-        let controller = makeController()
-        controller.toggleSource(.megaCap)
-        controller.toggleSource(.topAUMETFs)
-        controller.toggleSource(.topVolETFs)
-        controller.toggleSource(.stateStreetETFs)
-        controller.toggleSource(.vanguardETFs)
-        // Personal is the last one — toggling it off should be prevented
-        controller.toggleSource(.personal)
-        XCTAssertFalse(controller.currentWatchlistSource.isEmpty)
-    }
-
     func testClearFilters_resetsToDefaults() {
         let controller = makeController()
         controller.toggleFilter(.greenYTD)
-        controller.toggleSource(.megaCap)
         controller.clearFilters()
         XCTAssertTrue(controller.currentFilter.isEmpty)
-        XCTAssertEqual(controller.currentWatchlistSource, .allSources)
     }
 
     func testMarketStatusState_defaultsToClosed() {

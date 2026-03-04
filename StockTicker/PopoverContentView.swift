@@ -64,26 +64,11 @@ struct PopoverContentView: View {
 
     private var controlsSection: some View {
         VStack(spacing: 6) {
-            sourceToggles
             filterRow
             sortAndClosedMarketRow
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-    }
-
-    private var sourceToggles: some View {
-        HStack(spacing: 6) {
-            ForEach(WatchlistSource.allCases, id: \.rawValue) { source in
-                capsuleToggle(
-                    source.displayName,
-                    isActive: controller.currentWatchlistSource.contains(source)
-                ) {
-                    controller.toggleSource(source)
-                }
-            }
-            Spacer()
-        }
     }
 
     private var filterRow: some View {
@@ -104,7 +89,7 @@ struct PopoverContentView: View {
                     controller.toggleFilter(filter)
                 }
             }
-            if !controller.currentFilter.isEmpty || controller.currentWatchlistSource != .allSources {
+            if !controller.currentFilter.isEmpty {
                 Button("Clear") {
                     controller.clearFilters()
                 }
