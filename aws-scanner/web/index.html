@@ -35,16 +35,6 @@
   .banner .meta { color: #8b949e; }
   .banner .meta strong { color: #c9d1d9; font-weight: 500; }
 
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .badge-sneak { background: #d2992233; color: #d29922; }
-
   .meta-link { color: #8b949e; text-decoration: none; }
   .meta-link:hover { color: #58a6ff; text-decoration: underline; }
 
@@ -598,18 +588,13 @@ function esc(s) {
 /* ── Meta ── */
 
 function renderMeta(json) {
-  const d = json.scanDate || '\u2014';
   const t = json.scanTime ? new Date(json.scanTime).toLocaleString() : '\u2014';
-  const sneak = json.sneakPeek;
   const syms = (json.symbolsScanned || 0).toLocaleString();
   const errs = json.errors || 0;
 
-  const badge = sneak ? '<span class="badge badge-sneak">Sneak Peek</span> ' : '';
-
   document.getElementById('meta').innerHTML =
-    badge +
-    `<span class="meta"><strong>${d}</strong> &middot; ${t}</span> ` +
-    `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${syms} symbols</a></span>` +
+    `<span class="meta">Updated <strong>${t}</strong></span> ` +
+    `<span class="meta"><a href="/symbols/us-equities.json" target="_blank" class="meta-link">${syms} symbols</a></span>` +
     (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
 }
 
