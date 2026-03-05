@@ -73,5 +73,5 @@ jobs:
           cd aws-scanner/terraform
           BUCKET=$(terraform output -raw bucket_name)
           DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-          aws s3 cp ../web/index.html "s3://${BUCKET}/app/index.html" --content-type "text/html"
+          aws s3 cp ../web/index.html "s3://${BUCKET}/app/index.html" --content-type "text/html" --cache-control "no-cache"
           aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/app/*"
