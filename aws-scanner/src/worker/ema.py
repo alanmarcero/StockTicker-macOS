@@ -33,19 +33,18 @@ def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -
         return None
 
     ema_offset = period - 1
-    current_above = closes[ema_offset + last_index] > ema_series[last_index] * 1.01
-    previous_at_or_below = closes[ema_offset + last_index - 1] <= ema_series[last_index - 1]
 
-    if not (current_above and previous_at_or_below):
+    if closes[ema_offset + last_index] <= ema_series[last_index] * 1.01:
         return None
 
-    weeks_below = 1
-    for i in range(last_index - 2, -1, -1):
+    # Count consecutive weeks below EMA before the current candle
+    weeks_below = 0
+    for i in range(last_index - 1, -1, -1):
         if closes[ema_offset + i] > ema_series[i]:
             break
         weeks_below += 1
 
-    return weeks_below
+    return weeks_below if weeks_below > 0 else None
 
 
 def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
@@ -58,19 +57,18 @@ def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -
         return None
 
     ema_offset = period - 1
-    current_at_or_below = closes[ema_offset + last_index] < ema_series[last_index] * 0.99
-    previous_above = closes[ema_offset + last_index - 1] > ema_series[last_index - 1]
 
-    if not (current_at_or_below and previous_above):
+    if closes[ema_offset + last_index] >= ema_series[last_index] * 0.99:
         return None
 
-    weeks_above = 1
-    for i in range(last_index - 2, -1, -1):
+    # Count consecutive weeks above EMA before the current candle
+    weeks_above = 0
+    for i in range(last_index - 1, -1, -1):
         if closes[ema_offset + i] <= ema_series[i]:
             break
         weeks_above += 1
 
-    return weeks_above
+    return weeks_above if weeks_above > 0 else None
 
 
 def count_periods_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
