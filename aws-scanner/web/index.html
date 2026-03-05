@@ -370,6 +370,7 @@ function renderSourceToggles() {
 }
 
 function matchesSources(symbol) {
+  if (activeSources.size === ALL_SPECIFIC_SOURCES.size) return true;
   for (const id of activeSources) {
     const src = WATCHLIST_SOURCES.find(s => s.id === id);
     if (src && src.symbols && src.symbols.has(symbol)) return true;
