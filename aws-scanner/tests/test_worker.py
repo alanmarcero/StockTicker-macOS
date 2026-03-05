@@ -42,6 +42,7 @@ class TestProcessBatch:
         self.mock_yahoo = self._yahoo_patcher.start()
         self.mock_time = self._time_patcher.start()
         self.mock_yahoo.fetch_daily_candles.return_value = None
+        self.mock_yahoo.fetch_monthly_candles.return_value = None
 
     def teardown_method(self):
         self._time_patcher.stop()
@@ -263,9 +264,10 @@ class TestProcessBatch:
         assert len(day_above) == 1
         assert len(errors) == 0
 
-    def test_both_fail_records_error(self):
+    def test_all_fetches_fail_records_error(self):
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_weekly_candles.return_value = None
+        self.mock_yahoo.fetch_monthly_candles.return_value = None
 
         _, _, _, _, _, _, _, _, _, _, errors = _process_batch(["FAIL"])
 

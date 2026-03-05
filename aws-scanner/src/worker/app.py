@@ -72,8 +72,9 @@ def _process_batch(
 
         daily_result = yahoo.fetch_daily_candles(symbol)
         weekly_result = yahoo.fetch_weekly_candles(symbol)
+        monthly_result = yahoo.fetch_monthly_candles(symbol)
 
-        if daily_result is None and weekly_result is None:
+        if daily_result is None and weekly_result is None and monthly_result is None:
             print(f"[worker] {symbol}: fetch failed")
             errors.append({"symbol": symbol, "error": "Failed to fetch candles"})
             continue
@@ -156,8 +157,9 @@ def _process_batch(
                         "count": weekly_above_count,
                     })
 
-            # Monthly analysis: derive monthly candles from weekly data
-            monthly_closes = _aggregate_to_monthly(closes, weekly_result[1])
+        if monthly_result is not None:
+            # Monthly analysis: derive monthly candles from 2y weekly data
+            monthly_closes = _aggregate_to_monthly(monthly_result[0], monthly_result[1])
             monthly_ema = ema.calculate(monthly_closes)
             if monthly_ema is not None:
                 m_last = monthly_closes[-1]
