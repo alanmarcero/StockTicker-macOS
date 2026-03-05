@@ -1,6 +1,5 @@
 import json
 import urllib.request
-from datetime import datetime, timezone
 from typing import Optional
 
 BASE_URL = "https://query1.finance.yahoo.com/v8/finance/chart"
@@ -33,21 +32,7 @@ def fetch_weekly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]
         print(f"[yahoo] {symbol}: {err}")
         return None
 
-    result = _parse_response(data)
-    if result is None:
-        return None
-
-    closes, timestamps = result
-
-    # Drop partial current-week candle (complete weeks start on Monday)
-    if timestamps and datetime.fromtimestamp(timestamps[-1], tz=timezone.utc).weekday() != 0:
-        closes = closes[:-1]
-        timestamps = timestamps[:-1]
-
-    if not closes:
-        return None
-
-    return closes, timestamps
+    return _parse_response(data)
 
 
 def _parse_response(data: dict) -> Optional[tuple[list[float], list[int]]]:

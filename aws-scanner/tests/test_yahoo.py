@@ -199,36 +199,11 @@ class TestFetchWeeklyCandles:
 
     @patch("src.worker.yahoo.urllib.request.urlopen")
     def test_success(self, mock_urlopen):
-        # Use Monday timestamps so the partial-week filter keeps both candles
         response_data = {
             "chart": {
                 "result": [{
                     "timestamp": [1771218000, 1771822800],
                     "indicators": {"quote": [{"close": [150.0, 155.0]}]},
-                }]
-            }
-        }
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps(response_data).encode()
-        mock_response.__enter__ = lambda s: s
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
-
-        result = fetch_weekly_candles("AAPL")
-
-        assert result is not None
-        closes, timestamps = result
-        assert closes == [150.0, 155.0]
-        assert timestamps == [1771218000, 1771822800]
-
-    @patch("src.worker.yahoo.urllib.request.urlopen")
-    def test_drops_partial_week_candle(self, mock_urlopen):
-        # Last timestamp is Friday — should be dropped
-        response_data = {
-            "chart": {
-                "result": [{
-                    "timestamp": [1771218000, 1771822800, 1772226000],
-                    "indicators": {"quote": [{"close": [150.0, 155.0, 156.0]}]},
                 }]
             }
         }

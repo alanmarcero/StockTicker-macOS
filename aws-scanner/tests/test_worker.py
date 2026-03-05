@@ -408,7 +408,7 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 3,
-            "sneakPeek": True,
+
             "symbols": ["AAPL", "MSFT"],
         }])
 
@@ -424,13 +424,13 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 2,
             "totalBatches": 3,
-            "sneakPeek": True,
+
             "symbols": ["AAPL"],
         }])
 
         lambda_handler(event, None)
 
-        self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 3, True)
+        self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 3)
 
     def test_non_last_batch_skips_aggregation(self):
         self.mock_process.return_value = ([], [], [], [], [], [], [])
@@ -438,7 +438,7 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 3,
-            "sneakPeek": True,
+
             "symbols": ["AAPL"],
         }])
 
@@ -452,7 +452,7 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 1,
-            "sneakPeek": True,
+
             "symbols": ["BAD"],
         }])
 
@@ -466,7 +466,7 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 1,
-            "sneakPeek": True,
+
             "symbols": ["AAPL"],
         }])
 
@@ -486,40 +486,13 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 1,
-            "sneakPeek": True,
+
             "symbols": ["AAPL"],
         }])
 
         lambda_handler(event, None)
 
         self.mock_agg.assert_called_once()
-
-    def test_sneak_peek_defaults_to_true(self):
-        self.mock_process.return_value = ([], [], [], [], [], [], [])
-        event = self._sqs_event([{
-            "runId": "2026-02-22",
-            "batchIndex": 0,
-            "totalBatches": 1,
-            "symbols": ["AAPL"],
-        }])
-
-        lambda_handler(event, None)
-
-        self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 1, True)
-
-    def test_sneak_peek_false_passed_to_aggregation(self):
-        self.mock_process.return_value = ([], [], [], [], [], [], [])
-        event = self._sqs_event([{
-            "runId": "2026-02-22",
-            "batchIndex": 0,
-            "totalBatches": 1,
-            "sneakPeek": False,
-            "symbols": ["AAPL"],
-        }])
-
-        lambda_handler(event, None)
-
-        self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 1, False)
 
     def test_last_batch_invalidates_cache(self):
         self.mock_process.return_value = ([], [], [], [], [], [], [])
@@ -689,38 +662,13 @@ class TestAggregateResults:
         assert archive_key.startswith("results/")
         assert ".json" in archive_key
 
-    def test_sneak_peek_defaults_to_true(self):
-        self.mock_read.return_value = EMPTY_BATCH
-
-        _aggregate_results("b", "r", 1)
-
-        latest_data = self.mock_put.call_args_list[0][0][2]
-        assert latest_data["sneakPeek"] is True
-
-    def test_sneak_peek_true_when_passed(self):
-        self.mock_read.return_value = EMPTY_BATCH
-
-        _aggregate_results("b", "r", 1, sneak_peek=True)
-
-        latest_data = self.mock_put.call_args_list[0][0][2]
-        assert latest_data["sneakPeek"] is True
-
-    def test_sneak_peek_false_when_passed(self):
-        self.mock_read.return_value = EMPTY_BATCH
-
-        _aggregate_results("b", "r", 1, sneak_peek=False)
-
-        for call in self.mock_put.call_args_list:
-            data = call[0][2]
-            assert data["sneakPeek"] is False
-
     def test_latest_json_has_required_fields(self):
         self.mock_read.return_value = EMPTY_BATCH
 
         _aggregate_results("b", "r", 1)
 
         data = self.mock_put.call_args_list[0][0][2]
-        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "crossovers"}
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "crossovers"}
 
     def test_latest_below_json_has_required_fields(self):
         self.mock_read.return_value = EMPTY_BATCH
@@ -728,7 +676,7 @@ class TestAggregateResults:
         _aggregate_results("b", "r", 1)
 
         data = self.mock_put.call_args_list[2][0][2]
-        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "dayBelow", "weekBelow"}
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "dayBelow", "weekBelow"}
 
     def test_latest_above_json_has_required_fields(self):
         self.mock_read.return_value = EMPTY_BATCH
@@ -736,7 +684,7 @@ class TestAggregateResults:
         _aggregate_results("b", "r", 1)
 
         data = self.mock_put.call_args_list[3][0][2]
-        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "dayAbove", "weekAbove"}
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "dayAbove", "weekAbove"}
 
     def test_reads_correct_batch_keys(self):
         self.mock_read.return_value = EMPTY_BATCH
@@ -827,7 +775,7 @@ class TestAggregateResults:
         _aggregate_results("b", "r", 1)
 
         data = self.mock_put.call_args_list[1][0][2]
-        assert set(data.keys()) == {"scanDate", "scanTime", "sneakPeek", "symbolsScanned", "errors", "crossdowns"}
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "crossdowns"}
 
     def test_backward_compat_missing_crossdowns_key(self):
         self.mock_read.side_effect = [

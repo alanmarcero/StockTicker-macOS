@@ -13,8 +13,6 @@ sqs = boto3.client("sqs")
 def lambda_handler(event: dict, context) -> dict:
     bucket = os.environ["BUCKET_NAME"]
     queue_url = os.environ["QUEUE_URL"]
-    sneak_peek = event.get("sneakPeek", True)
-
     resp = s3.get_object(Bucket=bucket, Key="symbols/us-equities.txt")
     lines = resp["Body"].read().decode("utf-8").splitlines()
     symbols = [line.strip() for line in lines if line.strip()]
@@ -30,7 +28,6 @@ def lambda_handler(event: dict, context) -> dict:
                 "runId": run_id,
                 "batchIndex": idx,
                 "totalBatches": total_batches,
-                "sneakPeek": sneak_peek,
                 "symbols": batch,
             }),
         )

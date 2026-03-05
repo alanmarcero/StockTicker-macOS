@@ -1,8 +1,8 @@
-resource "aws_scheduler_schedule" "friday_intraday" {
-  name       = "ema-scanner-friday-intraday"
+resource "aws_scheduler_schedule" "intraday" {
+  name       = "ema-scanner-intraday"
   group_name = "default"
 
-  schedule_expression          = "cron(0 14 ? * FRI *)"
+  schedule_expression          = "cron(0 14 ? * WED-FRI *)"
   schedule_expression_timezone = "America/New_York"
 
   flexible_time_window {
@@ -19,7 +19,7 @@ resource "aws_scheduler_schedule" "post_close" {
   name       = "ema-scanner-post-close"
   group_name = "default"
 
-  schedule_expression          = "cron(5 16 ? * WED-FRI *)"
+  schedule_expression          = "cron(5 16 ? * FRI *)"
   schedule_expression_timezone = "America/New_York"
 
   flexible_time_window {

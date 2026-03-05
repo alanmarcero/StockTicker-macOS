@@ -23,7 +23,6 @@ def lambda_handler(event: dict, context) -> dict:
         run_id: str = message["runId"]
         batch_index: int = message["batchIndex"]
         total_batches: int = message["totalBatches"]
-        sneak_peek: bool = message.get("sneakPeek", True)
         symbols: list[str] = message["symbols"]
 
         crossovers, crossdowns, day_below, week_below, day_above, week_above, errors = _process_batch(symbols)
@@ -34,7 +33,7 @@ def lambda_handler(event: dict, context) -> dict:
             _write_errors(bucket, run_id, batch_index, errors)
 
         if batch_index == total_batches - 1:
-            _aggregate_results(bucket, run_id, total_batches, sneak_peek)
+            _aggregate_results(bucket, run_id, total_batches)
             _invalidate_cache()
 
     return {"statusCode": 200}
@@ -177,7 +176,7 @@ def _write_errors(bucket: str, run_id: str, batch_index: int, errors: list[dict]
     s3.put_object(Bucket=bucket, Key=key, Body=json.dumps(errors))
 
 
-def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek: bool = True) -> None:
+def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     all_crossovers: list[dict] = []
     all_crossdowns: list[dict] = []
     all_day_below: list[dict] = []
@@ -216,7 +215,6 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int, sneak_peek:
     base = {
         "scanDate": scan_date,
         "scanTime": scan_time,
-        "sneakPeek": sneak_peek,
         "symbolsScanned": total_symbols,
         "errors": total_errors,
     }

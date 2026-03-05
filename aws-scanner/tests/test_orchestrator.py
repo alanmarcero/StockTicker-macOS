@@ -53,7 +53,6 @@ class TestLambdaHandler:
         body = json.loads(first_call[1]["MessageBody"])
         assert body["batchIndex"] == 0
         assert body["totalBatches"] == 2
-        assert body["sneakPeek"] is True
         assert len(body["symbols"]) == 50
         assert "runId" in body
 
@@ -61,7 +60,6 @@ class TestLambdaHandler:
         body2 = json.loads(second_call[1]["MessageBody"])
         assert body2["batchIndex"] == 1
         assert body2["totalBatches"] == 2
-        assert body2["sneakPeek"] is True
         assert len(body2["symbols"]) == 10
 
     def test_sends_to_correct_queue_url(self):
@@ -118,39 +116,13 @@ class TestLambdaHandler:
         assert body_sent["symbols"] == ["AAPL"]
         assert body_sent["totalBatches"] == 1
 
-    def test_sneak_peek_defaults_to_true(self):
+    def test_message_has_no_sneak_peek(self):
         self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
 
         lambda_handler({}, None)
 
         body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
-        assert body["sneakPeek"] is True
-
-    def test_sneak_peek_true_from_event(self):
-        self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
-
-        lambda_handler({"sneakPeek": True}, None)
-
-        body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
-        assert body["sneakPeek"] is True
-
-    def test_sneak_peek_false_from_event(self):
-        self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
-
-        lambda_handler({"sneakPeek": False}, None)
-
-        body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
-        assert body["sneakPeek"] is False
-
-    def test_sneak_peek_propagated_to_all_batches(self):
-        symbols = [f"SYM{i}" for i in range(120)]
-        self.mock_s3.get_object.return_value = self._make_s3_response(symbols)
-
-        lambda_handler({"sneakPeek": False}, None)
-
-        for call in self.mock_sqs.send_message.call_args_list:
-            body = json.loads(call[1]["MessageBody"])
-            assert body["sneakPeek"] is False
+        assert "sneakPeek" not in body
 
 
 class TestBatchSize:
