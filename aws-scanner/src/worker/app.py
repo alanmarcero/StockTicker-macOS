@@ -12,6 +12,7 @@ except ImportError:
     import ema, yahoo
 
 s3 = boto3.client("s3")
+cloudfront = boto3.client("cloudfront")
 
 
 def lambda_handler(event: dict, context) -> dict:
@@ -34,6 +35,7 @@ def lambda_handler(event: dict, context) -> dict:
 
         if batch_index == total_batches - 1:
             _aggregate_results(bucket, run_id, total_batches, sneak_peek)
+            _invalidate_cache()
 
     return {"statusCode": 200}
 
@@ -238,6 +240,21 @@ def _read_json(bucket: str, key: str) -> Any:
     except Exception as err:
         print(f"[worker] failed to read s3://{bucket}/{key}: {err}")
         return None
+
+
+def _invalidate_cache() -> None:
+    dist_id = os.environ.get("DISTRIBUTION_ID")
+    if not dist_id:
+        print("[worker] DISTRIBUTION_ID not set, skipping cache invalidation")
+        return
+    cloudfront.create_invalidation(
+        DistributionId=dist_id,
+        InvalidationBatch={
+            "Paths": {"Quantity": 1, "Items": ["/results/*"]},
+            "CallerReference": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    print(f"[worker] CloudFront invalidation created for {dist_id}")
 
 
 def _put_json(bucket: str, key: str, data: Any) -> None:

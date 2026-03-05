@@ -106,6 +106,11 @@ resource "aws_iam_role_policy" "worker" {
         Resource = aws_sqs_queue.batches.arn
       },
       {
+        Effect   = "Allow"
+        Action   = ["cloudfront:CreateInvalidation"]
+        Resource = aws_cloudfront_distribution.results.arn
+      },
+      {
         Effect = "Allow"
         Action = [
           "logs:CreateLogGroup",

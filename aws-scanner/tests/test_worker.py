@@ -5,6 +5,7 @@ from src.worker.app import (
     lambda_handler,
     _process_batch,
     _aggregate_results,
+    _invalidate_cache,
     _write_batch_results,
     _write_errors,
 )
@@ -378,13 +379,16 @@ class TestLambdaHandler:
         self._write_patcher = patch("src.worker.app._write_batch_results")
         self._errors_patcher = patch("src.worker.app._write_errors")
         self._agg_patcher = patch("src.worker.app._aggregate_results")
+        self._inv_patcher = patch("src.worker.app._invalidate_cache")
         self._env_patcher.start()
         self.mock_process = self._process_patcher.start()
         self.mock_write = self._write_patcher.start()
         self.mock_errors = self._errors_patcher.start()
         self.mock_agg = self._agg_patcher.start()
+        self.mock_invalidate = self._inv_patcher.start()
 
     def teardown_method(self):
+        self._inv_patcher.stop()
         self._agg_patcher.stop()
         self._errors_patcher.stop()
         self._write_patcher.stop()
@@ -516,6 +520,52 @@ class TestLambdaHandler:
         lambda_handler(event, None)
 
         self.mock_agg.assert_called_once_with("test-bucket", "2026-02-22", 1, False)
+
+    def test_last_batch_invalidates_cache(self):
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
+        event = self._sqs_event([{
+            "runId": "2026-02-22",
+            "batchIndex": 2,
+            "totalBatches": 3,
+            "symbols": ["AAPL"],
+        }])
+
+        lambda_handler(event, None)
+
+        self.mock_invalidate.assert_called_once()
+
+    def test_non_last_batch_skips_invalidation(self):
+        self.mock_process.return_value = ([], [], [], [], [], [], [])
+        event = self._sqs_event([{
+            "runId": "2026-02-22",
+            "batchIndex": 0,
+            "totalBatches": 3,
+            "symbols": ["AAPL"],
+        }])
+
+        lambda_handler(event, None)
+
+        self.mock_invalidate.assert_not_called()
+
+
+class TestInvalidateCache:
+
+    @patch("src.worker.app.cloudfront")
+    @patch.dict("os.environ", {"DISTRIBUTION_ID": "E1234567890"})
+    def test_creates_invalidation(self, mock_cf):
+        _invalidate_cache()
+
+        mock_cf.create_invalidation.assert_called_once()
+        args = mock_cf.create_invalidation.call_args[1]
+        assert args["DistributionId"] == "E1234567890"
+        assert args["InvalidationBatch"]["Paths"]["Items"] == ["/results/*"]
+
+    @patch("src.worker.app.cloudfront")
+    @patch.dict("os.environ", {}, clear=True)
+    def test_skips_when_no_distribution_id(self, mock_cf):
+        _invalidate_cache()
+
+        mock_cf.create_invalidation.assert_not_called()
 
 
 class TestAggregateResults:

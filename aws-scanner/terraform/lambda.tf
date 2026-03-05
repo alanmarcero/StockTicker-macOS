@@ -41,7 +41,8 @@ resource "aws_lambda_function" "worker" {
 
   environment {
     variables = {
-      BUCKET_NAME = aws_s3_bucket.scanner.id
+      BUCKET_NAME      = aws_s3_bucket.scanner.id
+      DISTRIBUTION_ID  = aws_cloudfront_distribution.results.id
     }
   }
 }
