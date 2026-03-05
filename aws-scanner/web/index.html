@@ -603,8 +603,9 @@ function renderMeta(json) {
 async function fetchAll() {
   readHash();
 
+  const cb = `_=${Date.now()}`;
   const urls = [...new Set(TAB_DEFS.map(t => t.file))];
-  const results = await Promise.allSettled(urls.map(u => fetch(u).then(r => {
+  const results = await Promise.allSettled(urls.map(u => fetch(`${u}?${cb}`).then(r => {
     if (!r.ok) throw new Error(r.status);
     return r.json();
   })));
