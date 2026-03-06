@@ -604,10 +604,11 @@ async function renderMeta(json) {
   let total = '';
   try {
     const cb = `_=${Date.now()}`;
-    const resp = await fetch(`/symbols/us-equities.json?${cb}`);
+    const resp = await fetch(`/symbols/us-equities.txt?${cb}`);
     if (resp.ok) {
-      const symbols = await resp.json();
-      total = ` / ${symbols.length.toLocaleString()}`;
+      const text = await resp.text();
+      const count = text.trim().split('\n').filter(Boolean).length;
+      total = ` / ${count.toLocaleString()}`;
     }
   } catch (e) {}
 
