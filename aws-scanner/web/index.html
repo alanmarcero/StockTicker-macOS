@@ -227,21 +227,64 @@
   .filter-row input.filter-symbol { width: 100%; }
 
   .filter-row input.filter-num {
-    width: 70px;
+    width: 54px;
     min-height: 36px;
-    text-align: right;
+    text-align: center;
+    -moz-appearance: textfield;
   }
 
-  .filter-row input[type="number"]::-webkit-inner-spin-button {
-    opacity: 1;
-    height: 28px;
-    width: 18px;
-    cursor: pointer;
+  .filter-row input.filter-num::-webkit-inner-spin-button,
+  .filter-row input.filter-num::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
+
+  .num-filter-group {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 36px;
+  }
+
+  .num-filter-group input {
+    border: none !important;
+    border-radius: 0 !important;
+    border-left: 1px solid #30363d !important;
+    border-right: 1px solid #30363d !important;
+    min-height: unset !important;
+    height: 100%;
+  }
+
+  .num-filter-group input:focus {
+    border-color: #58a6ff !important;
+    z-index: 1;
+    position: relative;
+  }
+
+  .spin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    background: #161b22;
+    color: #8b949e;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    user-select: none;
+    transition: background 0.1s, color 0.1s;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .spin-btn:hover { background: #30363d; color: #e6edf3; }
+  .spin-btn:active { background: #58a6ff33; color: #58a6ff; }
 
   .filter-row .num-filters {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     justify-content: flex-end;
   }
 
@@ -545,8 +588,16 @@ function showTab(tabId) {
     const minVal = f.min != null ? f.min : '';
     const maxVal = f.max != null ? f.max : '';
     return `<td class="num"><div class="num-filters">` +
-      `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
-      `<input type="number" class="filter-num" data-col="${c}" data-bound="max" placeholder="max" value="${maxVal}">` +
+      `<div class="num-filter-group">` +
+        `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="-1">&#x2212;</button>` +
+        `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
+        `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="1">+</button>` +
+      `</div>` +
+      `<div class="num-filter-group">` +
+        `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="-1">&#x2212;</button>` +
+        `<input type="number" class="filter-num" data-col="${c}" data-bound="max" placeholder="max" value="${maxVal}">` +
+        `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="1">+</button>` +
+      `</div>` +
       `</div></td>`;
   }).join('');
 
@@ -576,6 +627,22 @@ function showTab(tabId) {
         if (!filters[col]) filters[col] = {};
         filters[col][bound] = input.value;
       }
+      renderTabs();
+      updateRows(tabId);
+    });
+  });
+
+  document.querySelectorAll('.spin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.dataset.col;
+      const bound = btn.dataset.bound;
+      const dir = Number(btn.dataset.dir);
+      if (!filters[col]) filters[col] = {};
+      const cur = Number(filters[col][bound]) || 0;
+      const step = col === 'pct' ? 1 : 1;
+      filters[col][bound] = cur + dir * step;
+      const input = btn.closest('.num-filter-group').querySelector('input');
+      if (input) input.value = filters[col][bound];
       renderTabs();
       updateRows(tabId);
     });
