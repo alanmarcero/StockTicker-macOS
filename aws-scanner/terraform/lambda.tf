@@ -35,6 +35,7 @@ resource "aws_lambda_function" "worker" {
   handler                        = "app.lambda_handler"
   memory_size                    = 128
   timeout                        = 180
+  reserved_concurrent_executions = 2
 
   filename                       = data.archive_file.worker.output_path
   source_code_hash               = data.archive_file.worker.output_base64sha256
