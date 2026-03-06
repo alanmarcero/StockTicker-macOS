@@ -444,9 +444,14 @@ function renderSourceToggles() {
       if (id === 'all') {
         activeSources = new Set(ALL_SPECIFIC_SOURCES);
       } else {
-        if (activeSources.has(id)) activeSources.delete(id);
-        else activeSources.add(id);
-        if (activeSources.size === 0) activeSources = new Set(ALL_SPECIFIC_SOURCES);
+        const isSolo = activeSources.size === 1 && activeSources.has(id);
+        if (isSolo) {
+          // Already solo — go back to All
+          activeSources = new Set(ALL_SPECIFIC_SOURCES);
+        } else {
+          // Isolate this one source
+          activeSources = new Set([id]);
+        }
       }
       renderSourceToggles();
       renderTabs();
