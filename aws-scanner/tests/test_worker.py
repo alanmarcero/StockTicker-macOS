@@ -6,6 +6,7 @@ from src.worker.app import (
     _process_batch,
     _aggregate_results,
     _aggregate_to_monthly,
+    _strip_incomplete_week,
     _invalidate_cache,
     _write_batch_results,
     _write_errors,
@@ -304,6 +305,47 @@ class TestProcessBatch:
         assert isinstance(entry["ema"], float)
         assert isinstance(entry["pctBelow"], float)
         assert isinstance(entry["weeksAbove"], int)
+
+
+class TestStripIncompleteWeek:
+
+    def test_strips_current_week_candle(self):
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        # Monday of current week
+        current_monday = now - timedelta(days=now.weekday())
+        current_ts = int(current_monday.replace(hour=0, minute=0, second=0).timestamp())
+        # Last week Monday
+        last_monday_ts = int((current_monday - timedelta(weeks=1)).replace(hour=0, minute=0, second=0).timestamp())
+
+        closes = [100.0, 101.0, 102.0]
+        timestamps = [last_monday_ts - 604800, last_monday_ts, current_ts]
+
+        result_closes, result_ts = _strip_incomplete_week(closes, timestamps)
+
+        assert len(result_closes) == 2
+        assert len(result_ts) == 2
+        assert result_closes[-1] == 101.0
+
+    def test_keeps_complete_week_candle(self):
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        # Last week Monday
+        last_monday = now - timedelta(days=now.weekday()) - timedelta(weeks=1)
+        last_ts = int(last_monday.replace(hour=0, minute=0, second=0).timestamp())
+        prev_ts = last_ts - 604800
+
+        closes = [100.0, 101.0]
+        timestamps = [prev_ts, last_ts]
+
+        result_closes, result_ts = _strip_incomplete_week(closes, timestamps)
+
+        assert len(result_closes) == 2
+
+    def test_empty_input(self):
+        closes, timestamps = _strip_incomplete_week([], [])
+        assert closes == []
+        assert timestamps == []
 
 
 class TestAggregateToMonthly:

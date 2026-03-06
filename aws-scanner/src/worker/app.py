@@ -39,6 +39,17 @@ def lambda_handler(event: dict, context) -> dict:
     return {"statusCode": 200}
 
 
+def _strip_incomplete_week(closes: list[float], timestamps: list[int]) -> tuple[list[float], list[int]]:
+    """Drop the last candle if it belongs to the current (incomplete) week."""
+    if not timestamps:
+        return closes, timestamps
+    now = datetime.now(timezone.utc)
+    last_dt = datetime.fromtimestamp(timestamps[-1], tz=timezone.utc)
+    if last_dt.isocalendar()[1] == now.isocalendar()[1] and last_dt.year == now.year:
+        return closes[:-1], timestamps[:-1]
+    return closes, timestamps
+
+
 def _aggregate_to_monthly(closes: list[float], timestamps: list[int]) -> list[float]:
     """Take the last close per calendar month from weekly data."""
     if not closes:
@@ -108,7 +119,7 @@ def _process_batch(
                     })
 
         if weekly_result is not None:
-            closes = weekly_result[0]
+            closes, _ = _strip_incomplete_week(weekly_result[0], weekly_result[1])
             ema_value = ema.calculate(closes)
             if ema_value is not None:
                 last_close = closes[-1]
@@ -159,7 +170,8 @@ def _process_batch(
 
         if monthly_result is not None:
             # Monthly analysis: derive monthly candles from 2y weekly data
-            monthly_closes = _aggregate_to_monthly(monthly_result[0], monthly_result[1])
+            m_closes, m_timestamps = _strip_incomplete_week(monthly_result[0], monthly_result[1])
+            monthly_closes = _aggregate_to_monthly(m_closes, m_timestamps)
             monthly_ema = ema.calculate(monthly_closes)
             if monthly_ema is not None:
                 m_last = monthly_closes[-1]
