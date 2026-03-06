@@ -766,10 +766,11 @@ async function renderMeta(json) {
     }
   } catch (e) {}
 
+  const errStyle = errs ? ' style="color:#f85149"' : '';
   document.getElementById('meta').innerHTML =
     `<span class="meta">Updated <strong>${t}</strong></span> ` +
-    `<span class="meta"><a href="/symbols/us-equities.json" target="_blank" class="meta-link">${scanned}${total} symbols</a></span>` +
-    (errs ? ` <span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link" style="color:#f85149">${errs} errors</a></span>` : '');
+    `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${scanned}${total} symbols</a></span>` +
+    ` <span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link"${errStyle}>${errs} errors</a></span>`;
 }
 
 /* ── Fetch & init ── */
