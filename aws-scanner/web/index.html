@@ -312,14 +312,14 @@ const DEFAULT_FILTERS = {
 };
 
 const TAB_DEFS = [
-  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','ema','pct','weeksBelow'],  pctField: 'pctAbove' },
-  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','ema','pct','weeksAbove'],  pctField: 'pctBelow' },
-  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','ema','pct','count'],        pctField: 'pctBelow' },
-  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','ema','pct','count'],        pctField: 'pctAbove' },
-  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','ema','pct','monthsBelow'],  pctField: 'pctAbove' },
-  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','ema','pct','monthsAbove'],  pctField: 'pctBelow' },
-  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','ema','pct','count'],        pctField: 'pctBelow' },
-  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','ema','pct','count'],        pctField: 'pctAbove' },
+  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','weeksBelow','ema','pct'],   pctField: 'pctAbove' },
+  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','ema','pct'],   pctField: 'pctBelow' },
+  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','ema','pct'],        pctField: 'pctBelow' },
+  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','ema','pct'],        pctField: 'pctAbove' },
+  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','ema','pct'],  pctField: 'pctAbove' },
+  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','ema','pct'],  pctField: 'pctBelow' },
+  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','ema','pct'],        pctField: 'pctBelow' },
+  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','ema','pct'],        pctField: 'pctAbove' },
 ];
 
 const COL_LABELS = {
