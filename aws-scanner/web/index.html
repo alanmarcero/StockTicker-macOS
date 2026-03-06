@@ -140,6 +140,32 @@
 
   .reset-btn:hover { border-color: #f85149; color: #f85149; }
 
+  .quick-sep {
+    width: 1px;
+    height: 18px;
+    background: #30363d;
+    margin: 0 2px;
+  }
+
+  .quick-btn {
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid #30363d;
+    background: transparent;
+    color: #8b949e;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
+
+  .quick-btn.active {
+    background: #1f6feb33;
+    border-color: #58a6ff;
+    color: #58a6ff;
+  }
+
   .content { padding: 16px 24px; }
 
   .table-wrap {
@@ -442,6 +468,7 @@ function matchesSources(symbol) {
 
 function initDefaultFilters() {
   filters = {};
+  activeQuickFilters.clear();
   for (const [c, def] of Object.entries(DEFAULT_FILTERS)) {
     filters[c] = { ...def };
   }
@@ -449,18 +476,38 @@ function initDefaultFilters() {
 
 function clearAllFilters() {
   filters = {};
+  activeQuickFilters.clear();
 }
+
+/* ── Quick filters ── */
+
+const QUICK_FILTERS = [
+  { id: 'low',  label: 'Low $',  col: 'close', values: { min: 3, max: 20 } },
+  { id: 'mid',  label: 'Mid $',  col: 'close', values: { min: 20, max: 300 } },
+  { id: 'high', label: 'High $', col: 'close', values: { min: 300, max: '' } },
+];
+
+let activeQuickFilters = new Set();
 
 /* ── Toolbar ── */
 
 function renderToolbar(filteredCount, totalCount) {
   const el = document.getElementById('toolbar');
+  const quickBtns = QUICK_FILTERS.map(qf => {
+    const cls = activeQuickFilters.has(qf.id) ? ' active' : '';
+    return `<button class="quick-btn${cls}" data-qf="${qf.id}">${qf.label}</button>`;
+  }).join('');
+
   el.innerHTML =
     `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
     `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>` +
-    `<button class="reset-btn" id="clear-filters-btn">Clear Filters</button>`;
+    `<button class="reset-btn" id="clear-filters-btn">Clear Filters</button>` +
+    `<div class="quick-sep"></div>` +
+    quickBtns;
+
   document.getElementById('reset-filters-btn').addEventListener('click', () => {
     activeSources = new Set(ALL_SPECIFIC_SOURCES);
+    activeQuickFilters.clear();
     initDefaultFilters();
     renderSourceToggles();
     renderTabs();
@@ -470,6 +517,29 @@ function renderToolbar(filteredCount, totalCount) {
     clearAllFilters();
     renderTabs();
     showTab(activeTab);
+  });
+  el.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const qfId = btn.dataset.qf;
+      const qf = QUICK_FILTERS.find(q => q.id === qfId);
+      if (activeQuickFilters.has(qfId)) {
+        activeQuickFilters.delete(qfId);
+        // Restore default for this column
+        if (DEFAULT_FILTERS[qf.col]) {
+          filters[qf.col] = { ...DEFAULT_FILTERS[qf.col] };
+        } else {
+          delete filters[qf.col];
+        }
+      } else {
+        // Deactivate other quick filters on the same column
+        QUICK_FILTERS.filter(q => q.col === qf.col && q.id !== qfId)
+          .forEach(q => activeQuickFilters.delete(q.id));
+        activeQuickFilters.add(qfId);
+        filters[qf.col] = { ...qf.values };
+      }
+      renderTabs();
+      showTab(activeTab);
+    });
   });
 }
 
