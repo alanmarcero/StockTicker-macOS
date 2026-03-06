@@ -388,11 +388,15 @@ function matchesSources(symbol) {
 
 /* ── Default filters ── */
 
-function initDefaultFilters(cols) {
+function initDefaultFilters() {
   filters = {};
-  for (const c of cols) {
-    if (DEFAULT_FILTERS[c]) filters[c] = { ...DEFAULT_FILTERS[c] };
+  for (const [c, def] of Object.entries(DEFAULT_FILTERS)) {
+    filters[c] = { ...def };
   }
+}
+
+function clearAllFilters() {
+  filters = {};
 }
 
 /* ── Toolbar ── */
@@ -401,12 +405,17 @@ function renderToolbar(filteredCount, totalCount) {
   const el = document.getElementById('toolbar');
   el.innerHTML =
     `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
-    `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>`;
+    `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>` +
+    `<button class="reset-btn" id="clear-filters-btn">Clear Filters</button>`;
   document.getElementById('reset-filters-btn').addEventListener('click', () => {
     activeSources = new Set(ALL_SPECIFIC_SOURCES);
-    const def = TAB_DEFS.find(t => t.id === activeTab);
-    initDefaultFilters(def.cols);
+    initDefaultFilters();
     renderSourceToggles();
+    renderTabs();
+    showTab(activeTab);
+  });
+  document.getElementById('clear-filters-btn').addEventListener('click', () => {
+    clearAllFilters();
     renderTabs();
     showTab(activeTab);
   });
@@ -492,8 +501,6 @@ function renderTabs() {
       activeTab = tab.dataset.tab;
       sortCol = null;
       sortAsc = true;
-      const def = TAB_DEFS.find(t => t.id === activeTab);
-      initDefaultFilters(def.cols);
       writeHash();
       renderTabs();
       showTab(activeTab);
@@ -659,8 +666,7 @@ async function fetchAll() {
     return;
   }
 
-  const def = TAB_DEFS.find(t => t.id === activeTab);
-  initDefaultFilters(def.cols);
+  initDefaultFilters();
   renderSourceToggles();
   renderTabs();
   writeHash();
