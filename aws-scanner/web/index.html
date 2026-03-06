@@ -596,14 +596,24 @@ function esc(s) {
 
 /* ── Meta ── */
 
-function renderMeta(json) {
+async function renderMeta(json) {
   const t = json.scanTime ? new Date(json.scanTime).toLocaleString() : '\u2014';
-  const syms = (json.symbolsScanned || 0).toLocaleString();
+  const scanned = (json.symbolsScanned || 0).toLocaleString();
   const errs = json.errors || 0;
+
+  let total = '';
+  try {
+    const cb = `_=${Date.now()}`;
+    const resp = await fetch(`/symbols/us-equities.json?${cb}`);
+    if (resp.ok) {
+      const symbols = await resp.json();
+      total = ` / ${symbols.length.toLocaleString()}`;
+    }
+  } catch (e) {}
 
   document.getElementById('meta').innerHTML =
     `<span class="meta">Updated <strong>${t}</strong></span> ` +
-    `<span class="meta"><a href="/symbols/us-equities.json" target="_blank" class="meta-link">${syms} symbols</a></span>` +
+    `<span class="meta"><a href="/symbols/us-equities.json" target="_blank" class="meta-link">${scanned}${total} symbols</a></span>` +
     (errs ? ` <span class="meta" style="color:#f85149">${errs} errors</span>` : '');
 }
 
