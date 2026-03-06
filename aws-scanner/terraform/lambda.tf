@@ -35,7 +35,7 @@ resource "aws_lambda_function" "worker" {
   handler                        = "app.lambda_handler"
   memory_size                    = 128
   timeout                        = 180
-  reserved_concurrent_executions = 2
+
 
   filename                       = data.archive_file.worker.output_path
   source_code_hash               = data.archive_file.worker.output_base64sha256
@@ -52,4 +52,8 @@ resource "aws_lambda_event_source_mapping" "worker_sqs" {
   event_source_arn = aws_sqs_queue.batches.arn
   function_name    = aws_lambda_function.worker.arn
   batch_size       = 1
+
+  scaling_config {
+    maximum_concurrency = 2
+  }
 }
