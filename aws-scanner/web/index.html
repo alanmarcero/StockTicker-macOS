@@ -370,15 +370,15 @@
 </div>
 
 <script>
-const WATCHLIST_SOURCES = [
-  { id: 'all', label: 'All', symbols: null },
-  { id: 'none', label: 'None', symbols: null },
-  { id: 'megaCap', label: '$200B+', symbols: new Set(['AAPL','ABBV','ABT','ACN','ADBE','AMD','AMGN','AMZN','AVGO','AXP','BA','BAC','BRK-B','BX','CAT','CI','CMCSA','COP','COST','CRM','CRWD','CSCO','CVX','DE','DHR','DIS','ETN','GE','GEV','GILD','GOOG','GOOGL','GS','HD','HON','IBM','INTC','INTU','ISRG','JNJ','JPM','KO','LIN','LLY','LMT','LOW','MA','MCD','MDLZ','MRK','MS','MSFT','MU','NEE','NFLX','NKE','NOW','NVDA','ORCL','PEP','PFE','PG','PGR','PLTR','PM','PYPL','QCOM','RTX','SBUX','SCHW','SHW','SPGI','T','TJX','TMO','TMUS','TSLA','TXN','UNH','UNP','UPS','V','VRTX','VZ','WFC','WMT','XOM']) },
-  { id: 'topAUM', label: 'Top AUM ETFs', symbols: new Set(['SPY','IVV','VOO','VTI','QQQ','VEA','VTV','IEFA','BND','AGG','VWO','IWM','IEMG','VIG','VUG','IJR','VXUS','GLD','IJH','SCHD','VGT','XLK','BNDX','VO','IWF','VCIT','XLV','ITOT','BSV','DIA']) },
-  { id: 'topVol', label: 'Top Vol ETFs', symbols: new Set(['SPY','QQQ','IWM','EEM','XLF','HYG','SMH','GDX','SLV','IBIT']) },
-  { id: 'spdr', label: 'SPDR', symbols: new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','XLE','SPDW','GLDM','SPYV','XLI','XLC','MDY','XLU','XLY','SDY','XLP','SPEM','SPMD','SPSM','SPTM','SPTL','SPIB','SPHY','SPTI','SPAB','SPSB','XBI','XLRE','JNK','SPYD','XLB','SPMB','XAR','SPTS','CWB','SRLN','FEZ','SJNK','GNR','XME','SLYV','SLYG','TOTL','BILS','KRE','SHM','TFI','HYMB','FLRN','MDYG','CWI','MDYV','XOP','KOMP','SPYX','EBND','SPBO','TIPX','RWR','XHB','XSD','BWX','QUS','XNTK','SPGM']) },
-  { id: 'vanguard', label: 'Vanguard', symbols: new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']) },
+const MEGA_CAP = new Set(['AAPL','ABBV','ABT','ACN','ADBE','AMD','AMGN','AMZN','AVGO','AXP','BA','BAC','BRK-B','BX','CAT','CI','CMCSA','COP','COST','CRM','CRWD','CSCO','CVX','DE','DHR','DIS','ETN','GE','GEV','GILD','GOOG','GOOGL','GS','HD','HON','IBM','INTC','INTU','ISRG','JNJ','JPM','KO','LIN','LLY','LMT','LOW','MA','MCD','MDLZ','MRK','MS','MSFT','MU','NEE','NFLX','NKE','NOW','NVDA','ORCL','PEP','PFE','PG','PGR','PLTR','PM','PYPL','QCOM','RTX','SBUX','SCHW','SHW','SPGI','T','TJX','TMO','TMUS','TSLA','TXN','UNH','UNP','UPS','V','VRTX','VZ','WFC','WMT','XOM']);
+
+const CAP_FILTERS = [
+  { id: 'all',    label: 'All' },
+  { id: 'small',  label: '$200B\u2212' },
+  { id: 'mega',   label: '$200B+' },
 ];
+
+let activeCapFilter = 'all';
 
 const DEFAULT_FILTERS = {
   close: { min: 10 },
@@ -415,8 +415,6 @@ let activeTab = TAB_DEFS[0].id;
 let sortCol = null;
 let sortAsc = true;
 let filters = {};
-const ALL_SPECIFIC_SOURCES = new Set(WATCHLIST_SOURCES.filter(s => s.id !== 'all' && s.id !== 'none').map(s => s.id));
-let activeSources = new Set(ALL_SPECIFIC_SOURCES);
 
 /* ── Hash persistence ── */
 
@@ -433,24 +431,13 @@ function writeHash() {
 
 function renderSourceToggles() {
   const el = document.getElementById('source-toggles');
-  el.innerHTML = WATCHLIST_SOURCES.map(s => {
-    const allSelected = activeSources.size === ALL_SPECIFIC_SOURCES.size;
-    const noneSelected = activeSources.size === 0;
-    const isActive = s.id === 'all' ? allSelected : s.id === 'none' ? noneSelected : activeSources.has(s.id);
-    const cls = isActive ? ' active' : '';
-    return `<button class="source-btn${cls}" data-source="${s.id}">${s.label}</button>`;
+  el.innerHTML = CAP_FILTERS.map(f => {
+    const cls = f.id === activeCapFilter ? ' active' : '';
+    return `<button class="source-btn${cls}" data-cap="${f.id}">${f.label}</button>`;
   }).join('');
   el.querySelectorAll('.source-btn').forEach(btn =>
     btn.addEventListener('click', () => {
-      const id = btn.dataset.source;
-      if (id === 'all') {
-        activeSources = new Set(ALL_SPECIFIC_SOURCES);
-      } else if (id === 'none') {
-        activeSources = new Set();
-      } else {
-        if (activeSources.has(id)) activeSources.delete(id);
-        else activeSources.add(id);
-      }
+      activeCapFilter = btn.dataset.cap;
       renderSourceToggles();
       renderTabs();
       showTab(activeTab);
@@ -459,16 +446,9 @@ function renderSourceToggles() {
 }
 
 function matchesSources(symbol) {
-  if (activeSources.size === ALL_SPECIFIC_SOURCES.size) return true;
-  if (activeSources.size === 0) return true;
-  const inAnyList = WATCHLIST_SOURCES.some(s => s.symbols && s.symbols.has(symbol));
-  if (activeSources.has('none') && !inAnyList) return true;
-  for (const id of activeSources) {
-    if (id === 'none') continue;
-    const src = WATCHLIST_SOURCES.find(s => s.id === id);
-    if (src && src.symbols && src.symbols.has(symbol)) return true;
-  }
-  return false;
+  if (activeCapFilter === 'all') return true;
+  if (activeCapFilter === 'mega') return MEGA_CAP.has(symbol);
+  return !MEGA_CAP.has(symbol);
 }
 
 /* ── Default filters ── */
@@ -513,7 +493,7 @@ function renderToolbar(filteredCount, totalCount) {
     quickBtns;
 
   document.getElementById('reset-filters-btn').addEventListener('click', () => {
-    activeSources = new Set(ALL_SPECIFIC_SOURCES);
+    activeCapFilter = 'all';
     activeQuickFilters.clear();
     initDefaultFilters();
     renderSourceToggles();
