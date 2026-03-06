@@ -372,13 +372,22 @@
 <script>
 const MEGA_CAP = new Set(['AAPL','ABBV','ABT','ACN','ADBE','AMD','AMGN','AMZN','AVGO','AXP','BA','BAC','BRK-B','BX','CAT','CI','CMCSA','COP','COST','CRM','CRWD','CSCO','CVX','DE','DHR','DIS','ETN','GE','GEV','GILD','GOOG','GOOGL','GS','HD','HON','IBM','INTC','INTU','ISRG','JNJ','JPM','KO','LIN','LLY','LMT','LOW','MA','MCD','MDLZ','MRK','MS','MSFT','MU','NEE','NFLX','NKE','NOW','NVDA','ORCL','PEP','PFE','PG','PGR','PLTR','PM','PYPL','QCOM','RTX','SBUX','SCHW','SHW','SPGI','T','TJX','TMO','TMUS','TSLA','TXN','UNH','UNP','UPS','V','VRTX','VZ','WFC','WMT','XOM']);
 
-const CAP_FILTERS = [
-  { id: 'all',    label: 'All' },
-  { id: 'small',  label: '$200B\u2212' },
-  { id: 'mega',   label: '$200B+' },
+const TOP_AUM = new Set(['SPY','IVV','VOO','VTI','QQQ','VEA','VTV','IEFA','BND','AGG','VWO','IWM','IEMG','VIG','VUG','IJR','VXUS','GLD','IJH','SCHD','VGT','XLK','BNDX','VO','IWF','VCIT','XLV','ITOT','BSV','DIA']);
+const TOP_VOL = new Set(['SPY','QQQ','IWM','EEM','XLF','HYG','SMH','GDX','SLV','IBIT']);
+const SPDR = new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','XLE','SPDW','GLDM','SPYV','XLI','XLC','MDY','XLU','XLY','SDY','XLP','SPEM','SPMD','SPSM','SPTM','SPTL','SPIB','SPHY','SPTI','SPAB','SPSB','XBI','XLRE','JNK','SPYD','XLB','SPMB','XAR','SPTS','CWB','SRLN','FEZ','SJNK','GNR','XME','SLYV','SLYG','TOTL','BILS','KRE','SHM','TFI','HYMB','FLRN','MDYG','CWI','MDYV','XOP','KOMP','SPYX','EBND','SPBO','TIPX','RWR','XHB','XSD','BWX','QUS','XNTK','SPGM']);
+const VANGUARD = new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']);
+
+const SOURCE_FILTERS = [
+  { id: 'all',      label: 'All',            match: () => true },
+  { id: 'small',    label: '$200B\u2212',    match: s => !MEGA_CAP.has(s) },
+  { id: 'mega',     label: '$200B+',         match: s => MEGA_CAP.has(s) },
+  { id: 'topAUM',   label: 'Top AUM ETFs',   match: s => TOP_AUM.has(s) },
+  { id: 'topVol',   label: 'Top Vol ETFs',   match: s => TOP_VOL.has(s) },
+  { id: 'spdr',     label: 'SPDR',           match: s => SPDR.has(s) },
+  { id: 'vanguard', label: 'Vanguard',       match: s => VANGUARD.has(s) },
 ];
 
-let activeCapFilter = 'all';
+let activeSourceFilter = 'all';
 
 const DEFAULT_FILTERS = {
   close: { min: 10 },
@@ -431,13 +440,13 @@ function writeHash() {
 
 function renderSourceToggles() {
   const el = document.getElementById('source-toggles');
-  el.innerHTML = CAP_FILTERS.map(f => {
-    const cls = f.id === activeCapFilter ? ' active' : '';
-    return `<button class="source-btn${cls}" data-cap="${f.id}">${f.label}</button>`;
+  el.innerHTML = SOURCE_FILTERS.map(f => {
+    const cls = f.id === activeSourceFilter ? ' active' : '';
+    return `<button class="source-btn${cls}" data-src="${f.id}">${f.label}</button>`;
   }).join('');
   el.querySelectorAll('.source-btn').forEach(btn =>
     btn.addEventListener('click', () => {
-      activeCapFilter = btn.dataset.cap;
+      activeSourceFilter = btn.dataset.src;
       renderSourceToggles();
       renderTabs();
       showTab(activeTab);
@@ -446,9 +455,8 @@ function renderSourceToggles() {
 }
 
 function matchesSources(symbol) {
-  if (activeCapFilter === 'all') return true;
-  if (activeCapFilter === 'mega') return MEGA_CAP.has(symbol);
-  return !MEGA_CAP.has(symbol);
+  const f = SOURCE_FILTERS.find(s => s.id === activeSourceFilter);
+  return f ? f.match(symbol) : true;
 }
 
 /* ── Default filters ── */
@@ -493,7 +501,7 @@ function renderToolbar(filteredCount, totalCount) {
     quickBtns;
 
   document.getElementById('reset-filters-btn').addEventListener('click', () => {
-    activeCapFilter = 'all';
+    activeSourceFilter = 'all';
     activeQuickFilters.clear();
     initDefaultFilters();
     renderSourceToggles();
