@@ -459,8 +459,12 @@ function renderSourceToggles() {
 }
 
 function matchesSources(symbol) {
-  if (activeSources.size === ALL_SPECIFIC_SOURCES.size || activeSources.size === 0) return true;
+  if (activeSources.size === ALL_SPECIFIC_SOURCES.size) return true;
+  if (activeSources.size === 0) return true;
+  const inAnyList = WATCHLIST_SOURCES.some(s => s.symbols && s.symbols.has(symbol));
+  if (activeSources.has('none') && !inAnyList) return true;
   for (const id of activeSources) {
+    if (id === 'none') continue;
     const src = WATCHLIST_SOURCES.find(s => s.id === id);
     if (src && src.symbols && src.symbols.has(symbol)) return true;
   }
