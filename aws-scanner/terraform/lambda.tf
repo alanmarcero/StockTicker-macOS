@@ -54,6 +54,6 @@ resource "aws_lambda_event_source_mapping" "worker_sqs" {
   batch_size       = 1
 
   scaling_config {
-    maximum_concurrency = 2
+    maximum_concurrency = 5
   }
 }

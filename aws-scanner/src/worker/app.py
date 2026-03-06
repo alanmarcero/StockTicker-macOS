@@ -27,7 +27,7 @@ def lambda_handler(event: dict, context) -> dict:
 
         crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors = _process_batch(symbols)
 
-        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above)
+        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors)
 
         if errors:
             _write_errors(bucket, run_id, batch_index, errors)
@@ -227,11 +227,13 @@ def _write_batch_results(
     month_crossdowns: list[dict],
     month_below: list[dict],
     month_above: list[dict],
+    error_details: list[dict] | None = None,
 ) -> None:
     body = {
         "batchIndex": batch_index,
         "symbolsProcessed": symbols_processed,
         "errors": error_count,
+        "errorDetails": error_details or [],
         "crossovers": crossovers,
         "crossdowns": crossdowns,
         "dayBelow": day_below,
@@ -263,6 +265,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     all_month_crossdowns: list[dict] = []
     all_month_below: list[dict] = []
     all_month_above: list[dict] = []
+    all_error_details: list[dict] = []
     total_symbols = 0
     total_errors = 0
 
@@ -282,6 +285,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
         all_month_crossdowns.extend(batch.get("monthCrossdowns", []))
         all_month_below.extend(batch.get("monthBelow", []))
         all_month_above.extend(batch.get("monthAbove", []))
+        all_error_details.extend(batch.get("errorDetails", []))
         total_symbols += batch.get("symbolsProcessed", 0)
         total_errors += batch.get("errors", 0)
 
@@ -320,6 +324,8 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     _put_json(bucket, "results/latest-above.json", above_result)
     _put_json(bucket, "results/latest-monthly.json", monthly_result)
     _put_json(bucket, "results/latest-monthly-below-above.json", monthly_ba_result)
+    all_error_details.sort(key=lambda x: x.get("symbol", ""))
+    _put_json(bucket, "results/latest-errors.json", {**base, "errorDetails": all_error_details})
     _put_json(bucket, f"results/{scan_date}.json", crossover_result)
 
 

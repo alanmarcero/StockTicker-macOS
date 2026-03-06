@@ -27,7 +27,7 @@ UPTREND_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 CROSSDOWN_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 40.0]
 
 # Reusable empty batch for aggregation tests
-EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "crossovers": [], "crossdowns": [], "dayBelow": [], "weekBelow": [], "dayAbove": [], "weekAbove": [], "monthCrossovers": [], "monthCrossdowns": [], "monthBelow": [], "monthAbove": []}
+EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "errorDetails": [], "crossovers": [], "crossdowns": [], "dayBelow": [], "weekBelow": [], "dayAbove": [], "weekAbove": [], "monthCrossovers": [], "monthCrossdowns": [], "monthBelow": [], "monthAbove": []}
 
 
 def _timestamps_for(closes):
@@ -400,13 +400,15 @@ class TestWriteBatchResults:
         month_crossdowns = [{"symbol": "NFLX", "monthsAbove": 3}]
         month_below = [{"symbol": "INTC", "count": 4}]
         month_above = [{"symbol": "AMD", "count": 2}]
+        error_details = [{"symbol": "BAD", "error": "fail"}]
 
-        _write_batch_results("b", "r", 0, 50, 2, crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above)
+        _write_batch_results("b", "r", 0, 50, 2, crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, error_details)
 
         body = json.loads(mock_s3.put_object.call_args[1]["Body"])
         assert body["batchIndex"] == 0
         assert body["symbolsProcessed"] == 50
         assert body["errors"] == 2
+        assert body["errorDetails"] == error_details
         assert body["crossovers"] == crossovers
         assert body["crossdowns"] == crossdowns
         assert body["dayBelow"] == day_below
@@ -648,7 +650,7 @@ class TestAggregateResults:
 
         _aggregate_results("test-bucket", "2026-02-22", 2)
 
-        assert self.mock_put.call_count == 7
+        assert self.mock_put.call_count == 8
         latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 100
         assert latest_data["errors"] == 1
@@ -729,7 +731,7 @@ class TestAggregateResults:
 
         _aggregate_results("b", "2026-02-22", 1)
 
-        archive_key = self.mock_put.call_args_list[6][0][1]
+        archive_key = self.mock_put.call_args_list[7][0][1]
         assert archive_key.startswith("results/")
         assert ".json" in archive_key
 
