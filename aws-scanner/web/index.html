@@ -228,7 +228,15 @@
 
   .filter-row input.filter-num {
     width: 70px;
+    min-height: 36px;
     text-align: right;
+  }
+
+  .filter-row input[type="number"]::-webkit-inner-spin-button {
+    opacity: 1;
+    height: 28px;
+    width: 18px;
+    cursor: pointer;
   }
 
   .filter-row .num-filters {
@@ -303,23 +311,24 @@ const WATCHLIST_SOURCES = [
 ];
 
 const DEFAULT_FILTERS = {
-  close: { min: 5 },
+  close: { min: 10 },
   count: { min: 5 },
-  weeksBelow: { min: 5 },
+  weeksBelow: { min: 7 },
   weeksAbove: { min: 5 },
-  monthsBelow: { min: 3 },
+  monthsBelow: { min: 4 },
   monthsAbove: { min: 3 },
+  pct: { min: 5 },
 };
 
 const TAB_DEFS = [
-  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','weeksBelow','ema','pct'],   pctField: 'pctAbove' },
-  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','ema','pct'],   pctField: 'pctBelow' },
-  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','ema','pct'],        pctField: 'pctBelow' },
-  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','ema','pct'],        pctField: 'pctAbove' },
-  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','ema','pct'],  pctField: 'pctAbove' },
-  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','ema','pct'],  pctField: 'pctBelow' },
-  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','ema','pct'],        pctField: 'pctBelow' },
-  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','ema','pct'],        pctField: 'pctAbove' },
+  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','weeksBelow','pct','ema'],   pctField: 'pctAbove' },
+  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','pct','ema'],   pctField: 'pctBelow' },
+  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','pct','ema'],        pctField: 'pctBelow' },
+  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','pct','ema'],        pctField: 'pctAbove' },
+  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','pct','ema'],  pctField: 'pctAbove' },
+  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema'],  pctField: 'pctBelow' },
+  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema'],        pctField: 'pctBelow' },
+  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','pct','ema'],        pctField: 'pctAbove' },
 ];
 
 const COL_LABELS = {
@@ -455,11 +464,12 @@ function applyFilters(rows, cols) {
 
 /* ── Row rendering ── */
 
-function renderRowHTML(r, cols, pctField) {
+function renderRowHTML(r, cols, pctField, tabId) {
   return '<tr>' + cols.map(c => {
     const v = r[c];
     if (c === 'symbol') {
-      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+      const interval = tabId.startsWith('mo') ? 'M' : 'W';
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=${interval}`;
       return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
     }
     if (c === 'pct') {
@@ -475,11 +485,11 @@ function renderRowHTML(r, cols, pctField) {
   }).join('') + '</tr>';
 }
 
-function renderTbodyHTML(rows, cols, pctField) {
+function renderTbodyHTML(rows, cols, pctField, tabId) {
   if (rows.length === 0) {
     return `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>`;
   }
-  return rows.map(r => renderRowHTML(r, cols, pctField)).join('');
+  return rows.map(r => renderRowHTML(r, cols, pctField, tabId)).join('');
 }
 
 /* ── Tabs ── */
@@ -543,7 +553,7 @@ function showTab(tabId) {
   document.getElementById('content').innerHTML =
     `<div class="table-wrap"><table>` +
     `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
-    `<tbody>${renderTbodyHTML(rows, def.cols, def.pctField)}</tbody>` +
+    `<tbody>${renderTbodyHTML(rows, def.cols, def.pctField, tabId)}</tbody>` +
     `</table></div>`;
 
   document.querySelectorAll('th[data-col]').forEach(th =>
@@ -583,7 +593,7 @@ function updateRows(tabId) {
 
   const tbody = document.querySelector('.table-wrap tbody');
   if (!tbody) return;
-  tbody.innerHTML = renderTbodyHTML(rows, def.cols, def.pctField);
+  tbody.innerHTML = renderTbodyHTML(rows, def.cols, def.pctField, tabId);
 }
 
 /* ── Formatting ── */
