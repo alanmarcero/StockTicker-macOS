@@ -773,9 +773,11 @@ async function renderMeta(json) {
 
   const errStyle = errs ? ' style="color:#f85149"' : '';
   document.getElementById('meta').innerHTML =
-    `<span class="meta">Updated <strong>${t}</strong></span> ` +
+    `<span class="meta">Updated <strong>${t}</strong></span>` +
+    `<span class="meta" style="margin:0 6px;color:#30363d">|</span>` +
     `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${scanned}${total} symbols</a></span>` +
-    ` <span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link"${errStyle}>${errs} errors</a></span>`;
+    `<span class="meta" style="margin:0 6px;color:#30363d">|</span>` +
+    `<span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link"${errStyle}>${errs} errors</a></span>`;
 }
 
 /* ── Fetch & init ── */
