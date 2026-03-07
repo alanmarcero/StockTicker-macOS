@@ -446,6 +446,7 @@ const DEFAULT_FILTERS = {
   weeksAbove: { min: 5 },
   monthsBelow: { min: 4 },
   monthsAbove: { min: 3 },
+  pct: { min: 5 },
 };
 
 const TAB_DEFS = [
@@ -538,17 +539,25 @@ function matchesSources(symbol) {
 
 /* ── Default filters ── */
 
-function initDefaultFilters() {
-  filters = {};
-  activeQuickFilters.clear();
+let lowSignalActive = true;
+
+function applyLowSignalFilters() {
   for (const [c, def] of Object.entries(DEFAULT_FILTERS)) {
     filters[c] = { ...def };
   }
 }
 
+function initDefaultFilters() {
+  filters = {};
+  activeQuickFilters.clear();
+  lowSignalActive = true;
+  applyLowSignalFilters();
+}
+
 function clearAllFilters() {
   filters = {};
   activeQuickFilters.clear();
+  lowSignalActive = false;
 }
 
 /* ── Quick filters ── */
@@ -570,18 +579,25 @@ function renderToolbar(filteredCount, totalCount) {
     return `<button class="quick-btn${cls}" data-qf="${qf.id}">${qf.label}</button>`;
   }).join('');
 
+  const lsCls = lowSignalActive ? ' active' : '';
   el.innerHTML =
     `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
-    `<button class="reset-btn" id="reset-filters-btn">Reset Filters</button>` +
-    `<button class="reset-btn" id="clear-filters-btn">Clear Filters</button>` +
+    `<button class="quick-btn${lsCls}" id="low-signal-btn">Filter Low Signal</button>` +
+    `<button class="reset-btn" id="clear-filters-btn">Remove Filters</button>` +
     `<div class="quick-sep"></div>` +
     quickBtns;
 
-  document.getElementById('reset-filters-btn').addEventListener('click', () => {
-    activeSourceMode = 'all';
+  document.getElementById('low-signal-btn').addEventListener('click', () => {
+    lowSignalActive = !lowSignalActive;
+    if (lowSignalActive) {
+      applyLowSignalFilters();
+    } else {
+      // Remove only the default filter keys, keep user-set filters
+      for (const c of Object.keys(DEFAULT_FILTERS)) {
+        delete filters[c];
+      }
+    }
     activeQuickFilters.clear();
-    initDefaultFilters();
-    renderSourceToggles();
     renderTabs();
     showTab(activeTab);
   });
@@ -769,6 +785,7 @@ function showTab(tabId) {
         if (!filters[col]) filters[col] = {};
         filters[col][bound] = input.value;
       }
+      lowSignalActive = false;
       renderTabs();
       updateRows(tabId);
     });
@@ -785,6 +802,7 @@ function showTab(tabId) {
       filters[col][bound] = cur + dir * step;
       const input = btn.closest('.num-filter-group').querySelector('input');
       if (input) input.value = filters[col][bound];
+      lowSignalActive = false;
       renderTabs();
       updateRows(tabId);
     });
