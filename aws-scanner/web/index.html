@@ -6,6 +6,7 @@
 <title>EMA Scanner</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  button, input { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -32,8 +33,10 @@
     margin-right: auto;
   }
 
-  .banner .meta { color: #8b949e; }
+  .banner .meta { color: #8b949e; white-space: nowrap; }
   .banner .meta strong { color: #c9d1d9; font-weight: 500; }
+  .meta-sep { margin: 0 6px; color: #30363d; }
+  #meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
 
   .meta-link { color: #8b949e; text-decoration: none; }
   .meta-link:hover { color: #58a6ff; text-decoration: underline; }
@@ -119,10 +122,11 @@
   .toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     padding: 6px 24px 2px;
     background: #0d1117;
     font-size: 13px;
+    flex-wrap: wrap;
   }
 
   .row-count { color: #8b949e; }
@@ -333,25 +337,53 @@
 
   @media (max-width: 640px) {
     .banner {
-      padding: 10px 12px;
-      gap: 8px;
+      padding: 8px 10px;
+      gap: 4px;
       flex-direction: column;
       align-items: flex-start;
     }
-    .banner h1 { margin-right: 0; }
-    .tabs { padding: 0 12px; }
-    .source-toggles { padding: 10px 12px; }
-    .toolbar { padding: 6px 12px 2px; }
-    .content { padding: 12px; }
-    td, th { padding: 6px 10px; }
-    .filter-row input.filter-num { width: 60px; }
+    .banner h1 { font-size: 14px; margin-right: 0; }
+    .banner .meta { font-size: 11px; }
+    .tabs { padding: 0 6px; gap: 0; }
+    .tab { padding: 6px 10px; font-size: 12px; min-height: 36px; }
+    .tab .count { font-size: 10px; margin-left: 4px; padding: 1px 5px; }
+    .source-toggles { padding: 6px 8px; gap: 5px; }
+    .source-btn { padding: 4px 9px; font-size: 11px; min-height: 30px; border-radius: 14px; }
+    .toolbar { padding: 4px 8px 2px; gap: 6px; font-size: 12px; }
+    .reset-btn, .quick-btn { font-size: 11px; padding: 4px 10px; min-height: 30px; }
+    .quick-sep { display: none; }
+    .meta-sep { margin: 0 4px; }
+    .content { padding: 6px; }
+    table { font-size: 12px; }
+    th { padding: 6px 8px; }
+    td { padding: 5px 8px; }
+    .filter-row td { padding: 3px 4px; }
+    .filter-row .num-filters { gap: 4px; }
+    .num-filter-group { height: 32px; }
+    .spin-btn { width: 26px; font-size: 13px; }
+    .filter-row input.filter-num { width: 40px; font-size: 11px; padding: 2px 3px; }
+    .filter-row input.filter-symbol { font-size: 11px; min-height: 32px; }
+    .table-wrap { border-radius: 4px; }
   }
 
   @media (max-width: 480px) {
-    .tab { padding: 8px 12px; font-size: 13px; }
-    .source-btn { padding: 4px 10px; font-size: 12px; }
-    .filter-row input.filter-num { width: 50px; }
-    td, th { padding: 5px 8px; font-size: 13px; }
+    .banner { padding: 6px 8px; }
+    .banner h1 { font-size: 13px; }
+    .tabs { padding: 0 4px; }
+    .tab { padding: 5px 7px; font-size: 11px; min-height: 34px; }
+    .tab .count { font-size: 9px; padding: 0 4px; }
+    .source-toggles { padding: 5px 6px; gap: 4px; }
+    .source-btn { padding: 3px 7px; font-size: 10px; min-height: 28px; }
+    .toolbar { padding: 3px 6px 2px; }
+    .content { padding: 4px; }
+    table { font-size: 11px; }
+    th { padding: 5px 6px; font-size: 11px; }
+    td { padding: 4px 6px; }
+    .filter-row td { padding: 2px 3px; }
+    .num-filter-group { height: 30px; }
+    .spin-btn { width: 24px; font-size: 12px; }
+    .filter-row input.filter-num { width: 34px; font-size: 10px; }
+    .filter-row input.filter-symbol { font-size: 10px; min-height: 30px; }
   }
 </style>
 </head>
@@ -810,9 +842,9 @@ async function renderMeta(json) {
   const errStyle = errs ? ' style="color:#f85149"' : '';
   document.getElementById('meta').innerHTML =
     `<span class="meta">Updated <strong>${t}</strong></span>` +
-    `<span class="meta" style="margin:0 6px;color:#30363d">|</span>` +
+    `<span class="meta-sep">|</span>` +
     `<span class="meta"><a href="/symbols/us-equities.txt" target="_blank" class="meta-link">${scanned}${total} symbols</a></span>` +
-    `<span class="meta" style="margin:0 6px;color:#30363d">|</span>` +
+    `<span class="meta-sep">|</span>` +
     `<span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link"${errStyle}>${errs} errors</a></span>`;
 }
 
