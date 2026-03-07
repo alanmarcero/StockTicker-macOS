@@ -377,8 +377,10 @@ const TOP_VOL = new Set(['SPY','QQQ','IWM','EEM','XLF','HYG','SMH','GDX','SLV','
 const SPDR = new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','XLE','SPDW','GLDM','SPYV','XLI','XLC','MDY','XLU','XLY','SDY','XLP','SPEM','SPMD','SPSM','SPTM','SPTL','SPIB','SPHY','SPTI','SPAB','SPSB','XBI','XLRE','JNK','SPYD','XLB','SPMB','XAR','SPTS','CWB','SRLN','FEZ','SJNK','GNR','XME','SLYV','SLYG','TOTL','BILS','KRE','SHM','TFI','HYMB','FLRN','MDYG','CWI','MDYV','XOP','KOMP','SPYX','EBND','SPBO','TIPX','RWR','XHB','XSD','BWX','QUS','XNTK','SPGM']);
 const VANGUARD = new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']);
 
+const SECTOR_ETFS = new Set(['IGV','TAN','LIT','HACK','ROBO','ICLN','QCLN','PBW','FAN','JETS','BETZ','DFEN','ITA','MJ','YOLO','BITQ','BLOK','MSOS','CQQQ','SOXQ','PAVE','IFRA','XHE','GNOM','EDOC','WOOD','COPX','URA','URNM','REMX','GRID','DRIV','CLOU','SKYY','WCLD','FINX','CIBR','SOXX','SMH','IBB','XBI','XOP','XME','XHB','KRE','GDX','SLV','IBIT','EEM','KWEB','ARKK','ARKG','ARKF','BOTZ']);
+
 const CAP_FILTERS = ['all', 'small', 'mega'];
-const ETF_FILTERS = ['topAUM', 'topVol', 'spdr', 'vanguard'];
+const ETF_FILTERS = ['topAUM', 'topVol', 'spdr', 'vanguard', 'sector'];
 
 const SOURCE_DEFS = {
   all:      { label: 'All' },
@@ -389,9 +391,10 @@ const SOURCE_DEFS = {
   topVol:   { label: 'Top Vol ETFs', set: TOP_VOL },
   spdr:     { label: 'SPDR',         set: SPDR },
   vanguard: { label: 'Vanguard',     set: VANGUARD },
+  sector:   { label: 'Sector ETFs',  set: SECTOR_ETFS },
 };
 
-const SOURCE_ORDER = ['all', 'none', 'small', 'mega', 'topAUM', 'topVol', 'spdr', 'vanguard'];
+const SOURCE_ORDER = ['all', 'none', 'small', 'mega', 'topAUM', 'topVol', 'spdr', 'vanguard', 'sector'];
 
 // 'all' = everything, 'none' = nothing, or a Set of active filter ids
 let activeSourceMode = 'all';
