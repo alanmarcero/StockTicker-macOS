@@ -1,6 +1,7 @@
 from typing import Optional
 
 DEFAULT_PERIOD = 5
+BUFFER = 0.01
 
 
 def _build_ema_series(closes: list[float], period: int) -> list[float]:
@@ -34,13 +35,13 @@ def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -
 
     ema_offset = period - 1
 
-    if closes[ema_offset + last_index] <= ema_series[last_index] * 1.01:
+    if closes[ema_offset + last_index] <= ema_series[last_index] * (1 + BUFFER):
         return None
 
     # Count consecutive weeks below EMA before the current candle
     weeks_below = 0
     for i in range(last_index - 1, -1, -1):
-        if closes[ema_offset + i] > ema_series[i]:
+        if closes[ema_offset + i] > ema_series[i] * (1 + BUFFER):
             break
         weeks_below += 1
 
@@ -58,13 +59,13 @@ def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -
 
     ema_offset = period - 1
 
-    if closes[ema_offset + last_index] >= ema_series[last_index] * 0.99:
+    if closes[ema_offset + last_index] >= ema_series[last_index] * (1 - BUFFER):
         return None
 
     # Count consecutive weeks above EMA before the current candle
     weeks_above = 0
     for i in range(last_index - 1, -1, -1):
-        if closes[ema_offset + i] <= ema_series[i]:
+        if closes[ema_offset + i] < ema_series[i] * (1 - BUFFER):
             break
         weeks_above += 1
 
@@ -82,12 +83,13 @@ def count_periods_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Op
 
     ema_offset = period - 1
 
-    if closes[ema_offset + last_index] > ema_series[last_index]:
+    # Stay "below" until price crosses the crossover threshold (> buffer above)
+    if closes[ema_offset + last_index] > ema_series[last_index] * (1 + BUFFER):
         return None
 
     weeks_below = 1
     for i in range(last_index - 1, -1, -1):
-        if closes[ema_offset + i] > ema_series[i]:
+        if closes[ema_offset + i] > ema_series[i] * (1 + BUFFER):
             break
         weeks_below += 1
 
@@ -105,12 +107,13 @@ def count_periods_above(closes: list[float], period: int = DEFAULT_PERIOD) -> Op
 
     ema_offset = period - 1
 
-    if closes[ema_offset + last_index] <= ema_series[last_index]:
+    # Must be decisively above EMA (> buffer) to enter "above" list
+    if closes[ema_offset + last_index] <= ema_series[last_index] * (1 + BUFFER):
         return None
 
     periods_above = 1
     for i in range(last_index - 1, -1, -1):
-        if closes[ema_offset + i] <= ema_series[i]:
+        if closes[ema_offset + i] < ema_series[i] * (1 - BUFFER):
             break
         periods_above += 1
 
