@@ -29,8 +29,13 @@ struct TickerFilter: OptionSet, Codable, Equatable {
         if contains(.greenYTD) && !quote.isYTDGreen { return false }
         if contains(.greenHigh) && !quote.isHighGreen { return false }
         if contains(.greenLow) && !quote.isLowGreen { return false }
-        if contains(.etf) && !quote.isETF { return false }
-        if contains(.asset) && !quote.isAsset { return false }
+
+        let typeFilters = self.intersection([.etf, .asset])
+        if !typeFilters.isEmpty {
+            let matchesType = (typeFilters.contains(.etf) && quote.isETF)
+                || (typeFilters.contains(.asset) && quote.isAsset)
+            if !matchesType { return false }
+        }
         return true
     }
 

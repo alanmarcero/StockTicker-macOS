@@ -210,6 +210,24 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertEqual(result, ["AAPL"])
     }
 
+    func testMatches_bothETFAndAsset_usesORSemantics() {
+        let etf = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
+        let stock = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 99.0, marketCap: 3_000_000_000_000)
+        let filter: TickerFilter = [.etf, .asset]
+        XCTAssertTrue(filter.matches(etf))
+        XCTAssertTrue(filter.matches(stock))
+    }
+
+    func testFilter_bothETFAndAsset_keepsAll() {
+        let quotes: [String: StockQuote] = [
+            "SPY": StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0),
+            "AAPL": StockQuote(symbol: "AAPL", price: 100.0, previousClose: 99.0, marketCap: 3_000_000_000_000)
+        ]
+        let filter: TickerFilter = [.etf, .asset]
+        let result = filter.filter(["SPY", "AAPL"], using: quotes)
+        XCTAssertEqual(result, ["SPY", "AAPL"])
+    }
+
     // MARK: - Toggle via formSymmetricDifference
 
     func testToggle_addsAndRemovesOption() {
