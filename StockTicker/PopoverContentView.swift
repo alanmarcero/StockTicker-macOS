@@ -271,6 +271,7 @@ struct PopoverContentView: View {
     private var sortAndClosedMarketRow: some View {
         HStack(spacing: 12) {
             sortPicker
+            cyclingModePicker
             closedMarketPicker
             Spacer()
         }
@@ -298,6 +299,33 @@ struct PopoverContentView: View {
                 }
             } label: {
                 Text(controller.currentSortOption.rawValue)
+                    .font(.caption)
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    private var cyclingModePicker: some View {
+        HStack(spacing: 4) {
+            Text("Cycling:")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Menu {
+                ForEach(MenuBarCyclingMode.allCases, id: \.self) { mode in
+                    Button {
+                        controller.selectCyclingMode(mode)
+                    } label: {
+                        HStack {
+                            Text(mode.displayName)
+                            if mode == controller.config.menuBarCyclingMode {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Text(controller.config.menuBarCyclingMode.displayName)
                     .font(.caption)
             }
             .menuStyle(.borderlessButton)

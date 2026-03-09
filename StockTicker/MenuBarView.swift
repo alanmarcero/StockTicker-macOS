@@ -506,12 +506,18 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func cycleToNextTicker() {
-        let watchlist = effectiveWatchlist
-        guard !watchlist.isEmpty else { return }
+        let count: Int
+        switch config.menuBarCyclingMode {
+        case .all:
+            count = effectiveWatchlist.count
+        case .indexes:
+            count = config.indexSymbols.count
+        }
+        guard count > 0 else { return }
 
         // Only cycle during regular market hours
         if currentMarketState == .open {
-            currentIndex = (currentIndex + 1) % watchlist.count
+            currentIndex = (currentIndex + 1) % count
         }
         updateMenuBarDisplay()
     }
@@ -632,12 +638,24 @@ class MenuBarController: NSObject, ObservableObject {
             symbol = config.menuBarAssetWhenClosed.symbol
             showExtendedHours = false
         case .open:
-            let safeIndex = currentIndex % watchlist.count
-            symbol = watchlist[safeIndex]
+            switch config.menuBarCyclingMode {
+            case .all:
+                let safeIndex = currentIndex % watchlist.count
+                symbol = watchlist[safeIndex]
+            case .indexes:
+                let indexes = config.indexSymbols
+                guard !indexes.isEmpty else {
+                    button.title = Strings.emptyWatchlist
+                    return
+                }
+                let safeIndex = currentIndex % indexes.count
+                symbol = indexes[safeIndex].symbol
+            }
             showExtendedHours = false
         }
 
-        guard let quote = quotes[symbol], !quote.isPlaceholder else {
+        let allQuotes = quotes.merging(indexQuotes) { existing, _ in existing }
+        guard let quote = allQuotes[symbol], !quote.isPlaceholder else {
             button.attributedTitle = .styled("\(symbol) --", font: MenuItemFactory.monoFontMedium)
             return
         }
@@ -766,6 +784,13 @@ class MenuBarController: NSObject, ObservableObject {
         currentSortOption = option
         config.sortDirection = option.configString
         config.save()
+    }
+
+    func selectCyclingMode(_ mode: MenuBarCyclingMode) {
+        config.menuBarCyclingMode = mode
+        config.save()
+        currentIndex = 0
+        updateMenuBarDisplay()
     }
 
     func selectClosedMarketAsset(_ asset: ClosedMarketAsset) {

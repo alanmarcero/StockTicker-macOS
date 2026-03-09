@@ -869,4 +869,72 @@ final class WatchlistConfigManagerTests: XCTestCase {
 
         XCTAssertNotEqual(config1, config2)
     }
+
+    // MARK: - menuBarCyclingMode tests
+
+    func testDecoder_missingMenuBarCyclingMode_defaultsToAll() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.menuBarCyclingMode, .all)
+    }
+
+    func testDecoder_menuBarCyclingMode_decodesCorrectly() throws {
+        let json = """
+        {
+            "tickers": ["SPY"],
+            "menuBarRotationInterval": 5,
+            "sortDirection": "percentDesc",
+            "menuBarCyclingMode": "indexes"
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(WatchlistConfig.self, from: json)
+
+        XCTAssertEqual(config.menuBarCyclingMode, .indexes)
+    }
+
+    func testEncoder_includesMenuBarCyclingMode() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            menuBarCyclingMode: .indexes
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+
+        XCTAssertEqual(json["menuBarCyclingMode"] as? String, "indexes")
+    }
+
+    func testMenuBarCyclingMode_roundTrip() throws {
+        let config = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            menuBarCyclingMode: .indexes
+        )
+
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
+
+        XCTAssertEqual(decoded.menuBarCyclingMode, .indexes)
+    }
+
+    func testMenuBarCyclingMode_allCases() {
+        XCTAssertEqual(MenuBarCyclingMode.allCases, [.all, .indexes])
+    }
+
+    func testMenuBarCyclingMode_displayNames() {
+        XCTAssertEqual(MenuBarCyclingMode.all.displayName, "All")
+        XCTAssertEqual(MenuBarCyclingMode.indexes.displayName, "Indexes")
+    }
 }

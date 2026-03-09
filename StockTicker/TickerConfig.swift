@@ -1,6 +1,20 @@
 import Foundation
 import AppKit
 
+// MARK: - Menu Bar Cycling Mode
+
+enum MenuBarCyclingMode: String, Codable, CaseIterable {
+    case all
+    case indexes
+
+    var displayName: String {
+        switch self {
+        case .all: return "All"
+        case .indexes: return "Indexes"
+        }
+    }
+}
+
 // MARK: - Menu Bar Asset (for closed/pre-market display)
 
 enum MenuBarAsset: String, Codable, CaseIterable {
@@ -71,6 +85,7 @@ struct WatchlistConfig: Codable, Equatable {
     var finnhubApiKey: String
     var scannerBaseURL: String
     var filterGreenFields: Int
+    var menuBarCyclingMode: MenuBarCyclingMode
 
     static let defaultIndexSymbols: [IndexSymbol] = [
         IndexSymbol(symbol: "^GSPC", displayName: "SPX"),
@@ -166,7 +181,8 @@ struct WatchlistConfig: Codable, Equatable {
         highlightOpacity: 0.25,
         showNewsHeadlines: true,
         newsRefreshInterval: 300,
-        universe: defaultUniverse
+        universe: defaultUniverse,
+        menuBarCyclingMode: .all
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -183,6 +199,7 @@ struct WatchlistConfig: Codable, Equatable {
         case finnhubApiKey
         case scannerBaseURL
         case filterGreenFields
+        case menuBarCyclingMode
     }
 
     init(from decoder: Decoder) throws {
@@ -207,6 +224,7 @@ struct WatchlistConfig: Codable, Equatable {
         finnhubApiKey = try container.decodeIfPresent(String.self, forKey: .finnhubApiKey) ?? ""
         scannerBaseURL = try container.decodeIfPresent(String.self, forKey: .scannerBaseURL) ?? ""
         filterGreenFields = try container.decodeIfPresent(Int.self, forKey: .filterGreenFields) ?? 0
+        menuBarCyclingMode = try container.decodeIfPresent(MenuBarCyclingMode.self, forKey: .menuBarCyclingMode) ?? .all
     }
 
     func encode(to encoder: Encoder) throws {
@@ -227,6 +245,7 @@ struct WatchlistConfig: Codable, Equatable {
         try container.encode(finnhubApiKey, forKey: .finnhubApiKey)
         try container.encode(scannerBaseURL, forKey: .scannerBaseURL)
         try container.encode(filterGreenFields, forKey: .filterGreenFields)
+        try container.encode(menuBarCyclingMode, forKey: .menuBarCyclingMode)
     }
 
     init(
@@ -245,7 +264,8 @@ struct WatchlistConfig: Codable, Equatable {
         universe: [String] = [],
         finnhubApiKey: String = "",
         scannerBaseURL: String = "",
-        filterGreenFields: Int = 0
+        filterGreenFields: Int = 0,
+        menuBarCyclingMode: MenuBarCyclingMode = .all
     ) {
         self.watchlist = watchlist
         self.menuBarRotationInterval = menuBarRotationInterval
@@ -263,6 +283,7 @@ struct WatchlistConfig: Codable, Equatable {
         self.finnhubApiKey = finnhubApiKey
         self.scannerBaseURL = scannerBaseURL
         self.filterGreenFields = filterGreenFields
+        self.menuBarCyclingMode = menuBarCyclingMode
     }
 }
 

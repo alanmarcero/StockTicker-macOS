@@ -173,4 +173,22 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         controller.selectClosedMarketAsset(.bitcoin)
         XCTAssertEqual(controller.config.menuBarAssetWhenClosed, .bitcoin)
     }
+
+    func testSelectCyclingMode_updatesConfig() {
+        let controller = makeController()
+        controller.selectCyclingMode(.indexes)
+        XCTAssertEqual(controller.config.menuBarCyclingMode, .indexes)
+    }
+
+    func testSelectCyclingMode_resetsCurrentIndex() {
+        let controller = makeController()
+        controller.currentIndex = 5
+        controller.selectCyclingMode(.indexes)
+        XCTAssertEqual(controller.currentIndex, 0)
+    }
+
+    func testSelectCyclingMode_defaultIsAll() {
+        let controller = makeController()
+        XCTAssertEqual(controller.config.menuBarCyclingMode, .all)
+    }
 }
