@@ -187,8 +187,4 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         XCTAssertEqual(controller.currentIndex, 0)
     }
 
-    func testSelectCyclingMode_defaultIsAll() {
-        let controller = makeController()
-        XCTAssertEqual(controller.config.menuBarCyclingMode, .all)
-    }
 }

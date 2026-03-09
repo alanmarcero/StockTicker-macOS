@@ -43,6 +43,21 @@ final class TickerDisplayBuilderTests: XCTestCase {
         XCTAssertTrue(result.string.contains(quote.formattedChangePercent))
     }
 
+    func testMenuBarTitle_displayNameOverride_usesDisplayName() {
+        let quote = StockQuote(symbol: "^GSPC", price: 5000.0, previousClose: 4950.0)
+        let result = TickerDisplayBuilder.menuBarTitle(for: quote, displayName: "SPX")
+
+        XCTAssertTrue(result.string.contains("SPX"))
+        XCTAssertFalse(result.string.contains("^GSPC"))
+    }
+
+    func testMenuBarTitle_nilDisplayName_usesSymbol() {
+        let quote = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        let result = TickerDisplayBuilder.menuBarTitle(for: quote, displayName: nil)
+
+        XCTAssertTrue(result.string.contains("AAPL"))
+    }
+
     // MARK: - Ticker Title
 
     func testTickerTitle_basicQuote() {

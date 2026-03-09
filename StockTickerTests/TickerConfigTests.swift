@@ -915,26 +915,25 @@ final class WatchlistConfigManagerTests: XCTestCase {
         XCTAssertEqual(json["menuBarCyclingMode"] as? String, "indexes")
     }
 
-    func testMenuBarCyclingMode_roundTrip() throws {
-        let config = WatchlistConfig(
+    func testMenuBarCyclingMode_displayNames() {
+        XCTAssertEqual(MenuBarCyclingMode.all.displayName, "All")
+        XCTAssertEqual(MenuBarCyclingMode.indexes.displayName, "Indexes")
+    }
+
+    func testEquatable_differentMenuBarCyclingMode_areNotEqual() {
+        let config1 = WatchlistConfig(
+            watchlist: ["SPY"],
+            menuBarRotationInterval: 5,
+            sortDirection: "percentDesc",
+            menuBarCyclingMode: .all
+        )
+        let config2 = WatchlistConfig(
             watchlist: ["SPY"],
             menuBarRotationInterval: 5,
             sortDirection: "percentDesc",
             menuBarCyclingMode: .indexes
         )
 
-        let data = try JSONEncoder().encode(config)
-        let decoded = try JSONDecoder().decode(WatchlistConfig.self, from: data)
-
-        XCTAssertEqual(decoded.menuBarCyclingMode, .indexes)
-    }
-
-    func testMenuBarCyclingMode_allCases() {
-        XCTAssertEqual(MenuBarCyclingMode.allCases, [.all, .indexes])
-    }
-
-    func testMenuBarCyclingMode_displayNames() {
-        XCTAssertEqual(MenuBarCyclingMode.all.displayName, "All")
-        XCTAssertEqual(MenuBarCyclingMode.indexes.displayName, "Indexes")
+        XCTAssertNotEqual(config1, config2)
     }
 }

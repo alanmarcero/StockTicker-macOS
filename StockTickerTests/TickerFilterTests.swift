@@ -147,14 +147,15 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertTrue(filter.matches(quote))
     }
 
-    func testMatches_greenYTDAndAsset_requiresBoth() {
-        // Positive YTD but no marketCap (ETF) → fails asset check
+    func testMatches_greenYTDAndAsset_etfFailsAssetCheck() {
         let etf = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, ytdStartPrice: 100.0)
         let filter: TickerFilter = [.greenYTD, .asset]
         XCTAssertFalse(filter.matches(etf))
+    }
 
-        // Positive YTD with marketCap → passes both
+    func testMatches_greenYTDAndAsset_stockPassesBoth() {
         let stock = StockQuote(symbol: "AAPL", price: 110.0, previousClose: 109.0, ytdStartPrice: 100.0, marketCap: 3_000_000_000_000)
+        let filter: TickerFilter = [.greenYTD, .asset]
         XCTAssertTrue(filter.matches(stock))
     }
 
@@ -210,11 +211,15 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertEqual(result, ["AAPL"])
     }
 
-    func testMatches_bothETFAndAsset_usesORSemantics() {
+    func testMatches_bothETFAndAsset_etfPasses() {
         let etf = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
-        let stock = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 99.0, marketCap: 3_000_000_000_000)
         let filter: TickerFilter = [.etf, .asset]
         XCTAssertTrue(filter.matches(etf))
+    }
+
+    func testMatches_bothETFAndAsset_stockPasses() {
+        let stock = StockQuote(symbol: "AAPL", price: 100.0, previousClose: 99.0, marketCap: 3_000_000_000_000)
+        let filter: TickerFilter = [.etf, .asset]
         XCTAssertTrue(filter.matches(stock))
     }
 
