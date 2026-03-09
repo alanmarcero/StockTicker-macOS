@@ -110,10 +110,10 @@ enum TickerDisplayBuilder {
     }
 
     static func menuBarTitle(
-        for quote: StockQuote, showExtendedHours: Bool = false
+        for quote: StockQuote, displayName: String? = nil, showExtendedHours: Bool = false
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        result.append("\(quote.symbol) ", font: MenuItemFactory.monoFontMedium)
+        result.append("\(displayName ?? quote.symbol) ", font: MenuItemFactory.monoFontMedium)
 
         if showExtendedHours, let extPercent = quote.formattedExtendedHoursChangePercent {
             let color = quote.extendedHoursIsPositive ? NSColor.systemGreen : NSColor.systemRed

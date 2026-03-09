@@ -628,20 +628,24 @@ class MenuBarController: NSObject, ObservableObject {
         }
 
         let symbol: String
+        let displayName: String?
         let showExtendedHours: Bool
 
         switch currentMarketState {
         case .preMarket, .afterHours:
             symbol = config.menuBarAssetWhenClosed.symbol
+            displayName = nil
             showExtendedHours = true
         case .closed:
             symbol = config.menuBarAssetWhenClosed.symbol
+            displayName = nil
             showExtendedHours = false
         case .open:
             switch config.menuBarCyclingMode {
             case .all:
                 let safeIndex = currentIndex % watchlist.count
                 symbol = watchlist[safeIndex]
+                displayName = nil
             case .indexes:
                 let indexes = config.indexSymbols
                 guard !indexes.isEmpty else {
@@ -650,17 +654,18 @@ class MenuBarController: NSObject, ObservableObject {
                 }
                 let safeIndex = currentIndex % indexes.count
                 symbol = indexes[safeIndex].symbol
+                displayName = indexes[safeIndex].displayName
             }
             showExtendedHours = false
         }
 
         let allQuotes = quotes.merging(indexQuotes) { existing, _ in existing }
         guard let quote = allQuotes[symbol], !quote.isPlaceholder else {
-            button.attributedTitle = .styled("\(symbol) --", font: MenuItemFactory.monoFontMedium)
+            button.attributedTitle = .styled("\(displayName ?? symbol) --", font: MenuItemFactory.monoFontMedium)
             return
         }
 
-        button.attributedTitle = TickerDisplayBuilder.menuBarTitle(for: quote, showExtendedHours: showExtendedHours)
+        button.attributedTitle = TickerDisplayBuilder.menuBarTitle(for: quote, displayName: displayName, showExtendedHours: showExtendedHours)
     }
 
     // MARK: - Sorted & Filtered Tickers
