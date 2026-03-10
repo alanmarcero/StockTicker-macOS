@@ -96,6 +96,10 @@
     align-items: center;
   }
 
+  .source-group {
+    display: contents;
+  }
+
   .source-btn {
     padding: 5px 14px;
     min-height: 32px;
@@ -347,43 +351,47 @@
     .tabs { padding: 0 6px; gap: 0; }
     .tab { padding: 6px 10px; font-size: 12px; min-height: 36px; }
     .tab .count { font-size: 10px; margin-left: 4px; padding: 1px 5px; }
-    .source-toggles { padding: 6px 8px; gap: 5px; }
-    .source-btn { padding: 4px 9px; font-size: 11px; min-height: 30px; border-radius: 14px; }
+    .source-toggles { padding: 4px 6px; gap: 4px 5px; }
+    .source-group { display: flex; gap: 4px; flex-wrap: wrap; width: 100%; }
+    .source-btn { padding: 3px 8px; font-size: 10px; min-height: 26px; border-radius: 14px; }
     .toolbar { padding: 4px 8px 2px; gap: 6px; font-size: 12px; }
     .reset-btn, .quick-btn { font-size: 11px; padding: 4px 10px; min-height: 30px; }
     .quick-sep { display: none; }
     .meta-sep { margin: 0 4px; }
-    .content { padding: 6px; }
+    .content { padding: 4px 2px; }
     table { font-size: 12px; }
-    th { padding: 6px 8px; }
-    td { padding: 5px 8px; }
-    .filter-row td { padding: 3px 4px; }
-    .filter-row .num-filters { gap: 4px; }
-    .num-filter-group { height: 32px; }
-    .spin-btn { width: 26px; font-size: 13px; }
-    .filter-row input.filter-num { width: 40px; font-size: 11px; padding: 2px 3px; }
-    .filter-row input.filter-symbol { font-size: 11px; min-height: 32px; }
-    .table-wrap { border-radius: 4px; }
+    th { padding: 5px 4px; }
+    td { padding: 4px 4px; }
+    td.symbol { max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
+    .col-ema { display: none; }
+    .filter-row td { padding: 3px 2px; }
+    .filter-row .num-filters { gap: 3px; }
+    .num-filter-group { height: 30px; }
+    .spin-btn { width: 22px; font-size: 12px; }
+    .filter-row input.filter-num { width: 36px; font-size: 11px; padding: 2px 2px; }
+    .filter-row input.filter-symbol { font-size: 11px; min-height: 30px; }
+    .table-wrap { border-radius: 4px; border-left: none; border-right: none; }
   }
 
   @media (max-width: 480px) {
     .banner { padding: 6px 8px; }
     .banner h1 { font-size: 13px; }
     .tabs { padding: 0 4px; }
-    .tab { padding: 5px 7px; font-size: 11px; min-height: 34px; }
+    .tab { padding: 4px 6px; font-size: 11px; min-height: 32px; }
     .tab .count { font-size: 9px; padding: 0 4px; }
-    .source-toggles { padding: 5px 6px; gap: 4px; }
-    .source-btn { padding: 3px 7px; font-size: 10px; min-height: 28px; }
-    .toolbar { padding: 3px 6px 2px; }
-    .content { padding: 4px; }
+    .source-toggles { padding: 3px 3px; gap: 3px; }
+    .source-group { gap: 3px; }
+    .source-btn { padding: 2px 5px; font-size: 9px; min-height: 24px; }
+    .toolbar { padding: 3px 4px 2px; }
+    .content { padding: 2px 0; }
     table { font-size: 11px; }
-    th { padding: 5px 6px; font-size: 11px; }
-    td { padding: 4px 6px; }
-    .filter-row td { padding: 2px 3px; }
-    .num-filter-group { height: 30px; }
-    .spin-btn { width: 24px; font-size: 12px; }
-    .filter-row input.filter-num { width: 34px; font-size: 10px; }
-    .filter-row input.filter-symbol { font-size: 10px; min-height: 30px; }
+    th { padding: 4px 3px; font-size: 11px; }
+    td { padding: 3px 3px; }
+    .filter-row td { padding: 2px 2px; }
+    .num-filter-group { height: 28px; }
+    .spin-btn { width: 20px; font-size: 11px; }
+    .filter-row input.filter-num { width: 30px; font-size: 10px; }
+    .filter-row input.filter-symbol { font-size: 10px; min-height: 28px; }
   }
 </style>
 </head>
@@ -496,10 +504,15 @@ function isSourceActive(id) {
 
 function renderSourceToggles() {
   const el = document.getElementById('source-toggles');
-  el.innerHTML = SOURCE_ORDER.map(id => {
+  const capIds = ['all', 'none', 'small', 'mega'];
+  const etfIds = SOURCE_ORDER.filter(id => !capIds.includes(id));
+  const btnHTML = ids => ids.map(id => {
     const cls = isSourceActive(id) ? ' active' : '';
     return `<button class="source-btn${cls}" data-src="${id}">${SOURCE_DEFS[id].label}</button>`;
   }).join('');
+  el.innerHTML =
+    `<div class="source-group">${btnHTML(capIds)}</div>` +
+    `<div class="source-group">${btnHTML(etfIds)}</div>`;
   el.querySelectorAll('.source-btn').forEach(btn =>
     btn.addEventListener('click', () => {
       const id = btn.dataset.src;
@@ -668,6 +681,7 @@ function applyFilters(rows, cols) {
 function renderRowHTML(r, cols, pctField, tabId) {
   return '<tr>' + cols.map(c => {
     const v = r[c];
+    const ema = c === 'ema' ? ' col-ema' : '';
     if (c === 'symbol') {
       const interval = tabId.startsWith('mo') ? 'M' : 'W';
       const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=${interval}`;
@@ -681,7 +695,7 @@ function renderRowHTML(r, cols, pctField, tabId) {
       const cls = r.close > r.ema ? 'close-above' : r.close < r.ema ? 'close-below' : '';
       return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
     }
-    if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
+    if (NUM_COLS.has(c)) return `<td class="num${ema}">${fmtNum(c, v)}</td>`;
     return `<td>${esc(v)}</td>`;
   }).join('') + '</tr>';
 }
@@ -733,19 +747,20 @@ function showTab(tabId) {
   const ths = def.cols.map(c => {
     const isSorted = sortCol === c;
     const arrow = isSorted ? (sortAsc ? '\u25B2' : '\u25BC') : '\u25B4';
-    const cls = [NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : ''].filter(Boolean).join(' ');
+    const cls = [NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : '', c === 'ema' ? 'col-ema' : ''].filter(Boolean).join(' ');
     return `<th class="${cls}" data-col="${c}">${COL_LABELS[c]}<span class="sort-arrow">${arrow}</span></th>`;
   }).join('');
 
   const filterCells = def.cols.map(c => {
+    const emaClass = c === 'ema' ? ' col-ema' : '';
     if (c === 'symbol') {
       const val = filters[c]?.text || '';
-      return `<td><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
+      return `<td${emaClass ? ` class="${emaClass.trim()}"` : ''}><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
     }
     const f = filters[c] || {};
     const minVal = f.min != null ? f.min : '';
     const maxVal = f.max != null ? f.max : '';
-    return `<td class="num"><div class="num-filters">` +
+    return `<td class="num${emaClass}"><div class="num-filters">` +
       `<div class="num-filter-group">` +
         `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="-1">&#x2212;</button>` +
         `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
