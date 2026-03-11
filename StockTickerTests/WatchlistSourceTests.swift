@@ -32,7 +32,7 @@ final class WatchlistSourceTests: XCTestCase {
     // MARK: - Display names
 
     func testDisplayName_megaCap() {
-        XCTAssertEqual(WatchlistSource.megaCap.displayName, "$200B+")
+        XCTAssertEqual(WatchlistSource.megaCap.displayName, "$100B+")
     }
 
     func testDisplayName_topAUMETFs() {

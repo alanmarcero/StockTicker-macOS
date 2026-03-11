@@ -51,7 +51,7 @@ pgrep -x Stonks && echo "App is running"
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
 - `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
 - `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, personal)
-- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`: Bundled symbol lists (89 equities $200B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs)
+- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`: Bundled symbol lists (152 equities $100B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs)
 - `Dictionary+Merge`: `mergeKeepingNew`/`mergeKeepingExisting`/`mergingKeepingExisting` extensions
 
 ## Design Patterns
@@ -59,7 +59,7 @@ pgrep -x Stonks && echo "App is running"
 - **Protocol-based DI** for all major components (services, caches, file system, date provider)
 - **Actor isolation** for thread safety; `@MainActor` for state management
 - **`ThrottledTaskGroup`** — bounded concurrency with 4 modes (default, Backfill, FinnhubBackfill, FinnhubQuote). `SymbolRouting.partition()` splits symbols by API source.
-- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 6 sources (bundled $200B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
+- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 6 sources (bundled $100B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
 - **Two-tier symbol sets:** `allCacheSymbols` (all watchlist sources + universe + indices) for most caches; `extraStatsSymbols` (all sources + universe) for quarterly/forward P/E/Extra Stats. Universe quotes always refresh in the background regardless of Extra Stats window visibility.
 - **`CacheStorage<T: Codable>`** — generic file I/O shared by all 8 cache actors
 - **`QuarterlyPanelData`** — DTO bundling data fields passed to Extra Stats view model/controller

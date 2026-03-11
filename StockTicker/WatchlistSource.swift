@@ -16,7 +16,7 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
 
     var displayName: String {
         switch rawValue {
-        case WatchlistSource.megaCap.rawValue: return "$200B+"
+        case WatchlistSource.megaCap.rawValue: return "$100B+"
         case WatchlistSource.topAUMETFs.rawValue: return "Top AUM ETFs"
         case WatchlistSource.topVolETFs.rawValue: return "Top Vol ETFs"
         case WatchlistSource.personal.rawValue: return "My Watchlist"

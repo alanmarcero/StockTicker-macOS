@@ -6,7 +6,7 @@ final class BundledSymbolListTests: XCTestCase {
     // MARK: - MegaCapEquities
 
     func testMegaCapEquities_hasExpectedCount() {
-        XCTAssertEqual(MegaCapEquities.symbols.count, 89)
+        XCTAssertEqual(MegaCapEquities.symbols.count, 152)
     }
 
     func testMegaCapEquities_noDuplicates() {
