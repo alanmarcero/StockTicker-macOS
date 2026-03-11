@@ -378,7 +378,7 @@ class MenuBarController: NSObject, ObservableObject {
             if state == .open {
                 currentSortOption = .percentDesc
                 config.sortDirection = currentSortOption.configString
-                config.save()
+                saveConfig()
             }
         }
         if result.isInitialLoadComplete { hasCompletedInitialLoad = true }
@@ -698,10 +698,14 @@ class MenuBarController: NSObject, ObservableObject {
         configManager.openConfigFile()
     }
 
+    private func saveConfig() {
+        configManager.save(config)
+    }
+
     private func saveAndReload(newWatchlist: [String]) {
         var newConfig = config
         newConfig.watchlist = newWatchlist
-        newConfig.save()
+        configManager.save(newConfig)
         reloadConfig()
     }
 
@@ -788,19 +792,19 @@ class MenuBarController: NSObject, ObservableObject {
     func selectSortOption(_ option: SortOption) {
         currentSortOption = option
         config.sortDirection = option.configString
-        config.save()
+        saveConfig()
     }
 
     func selectCyclingMode(_ mode: MenuBarCyclingMode) {
         config.menuBarCyclingMode = mode
-        config.save()
+        saveConfig()
         currentIndex = 0
         updateMenuBarDisplay()
     }
 
     func selectClosedMarketAsset(_ asset: ClosedMarketAsset) {
         config.menuBarAssetWhenClosed = asset
-        config.save()
+        saveConfig()
         updateMenuBarDisplay()
         Task { await refreshAllQuotes() }
     }
@@ -809,7 +813,7 @@ class MenuBarController: NSObject, ObservableObject {
         var filter = currentFilter
         filter.formSymmetricDifference(option)
         config.filterGreenFields = filter.rawValue
-        config.save()
+        saveConfig()
     }
 
     func toggleSource(_ source: WatchlistSource) {
@@ -823,7 +827,7 @@ class MenuBarController: NSObject, ObservableObject {
     func clearFilters() {
         config.filterGreenFields = 0
         currentWatchlistSource = .allSources
-        config.save()
+        saveConfig()
     }
 
     func showQuarterlyPanel() {
