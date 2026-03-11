@@ -378,7 +378,9 @@ class MenuBarController: NSObject, ObservableObject {
 
         self.quotes.mergeKeepingNew(result.quotes)
         self.indexQuotes.mergeKeepingNew(result.indexQuotes)
-        self.yahooMarketState = result.yahooMarketState
+        if let marketState = result.yahooMarketState {
+            self.yahooMarketState = marketState
+        }
         if currentSortOption.isExtendedHoursSort {
             let state = MarketState(fromYahooState: result.yahooMarketState)
             if state == .open {

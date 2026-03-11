@@ -87,11 +87,14 @@ enum QuoteFetchCoordinator {
         async let fetchedIndexQuotes = service.fetchQuotes(symbols: indexSymbols)
 
         let quotes = await fetchedQuotes
+        let indexQuotes = await fetchedIndexQuotes
+        let marketState = extractMarketState(from: quotes)
+            ?? extractMarketState(from: indexQuotes, symbol: "^GSPC")
 
         return FetchResult(
             quotes: quotes,
-            indexQuotes: await fetchedIndexQuotes,
-            yahooMarketState: extractMarketState(from: quotes),
+            indexQuotes: indexQuotes,
+            yahooMarketState: marketState,
             fetchedSymbols: Set(allSymbols),
             isInitialLoadComplete: false,
             shouldMergeQuotes: false
@@ -110,11 +113,13 @@ enum QuoteFetchCoordinator {
         async let fetchedAlwaysOpen = service.fetchQuotes(symbols: alwaysOpenSymbols)
 
         let quotes = await fetchedQuotes
+        let alwaysOpenQuotes = await fetchedAlwaysOpen
 
         return FetchResult(
             quotes: quotes,
-            indexQuotes: await fetchedAlwaysOpen,
-            yahooMarketState: extractMarketState(from: quotes),
+            indexQuotes: alwaysOpenQuotes,
+            yahooMarketState: extractMarketState(from: quotes)
+                ?? extractMarketState(from: alwaysOpenQuotes, symbol: "^GSPC"),
             fetchedSymbols: Set(allSymbols),
             isInitialLoadComplete: false,
             shouldMergeQuotes: false
