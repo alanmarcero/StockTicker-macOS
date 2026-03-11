@@ -104,9 +104,9 @@ actor HighestCloseCacheManager {
         return CacheTimestamp.needsDailyRefresh(lastUpdated: cache.lastUpdated, dateProvider: dateProvider)
     }
 
-    func clearPricesForDailyRefresh() {
+    func markForDailyRefresh() {
         guard let currentCache = cache else { return }
-        cache = HighestCloseCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", prices: [:], lowestClosePrices: [:])
+        cache = HighestCloseCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", prices: currentCache.prices, lowestClosePrices: currentCache.lowestClosePrices)
     }
 
     // MARK: - Private

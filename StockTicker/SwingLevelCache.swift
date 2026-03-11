@@ -87,9 +87,9 @@ actor SwingLevelCacheManager {
         return CacheTimestamp.needsDailyRefresh(lastUpdated: cache.lastUpdated, dateProvider: dateProvider)
     }
 
-    func clearEntriesForDailyRefresh() {
+    func markForDailyRefresh() {
         guard let currentCache = cache else { return }
-        cache = SwingLevelCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", entries: [:])
+        cache = SwingLevelCacheData(quarterRange: currentCache.quarterRange, lastUpdated: "", entries: currentCache.entries)
     }
 
     // MARK: - Private

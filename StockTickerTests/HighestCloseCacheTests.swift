@@ -292,15 +292,16 @@ final class HighestCloseCacheTests: XCTestCase {
         XCTAssertTrue(needsRefresh)
     }
 
-    // MARK: - Clear Prices For Daily Refresh Tests
+    // MARK: - Mark For Daily Refresh Tests
 
-    func testClearPricesForDailyRefresh_emptiesPricesKeepsQuarterRange() async {
+    func testMarkForDailyRefresh_preservesPricesResetsTimestamp() async {
         let mockFS = MockFileSystem()
 
         let cacheData = HighestCloseCacheData(
             quarterRange: "Q1-2026",
             lastUpdated: "2026-02-15T12:00:00Z",
-            prices: ["AAPL": 260.50, "SPY": 690.10]
+            prices: ["AAPL": 260.50, "SPY": 690.10],
+            lowestClosePrices: ["AAPL": 120.00]
         )
         let jsonData = try! JSONEncoder().encode(cacheData)
         mockFS.files[testCacheFile] = jsonData
@@ -311,25 +312,20 @@ final class HighestCloseCacheTests: XCTestCase {
         )
 
         await cacheManager.load()
-        await cacheManager.clearPricesForDailyRefresh()
+        await cacheManager.markForDailyRefresh()
 
         let allPrices = await cacheManager.getAllPrices()
-        XCTAssertTrue(allPrices.isEmpty)
+        XCTAssertEqual(allPrices["AAPL"], 260.50)
+        XCTAssertEqual(allPrices["SPY"], 690.10)
+
+        let allLowest = await cacheManager.getAllLowestClosePrices()
+        XCTAssertEqual(allLowest["AAPL"], 120.00)
 
         let needsInvalidation = await cacheManager.needsInvalidation(currentRange: "Q1-2026")
         XCTAssertFalse(needsInvalidation)
 
-        await cacheManager.save()
-
-        let cacheURL = URL(fileURLWithPath: testCacheFile)
-        if let writtenData = mockFS.writtenFiles[cacheURL] {
-            let decoded = try! JSONDecoder().decode(HighestCloseCacheData.self, from: writtenData)
-            XCTAssertEqual(decoded.quarterRange, "Q1-2026")
-            XCTAssertTrue(decoded.prices.isEmpty)
-            XCTAssertEqual(decoded.lastUpdated, "")
-        } else {
-            XCTFail("Cache was not written")
-        }
+        let needsRefresh = await cacheManager.needsDailyRefresh()
+        XCTAssertTrue(needsRefresh)
     }
 
     // MARK: - Lowest Close Tests
@@ -397,7 +393,7 @@ final class HighestCloseCacheTests: XCTestCase {
         XCTAssertNil(lowest)
     }
 
-    func testClearPricesForDailyRefresh_clearsBothHighestAndLowest() async {
+    func testMarkForDailyRefresh_preservesBothHighestAndLowest() async {
         let mockFS = MockFileSystem()
         let cacheManager = HighestCloseCacheManager(
             fileSystem: mockFS,
@@ -408,12 +404,12 @@ final class HighestCloseCacheTests: XCTestCase {
         await cacheManager.setHighestClose(for: "AAPL", price: 260.50)
         await cacheManager.setLowestClose(for: "AAPL", price: 120.50)
 
-        await cacheManager.clearPricesForDailyRefresh()
+        await cacheManager.markForDailyRefresh()
 
         let allHighest = await cacheManager.getAllPrices()
         let allLowest = await cacheManager.getAllLowestClosePrices()
-        XCTAssertTrue(allHighest.isEmpty)
-        XCTAssertTrue(allLowest.isEmpty)
+        XCTAssertEqual(allHighest["AAPL"], 260.50)
+        XCTAssertEqual(allLowest["AAPL"], 120.50)
     }
 
     func testSave_persistsLowestClosePrices() async {

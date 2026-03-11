@@ -147,7 +147,7 @@ extension MenuBarController {
         }
 
         if await highestCloseCacheManager.needsDailyRefresh() {
-            await highestCloseCacheManager.clearPricesForDailyRefresh()
+            await highestCloseCacheManager.markForDailyRefresh()
         }
 
         highestClosePrices = await highestCloseCacheManager.getAllPrices()
@@ -235,7 +235,7 @@ extension MenuBarController {
         }
 
         if await swingLevelCacheManager.needsDailyRefresh() {
-            await swingLevelCacheManager.clearEntriesForDailyRefresh()
+            await swingLevelCacheManager.markForDailyRefresh()
         }
 
         swingLevelEntries = await swingLevelCacheManager.getAllEntries()
@@ -259,7 +259,7 @@ extension MenuBarController {
         await emaCacheManager.load()
 
         if await emaCacheManager.needsDailyRefresh() {
-            await emaCacheManager.clearForDailyRefresh()
+            await emaCacheManager.clearDailyFields()
         }
 
         emaEntries = await emaCacheManager.getAllEntries()
@@ -424,41 +424,43 @@ extension MenuBarController {
         var dailyEMAs: [String: Double] = [:]
         var dailyAboveCounts: [String: Int] = [:]
         for (symbol, result) in results {
-            if highestCloseMissing.contains(symbol), let highest = result.highestClose {
+            if let highest = result.highestClose {
                 await highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
             }
-            if lowestCloseMissing.contains(symbol), let lowest = result.lowestClose {
+            if let lowest = result.lowestClose {
                 await highestCloseCacheManager.setLowestClose(for: symbol, price: lowest)
             }
-            if swingMissing.contains(symbol), let entry = result.swingLevelEntry {
+            if let entry = result.swingLevelEntry {
                 await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
             }
             if rsiMissing.contains(symbol), let rsi = result.rsi {
                 await rsiCacheManager.setRSI(for: symbol, value: rsi)
             }
-            if emaMissing.contains(symbol) {
-                if let ema = result.dailyEMA {
-                    dailyEMAs[symbol] = ema
-                }
-                if let aboveCount = result.dailyAboveCount {
-                    dailyAboveCounts[symbol] = aboveCount
-                }
+            if let ema = result.dailyEMA {
+                dailyEMAs[symbol] = ema
+            }
+            if let aboveCount = result.dailyAboveCount {
+                dailyAboveCounts[symbol] = aboveCount
+            }
+            // Update daily fields on existing EMA entries (weekly data preserved)
+            if !emaMissing.contains(symbol) {
+                await emaCacheManager.updateDailyFields(for: symbol, day: result.dailyEMA, dayAboveCount: result.dailyAboveCount)
             }
         }
 
-        if !highestCloseMissing.isEmpty { await highestCloseCacheManager.save() }
-        if !swingMissing.isEmpty { await swingLevelCacheManager.save() }
+        await highestCloseCacheManager.save()
+        await swingLevelCacheManager.save()
         if !rsiMissing.isEmpty { await rsiCacheManager.save() }
 
-        // Fetch remaining EMA timeframes (weekly + monthly) with pre-computed daily values
+        // Fetch remaining EMA timeframes (weekly + monthly) for truly missing symbols
         let emaMissingArray = Array(emaMissing)
         if !emaMissingArray.isEmpty {
             let fetched = await stockService.batchFetchEMAValues(symbols: emaMissingArray, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
             for (symbol, entry) in fetched {
                 await emaCacheManager.setEntry(for: symbol, entry: entry)
             }
-            await emaCacheManager.save()
         }
+        await emaCacheManager.save()
 
         await refreshDailyAnalysisProperties()
     }
@@ -467,11 +469,11 @@ extension MenuBarController {
         var needsRefresh = false
 
         if await highestCloseCacheManager.needsDailyRefresh() {
-            await highestCloseCacheManager.clearPricesForDailyRefresh()
+            await highestCloseCacheManager.markForDailyRefresh()
             needsRefresh = true
         }
         if await swingLevelCacheManager.needsDailyRefresh() {
-            await swingLevelCacheManager.clearEntriesForDailyRefresh()
+            await swingLevelCacheManager.markForDailyRefresh()
             needsRefresh = true
         }
         if await rsiCacheManager.needsDailyRefresh() {
@@ -479,7 +481,7 @@ extension MenuBarController {
             needsRefresh = true
         }
         if await emaCacheManager.needsDailyRefresh() {
-            await emaCacheManager.clearForDailyRefresh()
+            await emaCacheManager.clearDailyFields()
             needsRefresh = true
         }
 

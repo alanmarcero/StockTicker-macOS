@@ -304,9 +304,9 @@ final class SwingLevelCacheTests: XCTestCase {
         XCTAssertTrue(needsRefresh)
     }
 
-    // MARK: - Clear Entries For Daily Refresh Tests
+    // MARK: - Mark For Daily Refresh Tests
 
-    func testClearEntriesForDailyRefresh_emptiesEntriesKeepsQuarterRange() async {
+    func testMarkForDailyRefresh_preservesEntriesResetsTimestamp() async {
         let mockFS = MockFileSystem()
 
         let cacheData = SwingLevelCacheData(
@@ -326,25 +326,18 @@ final class SwingLevelCacheTests: XCTestCase {
         )
 
         await cacheManager.load()
-        await cacheManager.clearEntriesForDailyRefresh()
+        await cacheManager.markForDailyRefresh()
 
         let allEntries = await cacheManager.getAllEntries()
-        XCTAssertTrue(allEntries.isEmpty)
+        XCTAssertEqual(allEntries.count, 2)
+        XCTAssertEqual(allEntries["AAPL"]?.breakoutPrice, 200.0)
+        XCTAssertEqual(allEntries["SPY"]?.breakoutPrice, 500.0)
 
         let needsInvalidation = await cacheManager.needsInvalidation(currentRange: "Q1-2023:Q4-2025")
         XCTAssertFalse(needsInvalidation)
 
-        await cacheManager.save()
-
-        let cacheURL = URL(fileURLWithPath: testCacheFile)
-        if let writtenData = mockFS.writtenFiles[cacheURL] {
-            let decoded = try! JSONDecoder().decode(SwingLevelCacheData.self, from: writtenData)
-            XCTAssertEqual(decoded.quarterRange, "Q1-2023:Q4-2025")
-            XCTAssertTrue(decoded.entries.isEmpty)
-            XCTAssertEqual(decoded.lastUpdated, "")
-        } else {
-            XCTFail("Cache was not written")
-        }
+        let needsRefresh = await cacheManager.needsDailyRefresh()
+        XCTAssertTrue(needsRefresh)
     }
 
     // MARK: - Set Entry with Nil Values

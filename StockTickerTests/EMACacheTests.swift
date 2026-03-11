@@ -625,6 +625,51 @@ final class EMACacheTests: XCTestCase {
         XCTAssertEqual(allEntries.count, 2)
     }
 
+    // MARK: - Update Daily Fields Tests
+
+    func testUpdateDailyFields_preservesWeeklyData() async {
+        let mockFS = MockFileSystem()
+
+        let cacheData = EMACacheData(
+            lastUpdated: "2026-02-15T12:00:00Z",
+            entries: [
+                "AAPL": EMACacheEntry(day: nil, week: 148.0, weekCrossoverWeeksBelow: 3, weekCrossdownWeeksAbove: 7, weekBelowCount: 2, dayAboveCount: nil, weekAboveCount: 10),
+            ]
+        )
+        let jsonData = try! JSONEncoder().encode(cacheData)
+        mockFS.files[testCacheFile] = jsonData
+
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+        await cacheManager.load()
+        await cacheManager.updateDailyFields(for: "AAPL", day: 155.0, dayAboveCount: 12)
+
+        let entry = await cacheManager.getEntry(for: "AAPL")
+        XCTAssertEqual(entry?.day, 155.0)
+        XCTAssertEqual(entry?.dayAboveCount, 12)
+        XCTAssertEqual(entry?.week, 148.0)
+        XCTAssertEqual(entry?.weekCrossoverWeeksBelow, 3)
+        XCTAssertEqual(entry?.weekCrossdownWeeksAbove, 7)
+        XCTAssertEqual(entry?.weekBelowCount, 2)
+        XCTAssertEqual(entry?.weekAboveCount, 10)
+    }
+
+    func testUpdateDailyFields_missingSymbol_noOp() async {
+        let mockFS = MockFileSystem()
+        let cacheManager = EMACacheManager(
+            fileSystem: mockFS,
+            cacheDirectory: testCacheDirectory
+        )
+
+        await cacheManager.setEntry(for: "AAPL", entry: EMACacheEntry(day: 150.0, week: 148.0, weekCrossoverWeeksBelow: nil, weekBelowCount: nil))
+        await cacheManager.updateDailyFields(for: "SPY", day: 500.0, dayAboveCount: 5)
+
+        let entry = await cacheManager.getEntry(for: "SPY")
+        XCTAssertNil(entry)
+    }
+
     func testLoad_withCrossoverField_decodesCorrectly() async {
         let mockFS = MockFileSystem()
 

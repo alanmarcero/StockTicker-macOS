@@ -96,6 +96,17 @@ actor EMACacheManager {
         cache = EMACacheData(lastUpdated: "", entries: [:])
     }
 
+    func updateDailyFields(for symbol: String, day: Double?, dayAboveCount: Int?) {
+        guard var entry = cache?.entries[symbol] else { return }
+        cache?.entries[symbol] = EMACacheEntry(
+            day: day, week: entry.week,
+            weekCrossoverWeeksBelow: entry.weekCrossoverWeeksBelow,
+            weekCrossdownWeeksAbove: entry.weekCrossdownWeeksAbove,
+            weekBelowCount: entry.weekBelowCount,
+            dayAboveCount: dayAboveCount, weekAboveCount: entry.weekAboveCount
+        )
+    }
+
     func clearDailyFields() {
         guard let currentCache = cache else { return }
         var updated: [String: EMACacheEntry] = [:]
