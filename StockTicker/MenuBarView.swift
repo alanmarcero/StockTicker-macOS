@@ -42,9 +42,9 @@ private enum Timing {
         formatter.dateFormat = "h:mm a"
         return formatter
     }()
-    static let watchlistBatchSize = 5
+    static let watchlistBatchSize = 18
     static let watchlistRefreshInterval = 3   // Seconds between watchlist batch fetches
-    static let fullRefreshCadence = 10        // Heavy ops every 10th cycle (~30s at 3s interval)
+    static let fullRefreshCadence = 10        // Indexes + heavy ops every 10th cycle (~30s at 3s interval)
     static let cacheRetryCadence = 40         // Retry missing cache entries every 40th cycle (~120s)
 }
 
@@ -351,28 +351,30 @@ class MenuBarController: NSObject, ObservableObject {
         let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
 
         let watchlistBatch = nextWatchlistBatch(from: watchlist)
+        let isIndexCycle = isInitialLoad || refreshCycleCount % Timing.fullRefreshCadence == 0
 
         let result: FetchResult
         if isInitialLoad {
             result = await QuoteFetchCoordinator.fetchInitialLoad(
-                service: stockService, watchlist: watchlist,
+                service: stockService, watchlist: watchlistBatch,
                 indexSymbols: indexSymbols, alwaysOpenSymbols: alwaysOpenSymbols,
                 closedMarketSymbol: closedMarketSymbol, isWeekend: isWeekend
             )
         } else if scheduleInfo.state == .closed || isWeekend {
             result = await QuoteFetchCoordinator.fetchClosedMarket(
                 service: stockService, closedMarketSymbol: closedMarketSymbol,
-                alwaysOpenSymbols: alwaysOpenSymbols
+                alwaysOpenSymbols: isIndexCycle ? alwaysOpenSymbols : []
             )
         } else if scheduleInfo.state == .open {
             result = await QuoteFetchCoordinator.fetchRegularSession(
                 service: stockService, watchlist: watchlistBatch,
-                indexSymbols: indexSymbols, closedMarketSymbol: closedMarketSymbol
+                indexSymbols: isIndexCycle ? indexSymbols : [], closedMarketSymbol: closedMarketSymbol
             )
         } else {
             result = await QuoteFetchCoordinator.fetchExtendedHours(
                 service: stockService, watchlist: watchlistBatch,
-                alwaysOpenSymbols: alwaysOpenSymbols, closedMarketSymbol: closedMarketSymbol
+                alwaysOpenSymbols: isIndexCycle ? alwaysOpenSymbols : [],
+                closedMarketSymbol: closedMarketSymbol
             )
         }
 
@@ -414,7 +416,7 @@ class MenuBarController: NSObject, ObservableObject {
         }
         attachHighestClosesToQuotes()
         attachLowestClosesToQuotes()
-        highlightFetchedSymbols(result.fetchedSymbols)
+        highlightFetchedSymbols(result.fetchedSymbols, pingMarquee: isIndexCycle)
 
         if isFullRefresh {
             await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
@@ -425,7 +427,9 @@ class MenuBarController: NSObject, ObservableObject {
         updateMenuBarDisplay()
         updateMarketStatus()
         updateCountdown()
-        updateIndexLine()
+        if isIndexCycle {
+            updateIndexLine()
+        }
     }
 
     private func nextWatchlistBatch(from watchlist: [String]) -> [String] {
@@ -438,11 +442,13 @@ class MenuBarController: NSObject, ObservableObject {
         return batch
     }
 
-    private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
+    private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>, pingMarquee: Bool) {
         guard isPopoverOpen, !fetchedSymbols.isEmpty else { return }
         effectiveWatchlist.filter { fetchedSymbols.contains($0) }
             .forEach { highlightIntensity[$0] = 1.0 }
-        marqueeView?.triggerPing()
+        if pingMarquee {
+            marqueeView?.triggerPing()
+        }
     }
 
     // MARK: - Universe Quote Fetching
@@ -841,15 +847,17 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     func toggleSource(_ source: WatchlistSource) {
-        var sources = currentWatchlistSource
-        sources.formSymmetricDifference(source)
-        guard !sources.isEmpty else { return }
-        currentWatchlistSource = sources
+        currentWatchlistSource.formSymmetricDifference(source)
         currentIndex = 0
     }
 
-    func exclusiveSource(_ source: WatchlistSource) {
-        currentWatchlistSource = source
+    func selectAllSources() {
+        currentWatchlistSource = .allSources
+        currentIndex = 0
+    }
+
+    func clearAllSources() {
+        currentWatchlistSource = []
         currentIndex = 0
     }
 

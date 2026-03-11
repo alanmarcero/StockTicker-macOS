@@ -320,18 +320,18 @@ extension MenuBarController {
         guard !spikes.isEmpty else { return }
 
         let targetTimestamps = spikes.map { $0.timestamp }
-        let missing = await vixSpikeCacheManager.getMissingSymbols(from: extraStatsSymbols)
-        guard !missing.isEmpty else {
+        let needsRefresh = await vixSpikeCacheManager.getSymbolsNeedingRefresh(from: extraStatsSymbols)
+        guard !needsRefresh.isEmpty else {
             vixSpikes = spikes
             vixSpikePrices = await vixSpikeCacheManager.getAllSymbolPrices()
             return
         }
 
-        for symbol in missing {
+        for symbol in needsRefresh {
             if let prices = await stockService.fetchClosePricesOnDates(
                 symbol: symbol, period1: period1, period2: period2, targetTimestamps: targetTimestamps
             ) {
-                await vixSpikeCacheManager.setPrices(for: symbol, prices: prices)
+                await vixSpikeCacheManager.mergePrices(for: symbol, newPrices: prices)
             }
         }
         await vixSpikeCacheManager.save()

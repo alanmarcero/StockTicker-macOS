@@ -71,10 +71,11 @@ struct QuarterlyPanelView: View {
             filterToggle("ETFs", filter: .etf)
             filterToggle("Assets", filter: .asset)
 
-            if !viewModel.filterText.isEmpty || !viewModel.typeFilter.isEmpty {
+            if !viewModel.filterText.isEmpty || !viewModel.typeFilter.isEmpty || viewModel.hasActiveMinFilters {
                 Button("Clear") {
                     viewModel.filterText = ""
                     viewModel.typeFilter = []
+                    viewModel.minFilterTexts = [:]
                     viewModel.rebuildRows()
                 }
                 .font(.caption)
@@ -123,15 +124,15 @@ struct QuarterlyPanelView: View {
     private var scrollableContent: some View {
         if viewModel.isEMAsMode {
             HStack(alignment: .top, spacing: 0) {
-                emaTable("Closing Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days Above", suffix: "d")
+                emaTable("Closing Above 5D", rows: viewModel.emaDayRows, columnLabel: "Days Above", suffix: "d", filterKey: "emaDayCount")
                 Divider()
-                emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks Above", suffix: "w")
+                emaTable("Closing Above 5W", rows: viewModel.emaWeekRows, columnLabel: "Wks Above", suffix: "w", filterKey: "emaWeekCount")
                 Divider()
-                emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows, columnLabel: "Wks Below")
+                emaCrossTable("5W Closing Cross Above", rows: viewModel.emaCrossRows, columnLabel: "Wks Below", filterKey: "emaCrossCount")
                 Divider()
-                emaCrossTable("5W Closing Cross Below", rows: viewModel.emaCrossdownRows, columnLabel: "Wks Above")
+                emaCrossTable("5W Closing Cross Below", rows: viewModel.emaCrossdownRows, columnLabel: "Wks Above", filterKey: "emaCrossdownCount")
                 Divider()
-                emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows, columnLabel: "Wks Below")
+                emaCrossTable("Closing Below 5W", rows: viewModel.emaBelowRows, columnLabel: "Wks Below", filterKey: "emaBelowCount")
             }
         } else if viewModel.isPriceBreaksMode {
             HStack(alignment: .top, spacing: 0) {
@@ -219,6 +220,14 @@ struct QuarterlyPanelView: View {
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
+            HStack(spacing: 0) {
+                Color.clear.frame(width: QuarterlyWindowSize.symbolColumnWidth)
+                Color.clear.frame(width: QuarterlyWindowSize.dateColumnWidth)
+                minFilterField(key: isBreakout ? "breakoutPct" : "breakdownPct", width: QuarterlyWindowSize.highColumnWidth)
+                minFilterField(key: isBreakout ? "breakoutRsi" : "breakdownRsi", width: QuarterlyWindowSize.rsiColumnWidth)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
             Divider()
         }
         .background(.background)
@@ -255,10 +264,10 @@ struct QuarterlyPanelView: View {
         .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
-    private func emaTable(_ title: String, rows: [QuarterlyRow], columnLabel: String, suffix: String) -> some View {
+    private func emaTable(_ title: String, rows: [QuarterlyRow], columnLabel: String, suffix: String, filterKey: String) -> some View {
         ScrollView([.vertical]) {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section(header: emaPinnedHeaders(title, columnLabel: columnLabel)) {
+                Section(header: emaPinnedHeaders(title, columnLabel: columnLabel, filterKey: filterKey)) {
                     ForEach(rows) { row in
                         emaRowView(row, suffix: suffix)
                         Divider().opacity(0.3)
@@ -270,7 +279,7 @@ struct QuarterlyPanelView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func emaPinnedHeaders(_ title: String, columnLabel: String) -> some View {
+    private func emaPinnedHeaders(_ title: String, columnLabel: String, filterKey: String) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text(title)
@@ -286,6 +295,12 @@ struct QuarterlyPanelView: View {
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
+            HStack(spacing: 0) {
+                Color.clear.frame(width: QuarterlyWindowSize.symbolColumnWidth)
+                minFilterField(key: filterKey, width: QuarterlyWindowSize.highColumnWidth)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
             Divider()
         }
         .background(.background)
@@ -327,10 +342,10 @@ struct QuarterlyPanelView: View {
         .contextMenu { watchlistContextMenu(for: row.symbol) }
     }
 
-    private func emaCrossTable(_ title: String, rows: [QuarterlyRow], columnLabel: String) -> some View {
+    private func emaCrossTable(_ title: String, rows: [QuarterlyRow], columnLabel: String, filterKey: String) -> some View {
         ScrollView([.vertical]) {
             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                Section(header: emaCrossPinnedHeaders(title, columnLabel: columnLabel)) {
+                Section(header: emaCrossPinnedHeaders(title, columnLabel: columnLabel, filterKey: filterKey)) {
                     ForEach(rows) { row in
                         emaCrossRowView(row)
                         Divider().opacity(0.3)
@@ -342,7 +357,7 @@ struct QuarterlyPanelView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func emaCrossPinnedHeaders(_ title: String, columnLabel: String) -> some View {
+    private func emaCrossPinnedHeaders(_ title: String, columnLabel: String, filterKey: String) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text(title)
@@ -358,6 +373,12 @@ struct QuarterlyPanelView: View {
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
+            HStack(spacing: 0) {
+                Color.clear.frame(width: QuarterlyWindowSize.symbolColumnWidth)
+                minFilterField(key: filterKey, width: QuarterlyWindowSize.highColumnWidth)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
             Divider()
         }
         .background(.background)
@@ -417,6 +438,15 @@ struct QuarterlyPanelView: View {
                 Spacer(minLength: 0)
             }
             .padding(.vertical, 6)
+            HStack(spacing: 0) {
+                Color.clear.frame(width: QuarterlyWindowSize.symbolColumnWidth)
+                minFilterField(key: "high", width: QuarterlyWindowSize.highColumnWidth)
+                ForEach(Array(viewModel.vixSpikeHeaders.enumerated()), id: \.element.dateString) { _, spike in
+                    minFilterField(key: spike.dateString, width: QuarterlyWindowSize.quarterColumnWidth + 20)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 2)
             Divider()
         }
         .background(.background)
@@ -457,9 +487,26 @@ struct QuarterlyPanelView: View {
     private var pinnedColumnHeaders: some View {
         VStack(spacing: 0) {
             columnHeaders
+            mainMinFilterRow
             Divider()
         }
         .background(.background)
+    }
+
+    private var mainMinFilterRow: some View {
+        HStack(spacing: 0) {
+            Color.clear.frame(width: QuarterlyWindowSize.symbolColumnWidth)
+            if viewModel.isForwardPEMode {
+                minFilterField(key: "currentPE", width: QuarterlyWindowSize.highColumnWidth)
+            } else {
+                minFilterField(key: "high", width: QuarterlyWindowSize.highColumnWidth)
+            }
+            ForEach(viewModel.quarters, id: \.identifier) { qi in
+                minFilterField(key: qi.identifier, width: QuarterlyWindowSize.quarterColumnWidth)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
     }
 
     private var columnHeaders: some View {
@@ -626,6 +673,17 @@ struct QuarterlyPanelView: View {
         if rsi > 70 { return .red }
         if rsi < 30 { return .green }
         return .secondary
+    }
+
+    private func minFilterField(key: String, width: CGFloat) -> some View {
+        TextField("Min", text: Binding(
+            get: { viewModel.minFilterTexts[key] ?? "" },
+            set: { viewModel.minFilterTexts[key] = $0; viewModel.rebuildRows() }
+        ))
+        .textFieldStyle(.roundedBorder)
+        .font(.system(size: 9, design: .monospaced))
+        .frame(width: width)
+        .multilineTextAlignment(.trailing)
     }
 
     // MARK: - Header Helpers

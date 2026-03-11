@@ -175,14 +175,8 @@ struct PopoverContentView: View {
 
     private var headerSection: some View {
         VStack(spacing: 4) {
-            VStack(spacing: 4) {
-                marketStatusRow
-                Text(controller.countdownText)
-                    .font(.system(size: LayoutConfig.Font.scheduleSize, design: .monospaced))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.horizontal, 12)
+            marketStatusRow
+                .padding(.horizontal, 12)
             MarqueeViewRepresentable(marqueeView: controller.marqueeView ?? MarqueeView(frame: .zero))
                 .frame(maxWidth: .infinity)
                 .frame(height: LayoutConfig.Marquee.height)
@@ -226,14 +220,23 @@ struct PopoverContentView: View {
 
     private var sourceToggles: some View {
         HStack(spacing: 6) {
+            capsuleToggle(
+                "All",
+                isActive: controller.currentWatchlistSource == .allSources,
+                action: { controller.selectAllSources() }
+            )
             ForEach(WatchlistSource.allCases, id: \.rawValue) { source in
                 capsuleToggle(
                     source.displayName,
                     isActive: controller.currentWatchlistSource.contains(source),
-                    action: { controller.toggleSource(source) },
-                    doubleAction: { controller.exclusiveSource(source) }
+                    action: { controller.toggleSource(source) }
                 )
             }
+            capsuleToggle(
+                "None",
+                isActive: controller.currentWatchlistSource.isEmpty,
+                action: { controller.clearAllSources() }
+            )
             Spacer()
         }
     }
@@ -471,8 +474,7 @@ struct PopoverContentView: View {
     private func capsuleToggle(
         _ label: String,
         isActive: Bool,
-        action: @escaping () -> Void,
-        doubleAction: (() -> Void)? = nil
+        action: @escaping () -> Void
     ) -> some View {
         Text(label)
             .font(.caption)
@@ -486,8 +488,7 @@ struct PopoverContentView: View {
                 Capsule()
                     .strokeBorder(isActive ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1)
             )
-            .onTapGesture(count: 2) { doubleAction?() }
-            .onTapGesture(count: 1) { action() }
+            .onTapGesture { action() }
     }
 
 }

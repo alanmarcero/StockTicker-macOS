@@ -82,11 +82,21 @@ actor VIXSpikeCacheManager {
     }
 
     func clearForDailyRefresh() {
-        cache = VIXSpikeCacheData(lastUpdated: "", spikes: cache?.spikes ?? [], symbolPrices: [:])
+        guard let currentCache = cache, let lastSpike = currentCache.spikes.last else {
+            cache = VIXSpikeCacheData(lastUpdated: "", spikes: cache?.spikes ?? [], symbolPrices: [:])
+            return
+        }
+        // Only clear the most recent spike date's prices — older spikes are historical and stable
+        var updatedPrices = currentCache.symbolPrices
+        for (symbol, var prices) in updatedPrices {
+            prices.removeValue(forKey: lastSpike.dateString)
+            updatedPrices[symbol] = prices
+        }
+        cache = VIXSpikeCacheData(lastUpdated: "", spikes: currentCache.spikes, symbolPrices: updatedPrices)
     }
 
-    /// Replaces spikes with new values. Clears symbol prices if any dateStrings changed.
-    /// Returns true if symbol prices were cleared (callers should re-fetch).
+    /// Replaces spikes with new values. Clears symbol prices only for removed dates.
+    /// Returns true if spike dates changed (callers should re-fetch missing dates).
     func replaceSpikesAndClearIfChanged(_ newSpikes: [VIXSpike]) -> Bool {
         let oldDateStrings = Set((cache?.spikes ?? []).map { $0.dateString })
         let newDateStrings = Set(newSpikes.map { $0.dateString })
@@ -95,10 +105,35 @@ actor VIXSpikeCacheManager {
         ensureCacheExists()
         cache?.spikes = newSpikes
         if datesChanged {
-            cache?.symbolPrices = [:]
+            let removedDates = oldDateStrings.subtracting(newDateStrings)
+            if !removedDates.isEmpty {
+                for (symbol, var prices) in cache?.symbolPrices ?? [:] {
+                    for date in removedDates {
+                        prices.removeValue(forKey: date)
+                    }
+                    cache?.symbolPrices[symbol] = prices
+                }
+            }
         }
         updateLastUpdated()
         return datesChanged
+    }
+
+    func getSymbolsNeedingRefresh(from symbols: [String]) -> [String] {
+        guard let cache else { return symbols }
+        let spikeKeys = Set(cache.spikes.map { $0.dateString })
+        guard !spikeKeys.isEmpty else { return [] }
+        return symbols.filter { symbol in
+            guard let prices = cache.symbolPrices[symbol] else { return true }
+            return !spikeKeys.isSubset(of: Set(prices.keys))
+        }
+    }
+
+    func mergePrices(for symbol: String, newPrices: [String: Double]) {
+        ensureCacheExists()
+        var existing = cache?.symbolPrices[symbol] ?? [:]
+        existing.merge(newPrices) { _, new in new }
+        cache?.symbolPrices[symbol] = existing
     }
 
     // MARK: - Private

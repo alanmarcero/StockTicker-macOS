@@ -12,6 +12,11 @@ class QuarterlyPanelViewModel: ObservableObject {
     @Published var viewMode: QuarterlyViewMode = .sinceQuarter
     @Published var filterText: String = ""
     @Published var typeFilter: TickerFilter = []
+    @Published var minFilterTexts: [String: String] = [:]
+
+    var hasActiveMinFilters: Bool {
+        minFilterTexts.values.contains { !$0.isEmpty }
+    }
     private(set) var configSymbols: Set<String> = []
     private(set) var personalWatchlist: Set<String> = []
     @Published var contextMenuSymbol: String?
@@ -139,6 +144,7 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     func switchMode(_ mode: QuarterlyViewMode) {
         viewMode = mode
+        minFilterTexts = [:]
         rows = buildRows(for: mode)
         applySorting()
     }
@@ -146,6 +152,26 @@ class QuarterlyPanelViewModel: ObservableObject {
     func rebuildRows() {
         rows = buildRows(for: viewMode)
         applySorting()
+    }
+
+    private func passesMinFilter(_ row: QuarterlyRow, relevantKeys: Set<String>? = nil) -> Bool {
+        for (key, text) in minFilterTexts {
+            if let relevant = relevantKeys, !relevant.contains(key) { continue }
+            guard !text.isEmpty, let min = Double(text) else { continue }
+            let value: Double?
+            switch key {
+            case "high": value = row.highestCloseChangePercent
+            case "currentPE": value = row.currentForwardPE
+            case "breakoutPct": value = row.breakoutPercent
+            case "breakdownPct": value = row.breakdownPercent
+            case "breakoutRsi", "breakdownRsi": value = row.rsi
+            case let k where k.hasSuffix("Count"): value = row.breakoutPercent
+            default: value = row.quarterChanges[key] ?? nil
+            }
+            guard let val = value else { continue }
+            if val < min { return false }
+        }
+        return true
     }
 
     private func filteredWatchlist() -> [String] {
@@ -550,5 +576,19 @@ class QuarterlyPanelViewModel: ObservableObject {
             emaBelowRows.sort(by: comparator)
         }
         rows.sort(by: comparator)
+
+        guard hasActiveMinFilters else { return }
+        rows = rows.filter { passesMinFilter($0) }
+        if isPriceBreaksMode {
+            breakoutRows = breakoutRows.filter { passesMinFilter($0, relevantKeys: ["breakoutPct", "breakoutRsi"]) }
+            breakdownRows = breakdownRows.filter { passesMinFilter($0, relevantKeys: ["breakdownPct", "breakdownRsi"]) }
+        }
+        if isEMAsMode {
+            emaDayRows = emaDayRows.filter { passesMinFilter($0, relevantKeys: ["emaDayCount"]) }
+            emaWeekRows = emaWeekRows.filter { passesMinFilter($0, relevantKeys: ["emaWeekCount"]) }
+            emaCrossRows = emaCrossRows.filter { passesMinFilter($0, relevantKeys: ["emaCrossCount"]) }
+            emaCrossdownRows = emaCrossdownRows.filter { passesMinFilter($0, relevantKeys: ["emaCrossdownCount"]) }
+            emaBelowRows = emaBelowRows.filter { passesMinFilter($0, relevantKeys: ["emaBelowCount"]) }
+        }
     }
 }
