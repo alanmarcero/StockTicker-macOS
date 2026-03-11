@@ -42,7 +42,10 @@ private enum Timing {
         formatter.dateFormat = "h:mm a"
         return formatter
     }()
-    static let cacheRetryCadence = 4      // Retry missing cache entries every 4th cycle (~60s)
+    static let watchlistBatchSize = 5
+    static let watchlistRefreshInterval = 3   // Seconds between watchlist batch fetches
+    static let fullRefreshCadence = 10        // Heavy ops every 10th cycle (~30s at 3s interval)
+    static let cacheRetryCadence = 40         // Retry missing cache entries every 40th cycle (~120s)
 }
 
 // MARK: - Menu Bar Controller
@@ -118,6 +121,7 @@ class MenuBarController: NSObject, ObservableObject {
     var universeForwardPEs: [String: Double] = [:]
     var isFetchingDailyAnalysis = false
     private var refreshCycleCount = 0
+    private var watchlistBatchIndex = 0
     private var universeFinnhubBatchIndex = 0
     private var universeYahooBatchIndex = 0
     let backfillScheduler = BackfillScheduler()
@@ -297,7 +301,7 @@ class MenuBarController: NSObject, ObservableObject {
     private func startTimers() {
         timerManager.startTimers(
             cycleInterval: config.menuBarRotationInterval,
-            refreshInterval: config.refreshInterval,
+            refreshInterval: Timing.watchlistRefreshInterval,
             newsEnabled: config.showNewsHeadlines,
             newsInterval: config.newsRefreshInterval
         )
@@ -346,6 +350,8 @@ class MenuBarController: NSObject, ObservableObject {
         let indexSymbols = config.indexSymbols.map { $0.symbol }
         let alwaysOpenSymbols = config.alwaysOpenMarkets.map { $0.symbol }
 
+        let watchlistBatch = nextWatchlistBatch(from: watchlist)
+
         let result: FetchResult
         if isInitialLoad {
             result = await QuoteFetchCoordinator.fetchInitialLoad(
@@ -360,12 +366,12 @@ class MenuBarController: NSObject, ObservableObject {
             )
         } else if scheduleInfo.state == .open {
             result = await QuoteFetchCoordinator.fetchRegularSession(
-                service: stockService, watchlist: watchlist,
+                service: stockService, watchlist: watchlistBatch,
                 indexSymbols: indexSymbols, closedMarketSymbol: closedMarketSymbol
             )
         } else {
             result = await QuoteFetchCoordinator.fetchExtendedHours(
-                service: stockService, watchlist: watchlist,
+                service: stockService, watchlist: watchlistBatch,
                 alwaysOpenSymbols: alwaysOpenSymbols, closedMarketSymbol: closedMarketSymbol
             )
         }
@@ -387,14 +393,17 @@ class MenuBarController: NSObject, ObservableObject {
         refreshCycleCount += 1
         attachYTDPricesToQuotes()
 
-        if isInitialLoad || scheduleInfo.state == .open {
+        let isFullRefresh = isInitialLoad || refreshCycleCount % Timing.fullRefreshCadence == 0
+        if isFullRefresh && (isInitialLoad || scheduleInfo.state == .open) {
             let (fetchedCaps, fetchedPEs) = await stockService.fetchQuoteFields(symbols: watchlist)
             marketCaps.mergeKeepingNew(fetchedCaps)
             currentForwardPEs.mergeKeepingNew(fetchedPEs)
         }
         attachMarketCapsToQuotes()
-        await refreshDailyAnalysisIfNeeded()
-        await refreshVIXSpikesIfNeeded()
+        if isFullRefresh {
+            await refreshDailyAnalysisIfNeeded()
+            await refreshVIXSpikesIfNeeded()
+        }
         if refreshCycleCount % Timing.cacheRetryCadence == 0 {
             let backfillRunning = await backfillScheduler.isRunning
             if !backfillRunning {
@@ -405,7 +414,9 @@ class MenuBarController: NSObject, ObservableObject {
         attachLowestClosesToQuotes()
         highlightFetchedSymbols(result.fetchedSymbols)
 
-        await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
+        if isFullRefresh {
+            await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
+        }
 
         quarterlyWindowController?.refresh(data: makeQuarterlyPanelData(), personalWatchlist: Set(config.watchlist))
 
@@ -413,6 +424,16 @@ class MenuBarController: NSObject, ObservableObject {
         updateMarketStatus()
         updateCountdown()
         updateIndexLine()
+    }
+
+    private func nextWatchlistBatch(from watchlist: [String]) -> [String] {
+        let batchSize = Timing.watchlistBatchSize
+        guard watchlist.count > batchSize else { return watchlist }
+        let offset = (watchlistBatchIndex * batchSize) % watchlist.count
+        let end = min(offset + batchSize, watchlist.count)
+        let batch = Array(watchlist[offset..<end])
+        watchlistBatchIndex += 1
+        return batch
     }
 
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>) {
@@ -589,7 +610,7 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func updateCountdown() {
         let elapsed = dateProvider.now().timeIntervalSince(lastRefreshTime)
-        let remaining = max(0, Int(TimeInterval(config.refreshInterval) - elapsed))
+        let remaining = max(0, Int(TimeInterval(Timing.watchlistRefreshInterval) - elapsed))
 
         let lastTime = Timing.countdownFormatter.string(from: lastRefreshTime)
         countdownText = String(format: Strings.countdownFormat, lastTime, remaining)
@@ -714,6 +735,7 @@ class MenuBarController: NSObject, ObservableObject {
         currentSortOption = SortOption.from(configString: config.sortDirection)
         currentIndex = 0
         hasCompletedInitialLoad = false  // Reset so next refresh fetches all symbols
+        watchlistBatchIndex = 0
         universeFinnhubBatchIndex = 0
         universeYahooBatchIndex = 0
         universeQuotes = [:]
