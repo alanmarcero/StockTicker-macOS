@@ -133,6 +133,19 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         XCTAssertFalse(controller.currentWatchlistSource.isEmpty)
     }
 
+    func testExclusiveSource_setsOnlyThatSource() {
+        let controller = makeController()
+        controller.exclusiveSource(.topAUMETFs)
+        XCTAssertEqual(controller.currentWatchlistSource, .topAUMETFs)
+    }
+
+    func testExclusiveSource_resetsCurrentIndex() {
+        let controller = makeController()
+        controller.currentIndex = 5
+        controller.exclusiveSource(.personal)
+        XCTAssertEqual(controller.currentIndex, 0)
+    }
+
     func testClearFilters_resetsToDefaults() {
         let controller = makeController()
         controller.toggleFilter(.greenYTD)

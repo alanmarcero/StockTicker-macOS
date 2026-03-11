@@ -824,6 +824,11 @@ class MenuBarController: NSObject, ObservableObject {
         currentIndex = 0
     }
 
+    func exclusiveSource(_ source: WatchlistSource) {
+        currentWatchlistSource = source
+        currentIndex = 0
+    }
+
     func clearFilters() {
         config.filterGreenFields = 0
         currentWatchlistSource = .allSources

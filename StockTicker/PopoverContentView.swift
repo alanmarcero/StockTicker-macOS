@@ -229,10 +229,10 @@ struct PopoverContentView: View {
             ForEach(WatchlistSource.allCases, id: \.rawValue) { source in
                 capsuleToggle(
                     source.displayName,
-                    isActive: controller.currentWatchlistSource.contains(source)
-                ) {
-                    controller.toggleSource(source)
-                }
+                    isActive: controller.currentWatchlistSource.contains(source),
+                    action: { controller.toggleSource(source) },
+                    doubleAction: { controller.exclusiveSource(source) }
+                )
             }
             Spacer()
         }
@@ -468,8 +468,13 @@ struct PopoverContentView: View {
 
     // MARK: - Helpers
 
-    private func capsuleToggle(_ label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
-        Button(label) { action() }
+    private func capsuleToggle(
+        _ label: String,
+        isActive: Bool,
+        action: @escaping () -> Void,
+        doubleAction: (() -> Void)? = nil
+    ) -> some View {
+        Text(label)
             .font(.caption)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
@@ -481,7 +486,8 @@ struct PopoverContentView: View {
                 Capsule()
                     .strokeBorder(isActive ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: 1)
             )
-            .buttonStyle(.plain)
+            .onTapGesture(count: 2) { doubleAction?() }
+            .onTapGesture(count: 1) { action() }
     }
 
 }
