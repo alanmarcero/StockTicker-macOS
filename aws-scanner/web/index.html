@@ -116,12 +116,6 @@
 
   .source-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
 
-  .source-btn.active {
-    background: #1f6feb33;
-    border-color: #58a6ff;
-    color: #58a6ff;
-  }
-
   /* Toolbar */
   .toolbar {
     display: flex;
@@ -135,7 +129,7 @@
 
   .row-count { color: #8b949e; }
 
-  .reset-btn {
+  .quick-btn, .reset-btn {
     padding: 3px 10px;
     border-radius: 4px;
     border: 1px solid #30363d;
@@ -155,20 +149,9 @@
     margin: 0 2px;
   }
 
-  .quick-btn {
-    padding: 3px 10px;
-    border-radius: 4px;
-    border: 1px solid #30363d;
-    background: transparent;
-    color: #8b949e;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
   .quick-btn:hover { border-color: #58a6ff; color: #c9d1d9; }
 
-  .quick-btn.active {
+  .source-btn.active, .quick-btn.active {
     background: #1f6feb33;
     border-color: #58a6ff;
     color: #58a6ff;
@@ -447,9 +430,6 @@ const SOURCE_DEFS = {
 
 const SOURCE_ORDER = ['all', 'none', 'small', 'mega', 'topAUM', 'topVol', 'spdr', 'spdrSectors', 'vanguard', 'vaneck', 'wisdomTree', 'globalX', 'roundhill', 'sector'];
 
-// 'all' = everything, 'none' = nothing, or a Set of active filter ids
-let activeSourceMode = 'all';
-
 const DEFAULT_FILTERS = {
   close: { min: 10 },
   count: { min: 5 },
@@ -480,29 +460,34 @@ const COL_LABELS = {
 
 const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count']);
 
-let data = {};
-let activeTab = TAB_DEFS[0].id;
-let sortCol = null;
-let sortAsc = true;
-let filters = {};
+const state = {
+  activeSourceMode: 'all',
+  data: {},
+  activeTab: TAB_DEFS[0].id,
+  sortCol: null,
+  sortAsc: true,
+  filters: {},
+  lowSignalActive: true,
+  activeQuickFilters: new Set(),
+};
 
 /* ── Hash persistence ── */
 
 function readHash() {
   const h = location.hash.replace('#', '');
-  if (h && TAB_DEFS.some(t => t.id === h)) activeTab = h;
+  if (h && TAB_DEFS.some(t => t.id === h)) state.activeTab = h;
 }
 
 function writeHash() {
-  history.replaceState(null, '', '#' + activeTab);
+  history.replaceState(null, '', '#' + state.activeTab);
 }
 
 /* ── Source toggles ── */
 
 function isSourceActive(id) {
-  if (activeSourceMode === 'all') return id === 'all';
-  if (activeSourceMode === 'none') return id === 'none';
-  return activeSourceMode.has(id);
+  if (state.activeSourceMode === 'all') return id === 'all';
+  if (state.activeSourceMode === 'none') return id === 'none';
+  return state.activeSourceMode.has(id);
 }
 
 function renderSourceToggles() {
@@ -520,32 +505,32 @@ function renderSourceToggles() {
     btn.addEventListener('click', () => {
       const id = btn.dataset.src;
       if (id === 'all') {
-        activeSourceMode = 'all';
+        state.activeSourceMode = 'all';
       } else if (id === 'none') {
-        activeSourceMode = 'none';
+        state.activeSourceMode = 'none';
       } else if (CAP_FILTERS.includes(id)) {
         // Cap filters are exclusive (radio-style), clear ETF selections
-        activeSourceMode = new Set([id]);
+        state.activeSourceMode = new Set([id]);
       } else {
         // ETF filters toggle on/off, clear cap selections
-        let cur = (activeSourceMode instanceof Set) ? new Set(activeSourceMode) : new Set();
+        let cur = (state.activeSourceMode instanceof Set) ? new Set(state.activeSourceMode) : new Set();
         // Remove any cap filters
         CAP_FILTERS.forEach(c => cur.delete(c));
         if (cur.has(id)) cur.delete(id);
         else cur.add(id);
-        activeSourceMode = cur.size > 0 ? cur : 'all';
+        state.activeSourceMode = cur.size > 0 ? cur : 'all';
       }
       renderSourceToggles();
       renderTabs();
-      showTab(activeTab);
+      showTab(state.activeTab);
     })
   );
 }
 
 function matchesSources(symbol) {
-  if (activeSourceMode === 'all') return true;
-  if (activeSourceMode === 'none') return false;
-  for (const id of activeSourceMode) {
+  if (state.activeSourceMode === 'all') return true;
+  if (state.activeSourceMode === 'none') return false;
+  for (const id of state.activeSourceMode) {
     const def = SOURCE_DEFS[id];
     if (def.match) { if (def.match(symbol)) return true; }
     else if (def.set) { if (def.set.has(symbol)) return true; }
@@ -555,25 +540,23 @@ function matchesSources(symbol) {
 
 /* ── Default filters ── */
 
-let lowSignalActive = true;
-
 function applyLowSignalFilters() {
   for (const [c, def] of Object.entries(DEFAULT_FILTERS)) {
-    filters[c] = { ...def };
+    state.filters[c] = { ...def };
   }
 }
 
 function initDefaultFilters() {
-  filters = {};
-  activeQuickFilters.clear();
-  lowSignalActive = true;
+  state.filters = {};
+  state.activeQuickFilters.clear();
+  state.lowSignalActive = true;
   applyLowSignalFilters();
 }
 
 function clearAllFilters() {
-  filters = {};
-  activeQuickFilters.clear();
-  lowSignalActive = false;
+  state.filters = {};
+  state.activeQuickFilters.clear();
+  state.lowSignalActive = false;
 }
 
 /* ── Quick filters ── */
@@ -584,18 +567,16 @@ const QUICK_FILTERS = [
   { id: 'high', label: 'High $', col: 'close', values: { min: 300, max: '' } },
 ];
 
-let activeQuickFilters = new Set();
-
 /* ── Toolbar ── */
 
 function renderToolbar(filteredCount, totalCount) {
   const el = document.getElementById('toolbar');
   const quickBtns = QUICK_FILTERS.map(qf => {
-    const cls = activeQuickFilters.has(qf.id) ? ' active' : '';
+    const cls = state.activeQuickFilters.has(qf.id) ? ' active' : '';
     return `<button class="quick-btn${cls}" data-qf="${qf.id}">${qf.label}</button>`;
   }).join('');
 
-  const lsCls = lowSignalActive ? ' active' : '';
+  const lsCls = state.lowSignalActive ? ' active' : '';
   el.innerHTML =
     `<span class="row-count">Showing <strong>${filteredCount}</strong> of <strong>${totalCount}</strong></span>` +
     `<button class="quick-btn${lsCls}" id="low-signal-btn">Filter Low Signal</button>` +
@@ -604,45 +585,45 @@ function renderToolbar(filteredCount, totalCount) {
     quickBtns;
 
   document.getElementById('low-signal-btn').addEventListener('click', () => {
-    lowSignalActive = !lowSignalActive;
-    if (lowSignalActive) {
+    state.lowSignalActive = !state.lowSignalActive;
+    if (state.lowSignalActive) {
       applyLowSignalFilters();
     } else {
       // Remove only the default filter keys, keep user-set filters
       for (const c of Object.keys(DEFAULT_FILTERS)) {
-        delete filters[c];
+        delete state.filters[c];
       }
     }
-    activeQuickFilters.clear();
+    state.activeQuickFilters.clear();
     renderTabs();
-    showTab(activeTab);
+    showTab(state.activeTab);
   });
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     clearAllFilters();
     renderTabs();
-    showTab(activeTab);
+    showTab(state.activeTab);
   });
   el.querySelectorAll('.quick-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const qfId = btn.dataset.qf;
       const qf = QUICK_FILTERS.find(q => q.id === qfId);
-      if (activeQuickFilters.has(qfId)) {
-        activeQuickFilters.delete(qfId);
+      if (state.activeQuickFilters.has(qfId)) {
+        state.activeQuickFilters.delete(qfId);
         // Restore default for this column
         if (DEFAULT_FILTERS[qf.col]) {
-          filters[qf.col] = { ...DEFAULT_FILTERS[qf.col] };
+          state.filters[qf.col] = { ...DEFAULT_FILTERS[qf.col] };
         } else {
-          delete filters[qf.col];
+          delete state.filters[qf.col];
         }
       } else {
         // Deactivate other quick filters on the same column
         QUICK_FILTERS.filter(q => q.col === qf.col && q.id !== qfId)
-          .forEach(q => activeQuickFilters.delete(q.id));
-        activeQuickFilters.add(qfId);
-        filters[qf.col] = { ...qf.values };
+          .forEach(q => state.activeQuickFilters.delete(q.id));
+        state.activeQuickFilters.add(qfId);
+        state.filters[qf.col] = { ...qf.values };
       }
       renderTabs();
-      showTab(activeTab);
+      showTab(state.activeTab);
     });
   });
 }
@@ -650,11 +631,11 @@ function renderToolbar(filteredCount, totalCount) {
 /* ── Sorting ── */
 
 function sortRows(rows) {
-  if (!sortCol) return rows;
+  if (!state.sortCol) return rows;
   return rows.sort((a, b) => {
-    const av = a[sortCol], bv = b[sortCol];
-    if (typeof av === 'number' && typeof bv === 'number') return sortAsc ? av - bv : bv - av;
-    return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    const av = a[state.sortCol], bv = b[state.sortCol];
+    if (typeof av === 'number' && typeof bv === 'number') return state.sortAsc ? av - bv : bv - av;
+    return state.sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
   });
 }
 
@@ -664,7 +645,7 @@ function applyFilters(rows, cols) {
   return rows.filter(r => {
     if (!matchesSources(r.symbol)) return false;
     for (const c of cols) {
-      const f = filters[c];
+      const f = state.filters[c];
       if (!f) continue;
       if (c === 'symbol') {
         if (f.text && !String(r[c]).toLowerCase().includes(f.text.toLowerCase())) return false;
@@ -715,52 +696,46 @@ function renderTbodyHTML(rows, cols, pctField, tabId) {
 function renderTabs() {
   const el = document.getElementById('tabs');
   el.innerHTML = TAB_DEFS.map(t => {
-    const total = data[t.id] ? data[t.id].filter(r => matchesSources(r.symbol)).length : 0;
-    const filtered = data[t.id] ? applyFilters(data[t.id], t.cols).length : 0;
-    const isActive = t.id === activeTab;
-    const hasFilter = isActive && Object.keys(filters).length > 0 &&
-      Object.values(filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
+    const total = state.data[t.id] ? state.data[t.id].filter(r => matchesSources(r.symbol)).length : 0;
+    const filtered = state.data[t.id] ? applyFilters(state.data[t.id], t.cols).length : 0;
+    const isActive = t.id === state.activeTab;
+    const hasFilter = isActive && Object.keys(state.filters).length > 0 &&
+      Object.values(state.filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
     const countText = hasFilter ? `${filtered} / ${total}` : `${total}`;
     return `<div class="tab${isActive ? ' active' : ''}" data-tab="${t.id}">` +
       `${t.label}<span class="count">${countText}</span></div>`;
   }).join('');
   el.querySelectorAll('.tab').forEach(tab =>
     tab.addEventListener('click', () => {
-      activeTab = tab.dataset.tab;
-      sortCol = null;
-      sortAsc = true;
+      state.activeTab = tab.dataset.tab;
+      state.sortCol = null;
+      state.sortAsc = true;
       writeHash();
       renderTabs();
-      showTab(activeTab);
+      showTab(state.activeTab);
     })
   );
 }
 
-/* ── Main tab display ── */
+/* ── Table building helpers ── */
 
-function showTab(tabId) {
-  const def = TAB_DEFS.find(t => t.id === tabId);
-  const allRows = data[tabId] || [];
-  let rows = applyFilters([...allRows], def.cols);
-  sortRows(rows);
-
-  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
-  renderToolbar(rows.length, totalSourced);
-
-  const ths = def.cols.map(c => {
-    const isSorted = sortCol === c;
-    const arrow = isSorted ? (sortAsc ? '\u25B2' : '\u25BC') : '\u25B4';
+function renderTableHeader(def) {
+  return def.cols.map(c => {
+    const isSorted = state.sortCol === c;
+    const arrow = isSorted ? (state.sortAsc ? '\u25B2' : '\u25BC') : '\u25B4';
     const cls = [NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : '', c === 'ema' ? 'col-ema' : ''].filter(Boolean).join(' ');
     return `<th class="${cls}" data-col="${c}">${COL_LABELS[c]}<span class="sort-arrow">${arrow}</span></th>`;
   }).join('');
+}
 
-  const filterCells = def.cols.map(c => {
+function renderFilterRow(def) {
+  return def.cols.map(c => {
     const emaClass = c === 'ema' ? ' col-ema' : '';
     if (c === 'symbol') {
-      const val = filters[c]?.text || '';
+      const val = state.filters[c]?.text || '';
       return `<td${emaClass ? ` class="${emaClass.trim()}"` : ''}><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
     }
-    const f = filters[c] || {};
+    const f = state.filters[c] || {};
     const minVal = f.min != null ? f.min : '';
     const stackClass = c === 'close' ? ' num-filters-stacked' : '';
     let cell = `<td class="num${emaClass}"><div class="num-filters${stackClass}">` +
@@ -780,18 +755,18 @@ function showTab(tabId) {
     }
     return cell + `</div></td>`;
   }).join('');
+}
 
-  document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table>` +
-    `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
-    `<tbody>${renderTbodyHTML(rows, def.cols, def.pctField, tabId)}</tbody>` +
-    `</table></div>`;
+function renderTableBody(def, rows, tabId) {
+  return renderTbodyHTML(rows, def.cols, def.pctField, tabId);
+}
 
+function attachFilterListeners(def, tabId) {
   document.querySelectorAll('th[data-col]').forEach(th =>
     th.addEventListener('click', () => {
       const col = th.dataset.col;
-      if (sortCol === col) sortAsc = !sortAsc;
-      else { sortCol = col; sortAsc = NUM_COLS.has(col) ? false : true; }
+      if (state.sortCol === col) state.sortAsc = !state.sortAsc;
+      else { state.sortCol = col; state.sortAsc = NUM_COLS.has(col) ? false : true; }
       showTab(tabId);
     })
   );
@@ -801,13 +776,13 @@ function showTab(tabId) {
       const col = input.dataset.col;
       const bound = input.dataset.bound;
       if (col === 'symbol') {
-        if (!filters[col]) filters[col] = {};
-        filters[col].text = input.value;
+        if (!state.filters[col]) state.filters[col] = {};
+        state.filters[col].text = input.value;
       } else {
-        if (!filters[col]) filters[col] = {};
-        filters[col][bound] = input.value;
+        if (!state.filters[col]) state.filters[col] = {};
+        state.filters[col][bound] = input.value;
       }
-      lowSignalActive = false;
+      state.lowSignalActive = false;
       renderTabs();
       updateRows(tabId);
     });
@@ -818,22 +793,46 @@ function showTab(tabId) {
       const col = btn.dataset.col;
       const bound = btn.dataset.bound;
       const dir = Number(btn.dataset.dir);
-      if (!filters[col]) filters[col] = {};
-      const cur = Number(filters[col][bound]) || 0;
+      if (!state.filters[col]) state.filters[col] = {};
+      const cur = Number(state.filters[col][bound]) || 0;
       const step = col === 'pct' ? 1 : 1;
-      filters[col][bound] = cur + dir * step;
+      state.filters[col][bound] = cur + dir * step;
       const input = btn.closest('.num-filter-group').querySelector('input');
-      if (input) input.value = filters[col][bound];
-      lowSignalActive = false;
+      if (input) input.value = state.filters[col][bound];
+      state.lowSignalActive = false;
       renderTabs();
       updateRows(tabId);
     });
   });
 }
 
+/* ── Main tab display ── */
+
+function showTab(tabId) {
+  const def = TAB_DEFS.find(t => t.id === tabId);
+  const allRows = state.data[tabId] || [];
+  let rows = applyFilters([...allRows], def.cols);
+  sortRows(rows);
+
+  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
+  renderToolbar(rows.length, totalSourced);
+
+  const ths = renderTableHeader(def);
+  const filterCells = renderFilterRow(def);
+  const body = renderTableBody(def, rows, tabId);
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table>` +
+    `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
+    `<tbody>${body}</tbody>` +
+    `</table></div>`;
+
+  attachFilterListeners(def, tabId);
+}
+
 function updateRows(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
-  const allRows = data[tabId] || [];
+  const allRows = state.data[tabId] || [];
   let rows = applyFilters([...allRows], def.cols);
   sortRows(rows);
 
@@ -908,7 +907,7 @@ async function fetchAll() {
 
   TAB_DEFS.forEach(t => {
     const json = byUrl[t.file];
-    if (!json) { data[t.id] = []; return; }
+    if (!json) { state.data[t.id] = []; return; }
     // Backward compat: old format had "below" with "weeksBelow" field
     let rows;
     if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
@@ -917,7 +916,7 @@ async function fetchAll() {
       rows = json[t.key] || [];
     }
     // Normalize pct field
-    data[t.id] = rows.map(r => ({
+    state.data[t.id] = rows.map(r => ({
       ...r,
       pct: r[t.pctField] != null ? r[t.pctField] : null,
     }));
@@ -932,7 +931,7 @@ async function fetchAll() {
   renderSourceToggles();
   renderTabs();
   writeHash();
-  showTab(activeTab);
+  showTab(state.activeTab);
 }
 
 fetchAll();
