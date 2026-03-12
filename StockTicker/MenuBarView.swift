@@ -43,6 +43,7 @@ private enum Timing {
         return formatter
     }()
     static let watchlistBatchSize = 18
+    static let watchlistMinCycles = 3         // Spread watchlist across at least 3 batches
     static let watchlistRefreshInterval = 3   // Seconds between watchlist batch fetches
     static let fullRefreshCadence = 10        // Indexes + heavy ops every 10th cycle (~30s at 3s interval)
     static let cacheRetryCadence = 40         // Retry missing cache entries every 40th cycle (~120s)
@@ -442,7 +443,9 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func nextWatchlistBatch(from watchlist: [String]) -> [String] {
-        let batchSize = Timing.watchlistBatchSize
+        let maxBatch = Timing.watchlistBatchSize
+        let minCycles = Timing.watchlistMinCycles
+        let batchSize = min(maxBatch, max(1, watchlist.count / minCycles))
         guard watchlist.count > batchSize else { return watchlist }
         let offset = (watchlistBatchIndex * batchSize) % watchlist.count
         let end = min(offset + batchSize, watchlist.count)
