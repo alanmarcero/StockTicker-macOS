@@ -35,7 +35,7 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-54 source files (~9,900 lines), 45 test files (~14,400 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+56 source files (~10,300 lines), 46 test files (~14,600 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
 **Core flow:** `MenuBarView` (`MenuBarController` as `ObservableObject`) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. Menu bar click shows `NSPopover` hosting `PopoverContentView` (SwiftUI) which reads `@Published` properties reactively. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 
@@ -43,23 +43,24 @@ pgrep -x Stonks && echo "App is running"
 - `PopoverContentView`: SwiftUI view hosted in NSPopover — header, controls, news, ticker list, footer
 - `MarqueeViewRepresentable`: NSViewRepresentable wrapper for `MarqueeView`
 - `StockService` + extensions: API client split by concern (historical, EMA, market cap, Finnhub, forward P/E)
-- `StockData.swift`: All data models (StockQuote, API response types)
+- `StockData.swift`: Core data models (StockQuote, TradingSession, Formatting)
+- `APIModels.swift`: API response types (Finnhub, Yahoo Chart/Quote/Timeseries)
 - `QuarterlyPanel{View,ViewModel,Models}`: Extra Stats window
 - `ScannerService`: AWS scanner API client (CloudFront), feature-flagged via `scannerBaseURL`
 - 8 cache actors: YTD, Quarterly, HighestClose, ForwardPE, SwingLevel, RSI, EMA, VIXSpike
 - Pure analysis: `EMAAnalysis`, `SwingAnalysis`, `RSIAnalysis`, `VIXSpikeAnalysis`
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
 - `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
-- `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, personal)
-- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`: Bundled symbol lists (152 equities $100B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs)
+- `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, spdrSectors, personal)
+- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`/`SPDRSectorETFs`: Bundled symbol lists (152 equities $100B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs, 12 sector ETFs)
 - `Dictionary+Merge`: `mergeKeepingNew`/`mergeKeepingExisting`/`mergingKeepingExisting` extensions
 
 ## Design Patterns
 
 - **Protocol-based DI** for all major components (services, caches, file system, date provider)
 - **Actor isolation** for thread safety; `@MainActor` for state management
-- **`ThrottledTaskGroup`** — bounded concurrency with 4 modes (default, Backfill, FinnhubBackfill, FinnhubQuote). `SymbolRouting.partition()` splits symbols by API source.
-- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 6 sources (bundled $100B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
+- **`ThrottledTaskGroup`** — bounded concurrency with 5 modes (default, Backfill, FinnhubBackfill, FinnhubQuote, YahooQuote). `SymbolRouting.partition()` splits symbols by API source.
+- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 7 sources (bundled $100B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, SPDR sector ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
 - **Two-tier symbol sets:** `allCacheSymbols` (all watchlist sources + universe + indices) for most caches; `extraStatsSymbols` (all sources + universe) for quarterly/forward P/E/Extra Stats. Universe quotes always refresh in the background regardless of Extra Stats window visibility.
 - **`CacheStorage<T: Codable>`** — generic file I/O shared by all 8 cache actors
 - **`QuarterlyPanelData`** — DTO bundling data fields passed to Extra Stats view model/controller
@@ -73,11 +74,11 @@ pgrep -x Stonks && echo "App is running"
 - **New config option:** Add to `WatchlistConfig` struct → `init(from decoder:)` with `decodeIfPresent` → `encode(to:)` → UI in `MenuBarController`
 - **New menu item:** `setupMenu()` or `createXxxSubmenu()` → `@objc` action → wire target/action
 - **Ticker display:** `TickerDisplayBuilder` static methods (`menuBarTitle`, `tickerTitle`, `appendYTDSection`, etc.)
-- **API data source:** `StockService.fetchChartData()` + response models in `StockData.swift`
+- **API data source:** `StockService.fetchChartData()` + response models in `APIModels.swift`
 
 ## AWS EMA Scanner (`aws-scanner/`)
 
-Serverless weekly scanner: detects 5-week EMA crossovers/crossdowns and counts days/weeks above EMA across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~2,164 lines.
+Serverless weekly scanner: detects 5-week EMA crossovers/crossdowns and counts days/weeks above EMA across ~10,000 US equities/ETFs. Ports `EMAAnalysis.swift` to Python. ~2,430 lines.
 
 **Cost goal: under $1/month.** All AWS infrastructure decisions must prioritize minimal cost. Prefer free-tier-eligible resources, avoid provisioned capacity, and keep Lambda memory/timeout as low as practical.
 

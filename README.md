@@ -8,7 +8,8 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 
 ## Features
 
-- **Watchlist** — Track up to 128 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours. Filterable by green status (YTD, High, Low) individually or in any combination.
+- **Watchlist** — Track up to 256 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours. Filterable by green status (YTD, High, Low) individually or in any combination.
+- **Multi-source watchlist** — 7 toggleable sources: MegaCap ($100B+ equities), Top AUM ETFs, Top Volume ETFs, SPDR (State Street), Vanguard, SPDR Sectors, and personal watchlist. Double-click a source to exclusively select it.
 - **Scrolling index marquee** — SPX, DJI, NDX, VIX, RUT, and BTC scroll across the top of the dropdown. Switches to crypto (BTC, ETH, SOL, DOGE, XRP) when the market is closed.
 - **Extended hours** — Pre-market and after-hours price changes displayed alongside regular session data. Sortable by AH % (visible after 3:45 PM ET).
 - **Financial news** — Top headlines from Yahoo Finance and CNBC, clickable to open in your browser.
@@ -20,7 +21,7 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 ### Extra Stats Window (`Cmd+Opt+Q`)
 
 - **Since Quarter / During Quarter** — Percent change across the last 12 quarters. "Since Quarter" shows quarter-end to current price; "During Quarter" shows within-quarter performance.
-- **Forward P/E** — Forward P/E ratio history by quarter (requires Finnhub API key).
+- **Forward P/E** — Forward P/E ratio history by quarter.
 - **Price Breaks** — Swing analysis showing breakout/breakdown levels with dates and RSI(14).
 - **5 EMAs** — Daily/weekly EMA crossover/crossdown detection, consecutive closes above/below 5-period EMA. Supports AWS scanner data for ~10K US equities.
 - **Misc Stats** — Aggregate stats: % near 3-year high, average YTD, % above/below 5-week EMA, average/median forward P/E.
@@ -49,8 +50,8 @@ Edit via the menu: **Config > Edit Config** for full JSON, or **Edit Watchlist**
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `watchlist` | `[String]` | 41 symbols | Symbols to track (max 128) |
-| `universe` | `[String]` | `[]` | Extended symbol list for Extra Stats analysis |
+| `watchlist` | `[String]` | `[]` | Symbols to track (max 256) |
+| `universe` | `[String]` | S&P 500 (492 symbols) | Extended symbol list for Extra Stats analysis |
 | `refreshInterval` | `Int` | `30` | Seconds between API refreshes |
 | `menuBarRotationInterval` | `Int` | `5` | Seconds between menu bar symbol rotation |
 | `sortDirection` | `String` | `"percentDesc"` | Default sort order (see sort options) |
@@ -65,6 +66,7 @@ Edit via the menu: **Config > Edit Config** for full JSON, or **Edit Watchlist**
 | `finnhubApiKey` | `String` | `""` | Finnhub API key (free at finnhub.io) |
 | `scannerBaseURL` | `String` | `""` | CloudFront URL for AWS EMA scanner results |
 | `filterGreenFields` | `Int` | `0` | Bitmask for green status filter (1=YTD, 2=High, 4=Low) |
+| `menuBarCyclingMode` | `String` | `"all"` | Menu bar rotation mode (`all` or `indexes`) |
 
 <details>
 <summary>Sort options</summary>
