@@ -388,6 +388,7 @@
 
 <div class="tabs" id="tabs"></div>
 <div class="source-toggles" id="source-toggles"></div>
+<div class="source-toggles" id="week-selector" style="display:none"></div>
 <div class="toolbar" id="toolbar"></div>
 <div class="content" id="content">
   <div class="loading">Loading scan data&hellip;</div>
@@ -469,6 +470,8 @@ const state = {
   filters: {},
   lowSignalActive: true,
   activeQuickFilters: new Set(),
+  manifest: [],
+  selectedWeek: 'latest',
 };
 
 /* ── Hash persistence ── */
@@ -886,6 +889,80 @@ async function renderMeta(json) {
     `<span class="meta"><a href="/results/latest-errors.json" target="_blank" class="meta-link"${errStyle}>${errs} errors</a></span>`;
 }
 
+/* ── Week selector ── */
+
+function fileURLForWeek(latestPath, week) {
+  if (week === 'latest') return latestPath;
+  return latestPath.replace(/\/latest([-.])/g, `/${week}$1`);
+}
+
+function formatWeekLabel(dateStr) {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  return `${months[m - 1]} ${d}`;
+}
+
+function renderWeekSelector() {
+  const el = document.getElementById('week-selector');
+  if (state.manifest.length < 2) {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+  const latestCls = state.selectedWeek === 'latest' ? ' active' : '';
+  let html = `<button class="source-btn${latestCls}" data-week="latest">Latest</button>`;
+  for (const week of state.manifest) {
+    const cls = state.selectedWeek === week ? ' active' : '';
+    html += `<button class="source-btn${cls}" data-week="${esc(week)}">${formatWeekLabel(week)}</button>`;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.source-btn').forEach(btn =>
+    btn.addEventListener('click', () => switchWeek(btn.dataset.week))
+  );
+}
+
+async function switchWeek(week) {
+  if (week === state.selectedWeek) return;
+  state.selectedWeek = week;
+  renderWeekSelector();
+
+  const cb = `_=${Date.now()}`;
+  const latestURLs = [...new Set(TAB_DEFS.map(t => t.file))];
+  const weekURLs = latestURLs.map(u => fileURLForWeek(u, week));
+  const results = await Promise.allSettled(weekURLs.map(u => fetch(`${u}?${cb}`).then(r => {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  })));
+  const byLatestUrl = {};
+  latestURLs.forEach((u, i) => {
+    if (results[i].status === 'fulfilled') byLatestUrl[u] = results[i].value;
+  });
+
+  const meta = byLatestUrl[latestURLs[0]] || byLatestUrl[latestURLs[1]] || byLatestUrl[latestURLs[2]];
+  if (meta) renderMeta(meta);
+
+  TAB_DEFS.forEach(t => {
+    const json = byLatestUrl[t.file];
+    if (!json) { state.data[t.id] = []; return; }
+    let rows;
+    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
+      rows = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
+    } else {
+      rows = json[t.key] || [];
+    }
+    state.data[t.id] = rows.map(r => ({
+      ...r,
+      pct: r[t.pctField] != null ? r[t.pctField] : null,
+    }));
+  });
+
+  renderTabs();
+  showTab(state.activeTab);
+}
+
 /* ── Fetch & init ── */
 
 async function fetchAll() {
@@ -893,10 +970,21 @@ async function fetchAll() {
 
   const cb = `_=${Date.now()}`;
   const urls = [...new Set(TAB_DEFS.map(t => t.file))];
-  const results = await Promise.allSettled(urls.map(u => fetch(`${u}?${cb}`).then(r => {
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
-  })));
+  const [manifestResult, ...results] = await Promise.allSettled([
+    fetch(`/results/manifest.json?${cb}`).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }),
+    ...urls.map(u => fetch(`${u}?${cb}`).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    })),
+  ]);
+
+  if (manifestResult.status === 'fulfilled' && Array.isArray(manifestResult.value)) {
+    state.manifest = manifestResult.value;
+  }
+
   const byUrl = {};
   urls.forEach((u, i) => {
     if (results[i].status === 'fulfilled') byUrl[u] = results[i].value;
@@ -929,6 +1017,7 @@ async function fetchAll() {
 
   initDefaultFilters();
   renderSourceToggles();
+  renderWeekSelector();
   renderTabs();
   writeHash();
   showTab(state.activeTab);
