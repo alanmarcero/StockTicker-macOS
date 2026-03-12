@@ -77,7 +77,7 @@ class MenuBarController: NSObject, ObservableObject {
 
     @Published var newsItems: [NewsItem] = []
     @Published var highlightIntensity: [String: CGFloat] = [:]
-    @Published var countdownText: String = ""
+    var countdownText: String = ""
     @Published var marketStatusState: MarketState = .closed
     @Published var marketScheduleText: String = ""
     @Published var marketHolidayName: String?
@@ -321,19 +321,21 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private func updateHighlights() {
+        guard !highlightIntensity.isEmpty else { return }
+        var updated = highlightIntensity
         var changed = false
-        for symbol in highlightIntensity.keys {
-            guard let intensity = highlightIntensity[symbol], intensity > 0 else { continue }
+        for (symbol, intensity) in updated {
+            guard intensity > 0 else { continue }
             let newValue = intensity - Timing.highlightFadeStep
             if newValue <= 0 {
-                highlightIntensity.removeValue(forKey: symbol)
+                updated.removeValue(forKey: symbol)
             } else {
-                highlightIntensity[symbol] = newValue
+                updated[symbol] = newValue
             }
             changed = true
         }
         if changed {
-            objectWillChange.send()
+            highlightIntensity = updated
         }
     }
 
@@ -427,7 +429,9 @@ class MenuBarController: NSObject, ObservableObject {
             await refreshUniverseQuotesIfNeeded(isInitialLoad: isInitialLoad)
         }
 
-        quarterlyWindowController?.refresh(data: makeQuarterlyPanelData(), personalWatchlist: Set(config.watchlist))
+        if isExtraStatsVisible {
+            quarterlyWindowController?.refresh(data: makeQuarterlyPanelData(), personalWatchlist: Set(config.watchlist))
+        }
 
         updateMenuBarDisplay()
         updateMarketStatus()
@@ -449,8 +453,11 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>, pingMarquee: Bool) {
         guard isPopoverOpen, !fetchedSymbols.isEmpty else { return }
-        effectiveWatchlist.filter { fetchedSymbols.contains($0) }
-            .forEach { highlightIntensity[$0] = 1.0 }
+        var updated = highlightIntensity
+        for symbol in effectiveWatchlist where fetchedSymbols.contains(symbol) {
+            updated[symbol] = 1.0
+        }
+        highlightIntensity = updated
         if pingMarquee {
             marqueeView?.triggerPing()
         }

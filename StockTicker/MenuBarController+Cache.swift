@@ -117,11 +117,13 @@ extension MenuBarController {
     // MARK: - YTD Attachment
 
     func attachYTDPricesToQuotes() {
-        for (symbol, quote) in quotes {
+        var updatedQuotes = quotes
+        for (symbol, quote) in updatedQuotes {
             if let ytdPrice = ytdPrices[symbol] {
-                quotes[symbol] = quote.withYTDStartPrice(ytdPrice)
+                updatedQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
             }
         }
+        quotes = updatedQuotes
 
         for (symbol, quote) in indexQuotes {
             if let ytdPrice = ytdPrices[symbol] {
@@ -129,11 +131,13 @@ extension MenuBarController {
             }
         }
 
-        for (symbol, quote) in universeQuotes {
+        var updatedUniverse = universeQuotes
+        for (symbol, quote) in updatedUniverse {
             if let ytdPrice = ytdPrices[symbol] {
-                universeQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
+                updatedUniverse[symbol] = quote.withYTDStartPrice(ytdPrice)
             }
         }
+        universeQuotes = updatedUniverse
     }
 
     // MARK: - Highest Close Cache
@@ -154,17 +158,21 @@ extension MenuBarController {
     }
 
     func attachHighestClosesToQuotes() {
-        for (symbol, quote) in quotes {
+        var updatedQuotes = quotes
+        for (symbol, quote) in updatedQuotes {
             if let highest = highestClosePrices[symbol] {
-                quotes[symbol] = quote.withHighestClose(highest)
+                updatedQuotes[symbol] = quote.withHighestClose(highest)
             }
         }
+        quotes = updatedQuotes
 
-        for (symbol, quote) in universeQuotes {
+        var updatedUniverse = universeQuotes
+        for (symbol, quote) in updatedUniverse {
             if let highest = highestClosePrices[symbol] {
-                universeQuotes[symbol] = quote.withHighestClose(highest)
+                updatedUniverse[symbol] = quote.withHighestClose(highest)
             }
         }
+        universeQuotes = updatedUniverse
     }
 
     // MARK: - Lowest Close Cache
@@ -174,17 +182,21 @@ extension MenuBarController {
     }
 
     func attachLowestClosesToQuotes() {
-        for (symbol, quote) in quotes {
+        var updatedQuotes = quotes
+        for (symbol, quote) in updatedQuotes {
             if let lowest = lowestClosePrices[symbol] {
-                quotes[symbol] = quote.withLowestClose(lowest)
+                updatedQuotes[symbol] = quote.withLowestClose(lowest)
             }
         }
+        quotes = updatedQuotes
 
-        for (symbol, quote) in universeQuotes {
+        var updatedUniverse = universeQuotes
+        for (symbol, quote) in updatedUniverse {
             if let lowest = lowestClosePrices[symbol] {
-                universeQuotes[symbol] = quote.withLowestClose(lowest)
+                updatedUniverse[symbol] = quote.withLowestClose(lowest)
             }
         }
+        universeQuotes = updatedUniverse
     }
 
     // MARK: - Forward P/E Cache
@@ -597,16 +609,20 @@ extension MenuBarController {
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {
-        for (symbol, quote) in quotes {
+        var updatedQuotes = quotes
+        for (symbol, quote) in updatedQuotes {
             if let cap = marketCaps[symbol] {
-                quotes[symbol] = quote.withMarketCap(cap)
+                updatedQuotes[symbol] = quote.withMarketCap(cap)
             }
         }
+        quotes = updatedQuotes
 
-        for (symbol, quote) in universeQuotes {
+        var updatedUniverse = universeQuotes
+        for (symbol, quote) in updatedUniverse {
             if let cap = universeMarketCaps[symbol] {
-                universeQuotes[symbol] = quote.withMarketCap(cap)
+                updatedUniverse[symbol] = quote.withMarketCap(cap)
             }
         }
+        universeQuotes = updatedUniverse
     }
 }
