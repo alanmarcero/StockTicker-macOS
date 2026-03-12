@@ -8,35 +8,19 @@ TIMEOUT_SECONDS = 10
 
 
 def fetch_daily_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
-    url = f"{BASE_URL}/{symbol}?range=1mo&interval=1d"
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read())
-    except (OSError, ValueError) as err:
-        print(f"[yahoo] {symbol}: {err}")
-        return None
-
-    return _parse_response(data)
+    return _fetch_candles(symbol, range_param="1mo", interval="1d")
 
 
 def fetch_weekly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
-    url = f"{BASE_URL}/{symbol}?range=6mo&interval=1wk"
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-
-    try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read())
-    except (OSError, ValueError) as err:
-        print(f"[yahoo] {symbol}: {err}")
-        return None
-
-    return _parse_response(data)
+    return _fetch_candles(symbol, range_param="6mo", interval="1wk")
 
 
 def fetch_monthly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
-    url = f"{BASE_URL}/{symbol}?range=2y&interval=1wk"
+    return _fetch_candles(symbol, range_param="2y", interval="1wk")
+
+
+def _fetch_candles(symbol: str, range_param: str, interval: str) -> Optional[tuple[list[float], list[int]]]:
+    url = f"{BASE_URL}/{symbol}?range={range_param}&interval={interval}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
 
     try:

@@ -2,7 +2,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 import boto3
 
@@ -13,6 +13,9 @@ except ImportError:
 
 s3 = boto3.client("s3")
 cloudfront = boto3.client("cloudfront")
+
+RATE_LIMIT_DELAY = 1
+MIN_WEEKS_THRESHOLD = 3
 
 
 def lambda_handler(event: dict, context) -> dict:
@@ -62,6 +65,50 @@ def _aggregate_to_monthly(closes: list[float], timestamps: list[int]) -> list[fl
     return list(monthly.values())
 
 
+def _pct_diff(close: float, ema_value: float) -> float:
+    return round((close - ema_value) / ema_value * 100, 2)
+
+
+def _above_entry(symbol: str, close: float, ema_value: float, count: int) -> dict:
+    return {
+        "symbol": symbol,
+        "close": close,
+        "ema": round(ema_value, 4),
+        "pctAbove": _pct_diff(close, ema_value),
+        "count": count,
+    }
+
+
+def _below_entry(symbol: str, close: float, ema_value: float, count: int) -> dict:
+    return {
+        "symbol": symbol,
+        "close": close,
+        "ema": round(ema_value, 4),
+        "pctBelow": _pct_diff(ema_value, close),
+        "count": count,
+    }
+
+
+def _crossover_entry(symbol: str, close: float, ema_value: float, periods_below: int, period_key: str) -> dict:
+    return {
+        "symbol": symbol,
+        "close": close,
+        "ema": round(ema_value, 4),
+        "pctAbove": _pct_diff(close, ema_value),
+        period_key: periods_below,
+    }
+
+
+def _crossdown_entry(symbol: str, close: float, ema_value: float, periods_above: int, period_key: str) -> dict:
+    return {
+        "symbol": symbol,
+        "close": close,
+        "ema": round(ema_value, 4),
+        "pctBelow": _pct_diff(ema_value, close),
+        period_key: periods_above,
+    }
+
+
 def _process_batch(
     symbols: list[str],
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
@@ -79,7 +126,7 @@ def _process_batch(
 
     for i, symbol in enumerate(symbols):
         if i > 0:
-            time.sleep(1)
+            time.sleep(RATE_LIMIT_DELAY)
 
         daily_result = yahoo.fetch_daily_candles(symbol)
         weekly_result = yahoo.fetch_weekly_candles(symbol)
@@ -90,137 +137,101 @@ def _process_batch(
             errors.append({"symbol": symbol, "error": "Failed to fetch candles"})
             continue
 
-        if daily_result is not None:
-            daily_closes = daily_result[0]
-            daily_ema_value = ema.calculate(daily_closes)
-            if daily_ema_value is not None:
-                last_close = daily_closes[-1]
-
-                daily_above_count = ema.count_periods_above(daily_closes)
-                if daily_above_count is not None:
-                    pct = round((last_close - daily_ema_value) / daily_ema_value * 100, 2)
-                    day_above.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(daily_ema_value, 4),
-                        "pctAbove": pct,
-                        "count": daily_above_count,
-                    })
-
-                daily_below_count = ema.count_periods_below(daily_closes)
-                if daily_below_count is not None:
-                    pct = round((daily_ema_value - last_close) / daily_ema_value * 100, 2)
-                    day_below.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(daily_ema_value, 4),
-                        "pctBelow": pct,
-                        "count": daily_below_count,
-                    })
-
-        if weekly_result is not None:
-            closes, _ = _strip_incomplete_week(weekly_result[0], weekly_result[1])
-            ema_value = ema.calculate(closes)
-            if ema_value is not None:
-                last_close = closes[-1]
-
-                crossover_weeks = ema.detect_weekly_crossover(closes)
-                if crossover_weeks is not None:
-                    pct_above = round((last_close - ema_value) / ema_value * 100, 2)
-                    crossovers.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(ema_value, 4),
-                        "pctAbove": pct_above,
-                        "weeksBelow": crossover_weeks,
-                    })
-
-                crossdown_weeks = ema.detect_weekly_crossdown(closes)
-                if crossdown_weeks is not None:
-                    pct_below = round((ema_value - last_close) / ema_value * 100, 2)
-                    crossdowns.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(ema_value, 4),
-                        "pctBelow": pct_below,
-                        "weeksAbove": crossdown_weeks,
-                    })
-
-                weekly_below_count = ema.count_periods_below(closes)
-                if weekly_below_count is not None and weekly_below_count >= 3:
-                    pct_below = round((ema_value - last_close) / ema_value * 100, 2)
-                    week_below.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(ema_value, 4),
-                        "pctBelow": pct_below,
-                        "count": weekly_below_count,
-                    })
-
-                weekly_above_count = ema.count_periods_above(closes)
-                if weekly_above_count is not None:
-                    pct = round((last_close - ema_value) / ema_value * 100, 2)
-                    week_above.append({
-                        "symbol": symbol,
-                        "close": last_close,
-                        "ema": round(ema_value, 4),
-                        "pctAbove": pct,
-                        "count": weekly_above_count,
-                    })
-
-        if monthly_result is not None:
-            # Monthly analysis: derive monthly candles from 2y weekly data
-            m_closes, m_timestamps = _strip_incomplete_week(monthly_result[0], monthly_result[1])
-            monthly_closes = _aggregate_to_monthly(m_closes, m_timestamps)
-            monthly_ema = ema.calculate(monthly_closes)
-            if monthly_ema is not None:
-                m_last = monthly_closes[-1]
-
-                m_crossover = ema.detect_weekly_crossover(monthly_closes)
-                if m_crossover is not None:
-                    pct = round((m_last - monthly_ema) / monthly_ema * 100, 2)
-                    month_crossovers.append({
-                        "symbol": symbol,
-                        "close": m_last,
-                        "ema": round(monthly_ema, 4),
-                        "pctAbove": pct,
-                        "monthsBelow": m_crossover,
-                    })
-
-                m_crossdown = ema.detect_weekly_crossdown(monthly_closes)
-                if m_crossdown is not None:
-                    pct = round((monthly_ema - m_last) / monthly_ema * 100, 2)
-                    month_crossdowns.append({
-                        "symbol": symbol,
-                        "close": m_last,
-                        "ema": round(monthly_ema, 4),
-                        "pctBelow": pct,
-                        "monthsAbove": m_crossdown,
-                    })
-
-                m_below = ema.count_periods_below(monthly_closes)
-                if m_below is not None:
-                    pct = round((monthly_ema - m_last) / monthly_ema * 100, 2)
-                    month_below.append({
-                        "symbol": symbol,
-                        "close": m_last,
-                        "ema": round(monthly_ema, 4),
-                        "pctBelow": pct,
-                        "count": m_below,
-                    })
-
-                m_above = ema.count_periods_above(monthly_closes)
-                if m_above is not None:
-                    pct = round((m_last - monthly_ema) / monthly_ema * 100, 2)
-                    month_above.append({
-                        "symbol": symbol,
-                        "close": m_last,
-                        "ema": round(monthly_ema, 4),
-                        "pctAbove": pct,
-                        "count": m_above,
-                    })
+        _process_daily(symbol, daily_result, day_above, day_below)
+        _process_weekly(symbol, weekly_result, crossovers, crossdowns, week_below, week_above)
+        _process_monthly(symbol, monthly_result, month_crossovers, month_crossdowns, month_below, month_above)
 
     return crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors
+
+
+def _process_daily(
+    symbol: str,
+    daily_result: Optional[tuple[list[float], list[int]]],
+    day_above: list[dict],
+    day_below: list[dict],
+) -> None:
+    if daily_result is None:
+        return
+    daily_closes = daily_result[0]
+    daily_ema_value = ema.calculate(daily_closes)
+    if daily_ema_value is None:
+        return
+    last_close = daily_closes[-1]
+
+    above_count = ema.count_periods_above(daily_closes)
+    if above_count is not None:
+        day_above.append(_above_entry(symbol, last_close, daily_ema_value, above_count))
+
+    below_count = ema.count_periods_below(daily_closes)
+    if below_count is not None:
+        day_below.append(_below_entry(symbol, last_close, daily_ema_value, below_count))
+
+
+def _process_weekly(
+    symbol: str,
+    weekly_result: Optional[tuple[list[float], list[int]]],
+    crossovers: list[dict],
+    crossdowns: list[dict],
+    week_below: list[dict],
+    week_above: list[dict],
+) -> None:
+    if weekly_result is None:
+        return
+    closes, _ = _strip_incomplete_week(weekly_result[0], weekly_result[1])
+    ema_value = ema.calculate(closes)
+    if ema_value is None:
+        return
+    last_close = closes[-1]
+
+    crossover_weeks = ema.detect_weekly_crossover(closes)
+    if crossover_weeks is not None:
+        crossovers.append(_crossover_entry(symbol, last_close, ema_value, crossover_weeks, "weeksBelow"))
+
+    crossdown_weeks = ema.detect_weekly_crossdown(closes)
+    if crossdown_weeks is not None:
+        crossdowns.append(_crossdown_entry(symbol, last_close, ema_value, crossdown_weeks, "weeksAbove"))
+
+    weekly_below_count = ema.count_periods_below(closes)
+    if weekly_below_count is not None and weekly_below_count >= MIN_WEEKS_THRESHOLD:
+        week_below.append(_below_entry(symbol, last_close, ema_value, weekly_below_count))
+
+    weekly_above_count = ema.count_periods_above(closes)
+    if weekly_above_count is not None:
+        week_above.append(_above_entry(symbol, last_close, ema_value, weekly_above_count))
+
+
+def _process_monthly(
+    symbol: str,
+    monthly_result: Optional[tuple[list[float], list[int]]],
+    month_crossovers: list[dict],
+    month_crossdowns: list[dict],
+    month_below: list[dict],
+    month_above: list[dict],
+) -> None:
+    if monthly_result is None:
+        return
+    m_closes, m_timestamps = _strip_incomplete_week(monthly_result[0], monthly_result[1])
+    monthly_closes = _aggregate_to_monthly(m_closes, m_timestamps)
+    monthly_ema = ema.calculate(monthly_closes)
+    if monthly_ema is None:
+        return
+    m_last = monthly_closes[-1]
+
+    m_crossover = ema.detect_weekly_crossover(monthly_closes)
+    if m_crossover is not None:
+        month_crossovers.append(_crossover_entry(symbol, m_last, monthly_ema, m_crossover, "monthsBelow"))
+
+    m_crossdown = ema.detect_weekly_crossdown(monthly_closes)
+    if m_crossdown is not None:
+        month_crossdowns.append(_crossdown_entry(symbol, m_last, monthly_ema, m_crossdown, "monthsAbove"))
+
+    m_below_count = ema.count_periods_below(monthly_closes)
+    if m_below_count is not None:
+        month_below.append(_below_entry(symbol, m_last, monthly_ema, m_below_count))
+
+    m_above_count = ema.count_periods_above(monthly_closes)
+    if m_above_count is not None:
+        month_above.append(_above_entry(symbol, m_last, monthly_ema, m_above_count))
 
 
 def _write_batch_results(
@@ -239,7 +250,7 @@ def _write_batch_results(
     month_crossdowns: list[dict],
     month_below: list[dict],
     month_above: list[dict],
-    error_details: list[dict] | None = None,
+    error_details: Optional[list[dict]] = None,
 ) -> None:
     body = {
         "batchIndex": batch_index,
