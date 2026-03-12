@@ -32,7 +32,7 @@ private enum Strings {
 // MARK: - Timing Constants
 
 private enum Timing {
-    static let highlightFadeStep: CGFloat = 0.12
+    static let highlightFadeStep: CGFloat = 0.5
     static let highlightIntensityThreshold: CGFloat = 0.01
     static let highlightAlphaMultiplier: CGFloat = 0.6
     static let universeRefreshCadence = 2  // Every 2nd refresh cycle (~60s at 30s interval)
@@ -324,7 +324,12 @@ class MenuBarController: NSObject, ObservableObject {
         var changed = false
         for symbol in highlightIntensity.keys {
             guard let intensity = highlightIntensity[symbol], intensity > 0 else { continue }
-            highlightIntensity[symbol] = max(0, intensity - Timing.highlightFadeStep)
+            let newValue = intensity - Timing.highlightFadeStep
+            if newValue <= 0 {
+                highlightIntensity.removeValue(forKey: symbol)
+            } else {
+                highlightIntensity[symbol] = newValue
+            }
             changed = true
         }
         if changed {

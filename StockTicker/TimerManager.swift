@@ -29,7 +29,7 @@ class TimerManager {
     private enum Intervals {
         static let countdown: TimeInterval = 1.0
         static let scheduleRefresh: TimeInterval = 4 * 60 * 60  // 4 hours
-        static let highlightFade: TimeInterval = 0.2
+        static let highlightFade: TimeInterval = 1.0
     }
 
     func startTimers(cycleInterval: Int, refreshInterval: Int, newsEnabled: Bool, newsInterval: Int) {

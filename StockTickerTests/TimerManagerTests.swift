@@ -81,10 +81,10 @@ final class TimerManagerTests: XCTestCase {
         timerManager.startHighlightTimer()
 
         let expectation = expectation(description: "highlight tick")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             expectation.fulfill()
         }
-        wait(for: [expectation], timeout: 1.0)
+        wait(for: [expectation], timeout: 2.0)
 
         XCTAssertGreaterThan(delegate.highlightTickCount, 0)
         timerManager.stopHighlightTimer()
