@@ -626,7 +626,16 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func updateMarketStatus() {
         let (localState, scheduleText, holidayName) = marketSchedule.getTodaySchedule()
-        let state = yahooMarketState.map { MarketState(fromYahooState: $0) } ?? localState
+
+        let state: MarketState
+        if let yahoo = yahooMarketState.map({ MarketState(fromYahooState: $0) }) {
+            // When local schedule says extended hours but Yahoo disagrees,
+            // prefer local — Yahoo state may be stale after laptop wake
+            let localExtended = localState == .preMarket || localState == .afterHours
+            state = (localExtended && yahoo != localState) ? localState : yahoo
+        } else {
+            state = localState
+        }
 
         marketStatusState = state
         marketScheduleText = scheduleText
