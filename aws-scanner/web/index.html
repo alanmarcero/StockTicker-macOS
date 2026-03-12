@@ -759,19 +759,22 @@ function showTab(tabId) {
     }
     const f = filters[c] || {};
     const minVal = f.min != null ? f.min : '';
-    const maxVal = f.max != null ? f.max : '';
-    return `<td class="num${emaClass}"><div class="num-filters">` +
+    let cell = `<td class="num${emaClass}"><div class="num-filters">` +
       `<div class="num-filter-group">` +
         `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="-1">&#x2212;</button>` +
         `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
         `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="1">+</button>` +
-      `</div>` +
-      `<div class="num-filter-group">` +
-        `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="-1">&#x2212;</button>` +
-        `<input type="number" class="filter-num" data-col="${c}" data-bound="max" placeholder="max" value="${maxVal}">` +
-        `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="1">+</button>` +
-      `</div>` +
-      `</div></td>`;
+      `</div>`;
+    if (c === 'close') {
+      const maxVal = f.max != null ? f.max : '';
+      cell +=
+        `<div class="num-filter-group">` +
+          `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="-1">&#x2212;</button>` +
+          `<input type="number" class="filter-num" data-col="${c}" data-bound="max" placeholder="max" value="${maxVal}">` +
+          `<button class="spin-btn" data-col="${c}" data-bound="max" data-dir="1">+</button>` +
+        `</div>`;
+    }
+    return cell + `</div></td>`;
   }).join('');
 
   document.getElementById('content').innerHTML =
