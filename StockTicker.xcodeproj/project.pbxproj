@@ -109,6 +109,7 @@
 		X1000003232C5A0000000001 /* VIXSpikeCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000004232C5A0000000001 /* VIXSpikeCache.swift */; };
 		X1000005232C5A0000000001 /* VIXSpikeAnalysisTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */; };
 		X1000007232C5A0000000001 /* VIXSpikeCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */; };
+		Z1000001232C5A0000000001 /* APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = Z1000002232C5A0000000001 /* APIModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -227,6 +228,7 @@
 		X1000004232C5A0000000001 /* VIXSpikeCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeCache.swift; sourceTree = "<group>"; };
 		X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeAnalysisTests.swift; sourceTree = "<group>"; };
 		X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VIXSpikeCacheTests.swift; sourceTree = "<group>"; };
+		Z1000002232C5A0000000001 /* APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -269,6 +271,7 @@
 				O1000004232C5A0000000001 /* StockService+Historical.swift */,
 				R1000002232C5A0000000001 /* StockService+ForwardPE.swift */,
 				A1000008232C5A0000000001 /* StockData.swift */,
+				Z1000002232C5A0000000001 /* APIModels.swift */,
 				C1000004232C5A0000000001 /* NewsService.swift */,
 				C1000002232C5A0000000001 /* NewsData.swift */,
 				F7DF135EBDBF /* RequestLogger.swift */,
@@ -489,6 +492,7 @@
 				O9B9C55A3EB0997D72E72E7D /* StockService+Finnhub.swift in Sources */,
 				O1000003232C5A0000000001 /* StockService+Historical.swift in Sources */,
 				A1000007232C5A0000000001 /* StockData.swift in Sources */,
+				Z1000001232C5A0000000001 /* APIModels.swift in Sources */,
 				A1000009232C5A0000000001 /* TickerConfig.swift in Sources */,
 				D1000001232C5A0000000001 /* LayoutConfig.swift in Sources */,
 				A100001F232C5A0000000001 /* MarketSchedule.swift in Sources */,

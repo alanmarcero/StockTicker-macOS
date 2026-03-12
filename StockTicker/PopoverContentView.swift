@@ -32,25 +32,25 @@ struct TickerRowData: Equatable {
         highlightOpacity: Double
     ) -> TickerRowData {
         let hasValid = quote.map { !$0.isPlaceholder } ?? false
-        let q: StockQuote? = hasValid ? quote : nil
+        let validQuote: StockQuote? = hasValid ? quote : nil
 
         return TickerRowData(
             symbol: symbol,
             hasValidQuote: hasValid,
-            displayColor: q?.swiftUIDisplayColor ?? .secondary,
+            displayColor: validQuote?.swiftUIDisplayColor ?? .secondary,
             paddedSymbol: padded(symbol, to: LayoutConfig.Ticker.symbolWidth),
-            paddedMarketCap: padded(q?.formattedMarketCap ?? "", to: LayoutConfig.Ticker.marketCapWidth),
-            paddedChangePercent: padded(q?.formattedChangePercent ?? "", to: LayoutConfig.Ticker.percentWidth),
-            ytdText: q?.formattedYTDChangePercent.map { padded("YTD: \($0)", to: LayoutConfig.Ticker.ytdWidth) },
-            ytdColor: q?.swiftUIYTDColor ?? .secondary,
-            highText: q?.formattedHighestCloseChangePercent.map { padded("High: \($0)", to: LayoutConfig.Ticker.highWidth) },
-            highColor: q?.swiftUIHighestCloseColor ?? .secondary,
-            lowText: q?.formattedLowestCloseChangePercent.map { padded("Low: \($0)", to: LayoutConfig.Ticker.lowWidth) },
-            lowColor: q?.swiftUILowestCloseColor ?? .secondary,
-            extHoursText: buildExtHoursText(quote: q),
-            extHoursColor: buildExtHoursColor(quote: q),
+            paddedMarketCap: padded(validQuote?.formattedMarketCap ?? "", to: LayoutConfig.Ticker.marketCapWidth),
+            paddedChangePercent: padded(validQuote?.formattedChangePercent ?? "", to: LayoutConfig.Ticker.percentWidth),
+            ytdText: validQuote?.formattedYTDChangePercent.map { padded("YTD: \($0)", to: LayoutConfig.Ticker.ytdWidth) },
+            ytdColor: validQuote?.swiftUIYTDColor ?? .secondary,
+            highText: validQuote?.formattedHighestCloseChangePercent.map { padded("High: \($0)", to: LayoutConfig.Ticker.highWidth) },
+            highColor: validQuote?.swiftUIHighestCloseColor ?? .secondary,
+            lowText: validQuote?.formattedLowestCloseChangePercent.map { padded("Low: \($0)", to: LayoutConfig.Ticker.lowWidth) },
+            lowColor: validQuote?.swiftUILowestCloseColor ?? .secondary,
+            extHoursText: buildExtHoursText(quote: validQuote),
+            extHoursColor: buildExtHoursColor(quote: validQuote),
             highlightIntensity: intensity,
-            highlightBgColor: q.map { Color(nsColor: $0.highlightColor) } ?? .clear,
+            highlightBgColor: validQuote.map { Color(nsColor: $0.highlightColor) } ?? .clear,
             isPersistentHighlighted: isPersistentHighlighted,
             persistentHighlightColor: ColorMapping.color(from: highlightColor),
             persistentHighlightOpacity: highlightOpacity
@@ -58,17 +58,17 @@ struct TickerRowData: Equatable {
     }
 
     private static func buildExtHoursText(quote: StockQuote?) -> String? {
-        guard let q = quote, q.isInExtendedHoursPeriod(), let label = q.extendedHoursPeriodLabel() else { return nil }
-        if q.shouldShowExtendedHours(), let ext = q.formattedExtendedHoursChangePercent {
+        guard let validQuote = quote, validQuote.isInExtendedHoursPeriod(), let label = validQuote.extendedHoursPeriodLabel() else { return nil }
+        if validQuote.shouldShowExtendedHours(), let ext = validQuote.formattedExtendedHoursChangePercent {
             return "  \(label): \(ext)"
         }
         return "  \(label): --"
     }
 
     private static func buildExtHoursColor(quote: StockQuote?) -> Color {
-        guard let q = quote, q.isInExtendedHoursPeriod(), q.extendedHoursPeriodLabel() != nil else { return .secondary }
-        if q.shouldShowExtendedHours(), q.formattedExtendedHoursChangePercent != nil {
-            return q.swiftUIExtendedHoursColor
+        guard let validQuote = quote, validQuote.isInExtendedHoursPeriod(), validQuote.extendedHoursPeriodLabel() != nil else { return .secondary }
+        if validQuote.shouldShowExtendedHours(), validQuote.formattedExtendedHoursChangePercent != nil {
+            return validQuote.swiftUIExtendedHoursColor
         }
         return .secondary
     }
