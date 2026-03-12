@@ -9,10 +9,11 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
     static let personal         = WatchlistSource(rawValue: 1 << 3)
     static let stateStreetETFs  = WatchlistSource(rawValue: 1 << 4)
     static let vanguardETFs     = WatchlistSource(rawValue: 1 << 5)
+    static let spdrSectors      = WatchlistSource(rawValue: 1 << 6)
 
-    static let allSources: WatchlistSource = [.megaCap, .topAUMETFs, .topVolETFs, .personal, .stateStreetETFs, .vanguardETFs]
+    static let allSources: WatchlistSource = [.megaCap, .topAUMETFs, .topVolETFs, .personal, .stateStreetETFs, .vanguardETFs, .spdrSectors]
 
-    static let allCases: [WatchlistSource] = [.megaCap, .topAUMETFs, .topVolETFs, .stateStreetETFs, .vanguardETFs, .personal]
+    static let allCases: [WatchlistSource] = [.megaCap, .topAUMETFs, .topVolETFs, .stateStreetETFs, .vanguardETFs, .spdrSectors, .personal]
 
     var displayName: String {
         switch rawValue {
@@ -22,6 +23,7 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
         case WatchlistSource.personal.rawValue: return "My Watchlist"
         case WatchlistSource.stateStreetETFs.rawValue: return "SPDR"
         case WatchlistSource.vanguardETFs.rawValue: return "Vanguard"
+        case WatchlistSource.spdrSectors.rawValue: return "Sectors"
         default: return "Sources"
         }
     }
@@ -42,6 +44,7 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
         if contains(.topVolETFs)      { add(TopVolumeETFs.symbols) }
         if contains(.stateStreetETFs) { add(StateStreetETFs.symbols) }
         if contains(.vanguardETFs)    { add(VanguardETFs.symbols) }
+        if contains(.spdrSectors)     { add(SPDRSectorETFs.symbols) }
         if contains(.personal)        { add(personalWatchlist) }
 
         return result
@@ -59,6 +62,7 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
         combined.formUnion(TopVolumeETFs.symbols)
         combined.formUnion(StateStreetETFs.symbols)
         combined.formUnion(VanguardETFs.symbols)
+        combined.formUnion(SPDRSectorETFs.symbols)
         return combined
     }
 }

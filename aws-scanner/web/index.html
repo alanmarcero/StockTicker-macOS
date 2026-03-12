@@ -417,6 +417,7 @@ const TOP_VOL = new Set(['SPY','QQQ','IWM','EEM','XLF','HYG','SMH','GDX','SLV','
 const SPDR = new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','XLE','SPDW','GLDM','SPYV','XLI','XLC','MDY','XLU','XLY','SDY','XLP','SPEM','SPMD','SPSM','SPTM','SPTL','SPIB','SPHY','SPTI','SPAB','SPSB','XBI','XLRE','JNK','SPYD','XLB','SPMB','XAR','SPTS','CWB','SRLN','FEZ','SJNK','GNR','XME','SLYV','SLYG','TOTL','BILS','KRE','SHM','TFI','HYMB','FLRN','MDYG','CWI','MDYV','XOP','KOMP','SPYX','EBND','SPBO','TIPX','RWR','XHB','XSD','BWX','QUS','XNTK','SPGM']);
 const VANGUARD = new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']);
 
+const SPDR_SECTORS = new Set(['SPY','XLE','XLK','XLB','XLV','XLY','XLI','XLC','XLU','XLF','XLRE','XLP']);
 const VANECK_ETFS = new Set(['GDX','GDXJ','MOAT','MOO','MORT','REMX','SMH','SMOG']);
 const WISDOMTREE_ETFS = new Set(['DGRW','DXJ','WCLD','WTV']);
 const GLOBALX_ETFS = new Set(['AIQ','BKCH','BOTZ','BUG','CLOU','COPX','CTEC','DIV','DRIV','EBIZ','EDOC','FINX','GNOM','HERO','LIT','MLPX','POTX','SOCL','URA']);
@@ -424,7 +425,7 @@ const ROUNDHILL_ETFS = new Set(['BETZ','BYTE','CHAT','MEME','NERD','WEED']);
 const SECTOR_ETFS = new Set(['ARKF','ARKG','ARKK','ARKQ','ARKW','BITQ','BLOK','CIBR','CNCR','CQQQ','DFEN','EEM','FAN','FDIS','FDN','FHLC','FTEC','GRID','HACK','IBB','IBIT','ICLN','IFRA','IGV','IHF','IHI','ITA','ITB','IYE','IYF','IYH','IYR','IYT','IYW','IYZ','IZRL','JETS','KBE','KIE','KRE','KWEB','MJ','MSOS','ONLN','PAVE','PBE','PBW','PHO','PJP','PPH','PRNT','PSCT','PSI','QCLN','QQQJ','QTEC','ROBO','SKYY','SLV','SOXQ','SOXX','TAN','URNM','WOOD','XAR','XBI','XHB','XHE','XLB','XLC','XLE','XLF','XLI','XLK','XLP','XLRE','XLU','XLV','XLY','XME','XNTK','XOP','XRT','XSD','XSW','YOLO']);
 
 const CAP_FILTERS = ['all', 'small', 'mega'];
-const ETF_FILTERS = ['topAUM', 'topVol', 'spdr', 'vanguard', 'vaneck', 'wisdomTree', 'globalX', 'roundhill', 'sector'];
+const ETF_FILTERS = ['topAUM', 'topVol', 'spdr', 'spdrSectors', 'vanguard', 'vaneck', 'wisdomTree', 'globalX', 'roundhill', 'sector'];
 
 const SOURCE_DEFS = {
   all:        { label: 'All' },
@@ -434,6 +435,7 @@ const SOURCE_DEFS = {
   topAUM:     { label: 'Top AUM',      set: TOP_AUM },
   topVol:     { label: 'Top Vol',      set: TOP_VOL },
   spdr:       { label: 'SPDR',         set: SPDR },
+  spdrSectors:{ label: 'Sectors',     set: SPDR_SECTORS },
   vanguard:   { label: 'Vanguard',     set: VANGUARD },
   vaneck:     { label: 'VanEck',       set: VANECK_ETFS },
   wisdomTree: { label: 'WisdomTree',   set: WISDOMTREE_ETFS },
@@ -442,7 +444,7 @@ const SOURCE_DEFS = {
   sector:     { label: 'Other ETFs',   set: SECTOR_ETFS },
 };
 
-const SOURCE_ORDER = ['all', 'none', 'small', 'mega', 'topAUM', 'topVol', 'spdr', 'vanguard', 'vaneck', 'wisdomTree', 'globalX', 'roundhill', 'sector'];
+const SOURCE_ORDER = ['all', 'none', 'small', 'mega', 'topAUM', 'topVol', 'spdr', 'spdrSectors', 'vanguard', 'vaneck', 'wisdomTree', 'globalX', 'roundhill', 'sector'];
 
 // 'all' = everything, 'none' = nothing, or a Set of active filter ids
 let activeSourceMode = 'all';

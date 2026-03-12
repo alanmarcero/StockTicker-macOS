@@ -12,6 +12,7 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.personal.rawValue, 8)
         XCTAssertEqual(WatchlistSource.stateStreetETFs.rawValue, 16)
         XCTAssertEqual(WatchlistSource.vanguardETFs.rawValue, 32)
+        XCTAssertEqual(WatchlistSource.spdrSectors.rawValue, 64)
     }
 
     func testAllSources_containsAllBits() {
@@ -22,11 +23,12 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(all.contains(.personal))
         XCTAssertTrue(all.contains(.stateStreetETFs))
         XCTAssertTrue(all.contains(.vanguardETFs))
-        XCTAssertEqual(all.rawValue, 63)
+        XCTAssertTrue(all.contains(.spdrSectors))
+        XCTAssertEqual(all.rawValue, 127)
     }
 
-    func testAllCases_hasSixSources() {
-        XCTAssertEqual(WatchlistSource.allCases.count, 6)
+    func testAllCases_hasSevenSources() {
+        XCTAssertEqual(WatchlistSource.allCases.count, 7)
     }
 
     // MARK: - Display names
@@ -55,6 +57,10 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.vanguardETFs.displayName, "Vanguard")
     }
 
+    func testDisplayName_spdrSectors() {
+        XCTAssertEqual(WatchlistSource.spdrSectors.displayName, "Sectors")
+    }
+
     // MARK: - symbols()
 
     func testSymbols_personalOnly_returnsPersonalWatchlist() {
@@ -79,6 +85,12 @@ final class WatchlistSourceTests: XCTestCase {
         let source = WatchlistSource.vanguardETFs
         let result = source.symbols(personalWatchlist: [])
         XCTAssertEqual(result, VanguardETFs.symbols)
+    }
+
+    func testSymbols_spdrSectorsOnly_returnsSectorSymbols() {
+        let source = WatchlistSource.spdrSectors
+        let result = source.symbols(personalWatchlist: [])
+        XCTAssertEqual(result, SPDRSectorETFs.symbols)
     }
 
     func testSymbols_allSources_deduplicates() {
@@ -116,6 +128,7 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(result.contains(TopVolumeETFs.symbols[0]))
         XCTAssertTrue(result.contains(StateStreetETFs.symbols[0]))
         XCTAssertTrue(result.contains(VanguardETFs.symbols[0]))
+        XCTAssertTrue(result.contains(SPDRSectorETFs.symbols[0]))
     }
 
     // MARK: - allBundledSymbols

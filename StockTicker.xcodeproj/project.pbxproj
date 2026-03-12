@@ -14,6 +14,8 @@
 		06AF22B7737B1808E5B64D37 /* TopAUMETFs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916CC560A6914073666F384A /* TopAUMETFs.swift */; };
 		F8110D1A3FCD7E63C1B7C67A /* StateStreetETFs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD2D60D3C8F0DB1D1BD9D04 /* StateStreetETFs.swift */; };
 		08A76C05B806F318521989E5 /* VanguardETFs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8DBBCC70B2D8D9F09A0D9E /* VanguardETFs.swift */; };
+		Y1000001232C5A0000000001 /* SPDRSectorETFs.swift in Sources */ = {isa = PBXBuildFile; fileRef = Y1000002232C5A0000000001 /* SPDRSectorETFs.swift */; };
+		Y1000003232C5A0000000001 /* SPDRSectorETFsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = Y1000004232C5A0000000001 /* SPDRSectorETFsTests.swift */; };
 		0C524EF45FB3900C67C904B7 /* WatchlistSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 398380AEC59C9DC1E5E003F8 /* WatchlistSourceTests.swift */; };
 		18A904113AB1003D6E2D5A7A /* StateStreetETFsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09F844A2446D5DF909736888 /* StateStreetETFsTests.swift */; };
 		49957E8798C3D2A1807CA73E /* VanguardETFsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E2A6DE83F632589E687E94 /* VanguardETFsTests.swift */; };
@@ -140,6 +142,8 @@
 		916CC560A6914073666F384A /* TopAUMETFs.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TopAUMETFs.swift; sourceTree = "<group>"; };
 		8DD2D60D3C8F0DB1D1BD9D04 /* StateStreetETFs.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StateStreetETFs.swift; sourceTree = "<group>"; };
 		9F8DBBCC70B2D8D9F09A0D9E /* VanguardETFs.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VanguardETFs.swift; sourceTree = "<group>"; };
+		Y1000002232C5A0000000001 /* SPDRSectorETFs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SPDRSectorETFs.swift; sourceTree = "<group>"; };
+		Y1000004232C5A0000000001 /* SPDRSectorETFsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SPDRSectorETFsTests.swift; sourceTree = "<group>"; };
 		96171F4FC380B1D2A9C00AD5 /* EMAAnalysisTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EMAAnalysisTests.swift; sourceTree = "<group>"; };
 		A1000002232C5A0000000001 /* StockTickerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockTickerApp.swift; sourceTree = "<group>"; };
 		A1000004232C5A0000000001 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
@@ -305,6 +309,7 @@
 				916CC560A6914073666F384A /* TopAUMETFs.swift */,
 				8DD2D60D3C8F0DB1D1BD9D04 /* StateStreetETFs.swift */,
 				9F8DBBCC70B2D8D9F09A0D9E /* VanguardETFs.swift */,
+				Y1000002232C5A0000000001 /* SPDRSectorETFs.swift */,
 				7C00914BC160FF0E0076D97D /* TopVolumeETFs.swift */,
 				D3C75BA7192A7A432FC97601 /* WatchlistSource.swift */,
 				X1000002232C5A0000000001 /* VIXSpikeAnalysis.swift */,
@@ -368,6 +373,7 @@
 				398380AEC59C9DC1E5E003F8 /* WatchlistSourceTests.swift */,
 				09F844A2446D5DF909736888 /* StateStreetETFsTests.swift */,
 				68E2A6DE83F632589E687E94 /* VanguardETFsTests.swift */,
+				Y1000004232C5A0000000001 /* SPDRSectorETFsTests.swift */,
 				B63A6210542732C6F318390F /* BundledSymbolListTests.swift */,
 				X1000006232C5A0000000001 /* VIXSpikeAnalysisTests.swift */,
 				X1000008232C5A0000000001 /* VIXSpikeCacheTests.swift */,
@@ -523,6 +529,7 @@
 				06AF22B7737B1808E5B64D37 /* TopAUMETFs.swift in Sources */,
 				F8110D1A3FCD7E63C1B7C67A /* StateStreetETFs.swift in Sources */,
 				08A76C05B806F318521989E5 /* VanguardETFs.swift in Sources */,
+				Y1000001232C5A0000000001 /* SPDRSectorETFs.swift in Sources */,
 				EB0DDFFB07E0E0BA25FA2E93 /* TopVolumeETFs.swift in Sources */,
 				4DF2167ABF7872E43E287EEC /* WatchlistSource.swift in Sources */,
 				X1000001232C5A0000000001 /* VIXSpikeAnalysis.swift in Sources */,
@@ -577,6 +584,7 @@
 				0C524EF45FB3900C67C904B7 /* WatchlistSourceTests.swift in Sources */,
 				18A904113AB1003D6E2D5A7A /* StateStreetETFsTests.swift in Sources */,
 				49957E8798C3D2A1807CA73E /* VanguardETFsTests.swift in Sources */,
+				Y1000003232C5A0000000001 /* SPDRSectorETFsTests.swift in Sources */,
 				9A1D06799571B7044A83E0F1 /* BundledSymbolListTests.swift in Sources */,
 				X1000005232C5A0000000001 /* VIXSpikeAnalysisTests.swift in Sources */,
 				X1000007232C5A0000000001 /* VIXSpikeCacheTests.swift in Sources */,
