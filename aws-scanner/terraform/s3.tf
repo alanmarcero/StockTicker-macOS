@@ -43,6 +43,19 @@ resource "aws_s3_bucket_lifecycle_configuration" "scanner" {
       days = 7
     }
   }
+
+  rule {
+    id     = "expire-dated-snapshots"
+    status = "Enabled"
+
+    filter {
+      prefix = "results/20"
+    }
+
+    expiration {
+      days = 60
+    }
+  }
 }
 
 resource "aws_s3_bucket_policy" "cloudfront_access" {
