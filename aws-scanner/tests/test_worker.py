@@ -8,8 +8,11 @@ from src.worker.app import (
     _aggregate_to_monthly,
     _strip_incomplete_week,
     _invalidate_cache,
+    _update_manifest,
+    _delete_snapshot,
     _write_batch_results,
     _write_errors,
+    MAX_WEEKLY_SNAPSHOTS,
 )
 
 
@@ -661,10 +664,13 @@ class TestAggregateResults:
     def setup_method(self):
         self._read_patcher = patch("src.worker.app._read_json")
         self._put_patcher = patch("src.worker.app._put_json")
+        self._manifest_patcher = patch("src.worker.app._update_manifest")
         self.mock_read = self._read_patcher.start()
         self.mock_put = self._put_patcher.start()
+        self.mock_manifest = self._manifest_patcher.start()
 
     def teardown_method(self):
+        self._manifest_patcher.stop()
         self._put_patcher.stop()
         self._read_patcher.stop()
 
@@ -692,7 +698,7 @@ class TestAggregateResults:
 
         _aggregate_results("test-bucket", "2026-02-22", 2)
 
-        assert self.mock_put.call_count == 8
+        assert self.mock_put.call_count == 13
         latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 100
         assert latest_data["errors"] == 1
@@ -969,3 +975,161 @@ class TestAggregateResults:
         monthly_ba_data = self.mock_put.call_args_list[5][0][2]
         assert monthly_ba_data["monthBelow"] == []
         assert monthly_ba_data["monthAbove"] == []
+
+    def test_aggregate_writes_all_dated_files(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("mybucket", "2026-03-14", 1)
+
+        put_keys = [call[0][1] for call in self.mock_put.call_args_list]
+        latest_keys = [k for k in put_keys if "latest" in k]
+        dated_keys = [k for k in put_keys if k not in latest_keys]
+        # 6 dated files: base, crossdown, below, above, monthly, monthly-below-above
+        assert len(dated_keys) == 6
+        suffixes = ["-crossdown", "-below", "-above", "-monthly", "-monthly-below-above"]
+        # The base dated file (no suffix)
+        assert any(k.endswith(".json") and "-crossdown" not in k and "-below" not in k and "-above" not in k and "-monthly" not in k for k in dated_keys)
+        for suffix in suffixes:
+            assert any(suffix + ".json" in k for k in dated_keys)
+
+    def test_aggregate_calls_update_manifest(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("mybucket", "2026-03-14", 1)
+
+        self.mock_manifest.assert_called_once()
+        args = self.mock_manifest.call_args[0]
+        assert args[0] == "mybucket"
+
+
+class TestUpdateManifest:
+
+    def setup_method(self):
+        self._read_patcher = patch("src.worker.app._read_json")
+        self._put_patcher = patch("src.worker.app._put_json")
+        self._delete_patcher = patch("src.worker.app._delete_snapshot")
+        self.mock_read = self._read_patcher.start()
+        self.mock_put = self._put_patcher.start()
+        self.mock_delete = self._delete_patcher.start()
+
+    def teardown_method(self):
+        self._delete_patcher.stop()
+        self._put_patcher.stop()
+        self._read_patcher.stop()
+
+    def test_creates_manifest_when_none_exists(self):
+        self.mock_read.return_value = None
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        self.mock_put.assert_called_once_with(
+            "mybucket", "results/manifest.json", {"weeks": ["2026-03-14"]}
+        )
+
+    def test_prepends_new_date(self):
+        self.mock_read.return_value = {"weeks": ["2026-03-07", "2026-02-28"]}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        written = self.mock_put.call_args[0][2]
+        assert written["weeks"] == ["2026-03-14", "2026-03-07", "2026-02-28"]
+
+    def test_avoids_duplicate_date(self):
+        self.mock_read.return_value = {"weeks": ["2026-03-14", "2026-03-07"]}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        written = self.mock_put.call_args[0][2]
+        assert written["weeks"] == ["2026-03-14", "2026-03-07"]
+        assert written["weeks"].count("2026-03-14") == 1
+
+    def test_duplicate_date_moves_to_front(self):
+        self.mock_read.return_value = {"weeks": ["2026-03-07", "2026-03-14", "2026-02-28"]}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        written = self.mock_put.call_args[0][2]
+        assert written["weeks"][0] == "2026-03-14"
+        assert len(written["weeks"]) == 3
+
+    def test_trims_to_max_snapshots(self):
+        existing = [f"2026-03-{13 - i:02d}" for i in range(6)]
+        self.mock_read.return_value = {"weeks": existing}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        written = self.mock_put.call_args[0][2]
+        assert len(written["weeks"]) == MAX_WEEKLY_SNAPSHOTS
+        assert written["weeks"][0] == "2026-03-14"
+
+    def test_deletes_trimmed_snapshots(self):
+        existing = [f"2026-03-{13 - i:02d}" for i in range(6)]
+        # existing = ["2026-03-13", "2026-03-12", ..., "2026-03-08"]
+        self.mock_read.return_value = {"weeks": existing}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        # "2026-03-08" should be trimmed (7th entry after prepend)
+        self.mock_delete.assert_called_once_with("mybucket", "2026-03-08")
+
+    def test_deletes_multiple_trimmed_snapshots(self):
+        existing = [f"2026-03-{13 - i:02d}" for i in range(7)]
+        # existing has 7 entries; after prepend we have 8, trim to 6
+        self.mock_read.return_value = {"weeks": existing}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        assert self.mock_delete.call_count == 2
+
+    def test_no_deletes_when_under_max(self):
+        self.mock_read.return_value = {"weeks": ["2026-03-07"]}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        self.mock_delete.assert_not_called()
+
+    def test_reads_manifest_from_correct_key(self):
+        self.mock_read.return_value = None
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        self.mock_read.assert_called_once_with("mybucket", "results/manifest.json")
+
+    def test_empty_weeks_in_manifest(self):
+        self.mock_read.return_value = {"weeks": []}
+
+        _update_manifest("mybucket", "2026-03-14")
+
+        written = self.mock_put.call_args[0][2]
+        assert written["weeks"] == ["2026-03-14"]
+
+
+class TestDeleteSnapshot:
+
+    @patch("src.worker.app.s3")
+    def test_deletes_all_six_files(self, mock_s3):
+        _delete_snapshot("mybucket", "2026-03-08")
+
+        assert mock_s3.delete_object.call_count == 6
+        deleted_keys = [call[1]["Key"] for call in mock_s3.delete_object.call_args_list]
+        assert "results/2026-03-08.json" in deleted_keys
+        assert "results/2026-03-08-crossdown.json" in deleted_keys
+        assert "results/2026-03-08-below.json" in deleted_keys
+        assert "results/2026-03-08-above.json" in deleted_keys
+        assert "results/2026-03-08-monthly.json" in deleted_keys
+        assert "results/2026-03-08-monthly-below-above.json" in deleted_keys
+
+    @patch("src.worker.app.s3")
+    def test_uses_correct_bucket(self, mock_s3):
+        _delete_snapshot("my-special-bucket", "2026-03-08")
+
+        for call in mock_s3.delete_object.call_args_list:
+            assert call[1]["Bucket"] == "my-special-bucket"
+
+    @patch("src.worker.app.s3")
+    def test_continues_on_delete_error(self, mock_s3):
+        mock_s3.delete_object.side_effect = [Exception("fail"), None, None, None, None, None]
+
+        _delete_snapshot("mybucket", "2026-03-08")
+
+        assert mock_s3.delete_object.call_count == 6

@@ -16,6 +16,7 @@ cloudfront = boto3.client("cloudfront")
 
 RATE_LIMIT_DELAY = 1
 MIN_WEEKS_THRESHOLD = 3
+MAX_WEEKLY_SNAPSHOTS = 6
 
 
 def lambda_handler(event: dict, context) -> dict:
@@ -350,6 +351,42 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     all_error_details.sort(key=lambda x: x.get("symbol", ""))
     _put_json(bucket, "results/latest-errors.json", {**base, "errorDetails": all_error_details})
     _put_json(bucket, f"results/{scan_date}.json", crossover_result)
+    _put_json(bucket, f"results/{scan_date}-crossdown.json", crossdown_result)
+    _put_json(bucket, f"results/{scan_date}-below.json", below_result)
+    _put_json(bucket, f"results/{scan_date}-above.json", above_result)
+    _put_json(bucket, f"results/{scan_date}-monthly.json", monthly_result)
+    _put_json(bucket, f"results/{scan_date}-monthly-below-above.json", monthly_ba_result)
+
+    _update_manifest(bucket, scan_date)
+
+
+def _update_manifest(bucket: str, scan_date: str) -> None:
+    manifest = _read_json(bucket, "results/manifest.json") or {"weeks": []}
+    weeks: list[str] = manifest.get("weeks", [])
+
+    if scan_date not in weeks:
+        weeks.insert(0, scan_date)
+    else:
+        weeks.remove(scan_date)
+        weeks.insert(0, scan_date)
+
+    trimmed = weeks[MAX_WEEKLY_SNAPSHOTS:]
+    weeks = weeks[:MAX_WEEKLY_SNAPSHOTS]
+
+    for old_date in trimmed:
+        _delete_snapshot(bucket, old_date)
+
+    _put_json(bucket, "results/manifest.json", {"weeks": weeks})
+
+
+def _delete_snapshot(bucket: str, scan_date: str) -> None:
+    suffixes = ["", "-crossdown", "-below", "-above", "-monthly", "-monthly-below-above"]
+    for suffix in suffixes:
+        key = f"results/{scan_date}{suffix}.json"
+        try:
+            s3.delete_object(Bucket=bucket, Key=key)
+        except Exception as err:
+            print(f"[worker] failed to delete s3://{bucket}/{key}: {err}")
 
 
 def _read_json(bucket: str, key: str) -> Any:
