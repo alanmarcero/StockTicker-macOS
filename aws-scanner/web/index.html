@@ -364,8 +364,9 @@
     td { padding: 4px 4px; }
     td.symbol { max-width: 70px; overflow: hidden; text-overflow: ellipsis; }
     .col-ema { display: none; }
-    .filter-row td { padding: 3px 2px; }
+    .filter-row td { padding: 3px 2px; position: static; }
     .filter-row .num-filters { gap: 3px; }
+    .filter-row .num-filters-stacked { flex-direction: column; gap: 3px; }
     .num-filter-group { height: 30px; }
     .spin-btn { width: 22px; font-size: 12px; }
     .filter-row input.filter-num { width: 36px; font-size: 11px; padding: 2px 2px; }
@@ -387,7 +388,7 @@
     table { font-size: 11px; }
     th { padding: 4px 3px; font-size: 11px; }
     td { padding: 3px 3px; }
-    .filter-row td { padding: 2px 2px; }
+    .filter-row td { padding: 2px 2px; position: static; }
     .num-filter-group { height: 28px; }
     .spin-btn { width: 20px; font-size: 11px; }
     .filter-row input.filter-num { width: 30px; font-size: 10px; }
@@ -761,7 +762,8 @@ function showTab(tabId) {
     }
     const f = filters[c] || {};
     const minVal = f.min != null ? f.min : '';
-    let cell = `<td class="num${emaClass}"><div class="num-filters">` +
+    const stackClass = c === 'close' ? ' num-filters-stacked' : '';
+    let cell = `<td class="num${emaClass}"><div class="num-filters${stackClass}">` +
       `<div class="num-filter-group">` +
         `<button class="spin-btn" data-col="${c}" data-bound="min" data-dir="-1">&#x2212;</button>` +
         `<input type="number" class="filter-num" data-col="${c}" data-bound="min" placeholder="min" value="${minVal}">` +
