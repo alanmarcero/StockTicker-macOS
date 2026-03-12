@@ -53,6 +53,11 @@ struct QuarterlyPanelView: View {
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
+            if viewModel.isEMAsMode, let scanDate = viewModel.scannerScanDate {
+                Text("Last calculated: \(scanDate)")
+                    .foregroundColor(.secondary)
+                    .font(.caption)
+            }
             filterBar
         }
         .padding()

@@ -59,6 +59,7 @@ final class ScannerServiceTests: XCTestCase {
         XCTAssertEqual(result?.below.count, 1)
         XCTAssertEqual(result?.below[0].symbol, "GOOG")
         XCTAssertEqual(result?.below[0].weeksBelow, 4)
+        XCTAssertEqual(result?.scanDate, "2026-02-23")
     }
 
     // MARK: - Partial Failure

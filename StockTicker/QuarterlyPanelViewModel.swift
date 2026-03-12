@@ -41,6 +41,7 @@ class QuarterlyPanelViewModel: ObservableObject {
     var isVIXSpikesMode: Bool { viewMode == .vixSpikes }
     var isMiscStatsMode: Bool { viewMode == .miscStats }
     var hasScannerData: Bool { storedScannerEMAData != nil }
+    var scannerScanDate: String? { storedScannerEMAData?.scanDate }
 
     @Published var vixSpikeHeaders: [(dateString: String, vixClose: Double)] = []
 

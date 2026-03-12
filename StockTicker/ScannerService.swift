@@ -41,6 +41,7 @@ struct ScannerAboveResponse: Codable {
 
 struct ScannerCrossoverResponse: Codable {
     let crossovers: [ScannerCrossoverItem]
+    let scanDate: String?
 }
 
 struct ScannerCrossdownResponse: Codable {
@@ -57,6 +58,7 @@ struct ScannerEMAData: Equatable {
     let crossovers: [ScannerCrossoverItem]
     let crossdowns: [ScannerCrossdownItem]
     let below: [ScannerBelowItem]
+    let scanDate: String?
 }
 
 // MARK: - Protocol
@@ -102,7 +104,8 @@ actor ScannerService: ScannerServiceProtocol {
             weekAbove: above.weekAbove,
             crossovers: crossover.crossovers,
             crossdowns: crossdownItems,
-            below: below.below
+            below: below.below,
+            scanDate: crossover.scanDate
         )
     }
 
