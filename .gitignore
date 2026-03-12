@@ -13,6 +13,7 @@ xcuserdata/
 
 # Claude Code
 .claude/
+.playwright-mcp/
 
 # Worktrees
 .worktrees/
