@@ -39,6 +39,13 @@ final class MarketStateTests: XCTestCase {
         XCTAssertEqual(MarketState.afterHours.rawValue, "After-Hours")
         XCTAssertEqual(MarketState.closed.rawValue, "Closed")
     }
+
+    func testYahooStateString_roundTrips() {
+        XCTAssertEqual(MarketState(fromYahooState: MarketState.preMarket.yahooStateString), .preMarket)
+        XCTAssertEqual(MarketState(fromYahooState: MarketState.open.yahooStateString), .open)
+        XCTAssertEqual(MarketState(fromYahooState: MarketState.afterHours.yahooStateString), .afterHours)
+        XCTAssertEqual(MarketState(fromYahooState: MarketState.closed.yahooStateString), .closed)
+    }
 }
 
 // MARK: - MarketSchedule Tests

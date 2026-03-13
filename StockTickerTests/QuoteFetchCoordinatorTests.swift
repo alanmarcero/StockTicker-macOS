@@ -262,7 +262,8 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
 
         let result = await QuoteFetchCoordinator.fetchExtendedHours(
             service: mock, watchlist: ["AAPL", "SPY"],
-            alwaysOpenSymbols: ["BTC-USD"], closedMarketSymbol: "BTC-USD"
+            alwaysOpenSymbols: ["BTC-USD"], closedMarketSymbol: "BTC-USD",
+            localState: .afterHours
         )
 
         XCTAssertNotNil(result.quotes["AAPL"])
@@ -270,6 +271,20 @@ final class QuoteFetchCoordinatorTests: XCTestCase {
         XCTAssertEqual(result.yahooMarketState, "POST")
         XCTAssertFalse(result.shouldMergeQuotes)
         XCTAssertFalse(result.isInitialLoadComplete)
+    }
+
+    func testFetchExtendedHours_fallsBackToLocalState_whenYahooStateNil() async {
+        let mock = MockStockService()
+        let aapl = StockQuote(symbol: "AAPL", price: 150.0, previousClose: 145.0)
+        mock.quotesToReturn = ["AAPL": aapl]
+
+        let result = await QuoteFetchCoordinator.fetchExtendedHours(
+            service: mock, watchlist: ["AAPL"],
+            alwaysOpenSymbols: [], closedMarketSymbol: "BTC-USD",
+            localState: .preMarket
+        )
+
+        XCTAssertEqual(result.yahooMarketState, "PRE")
     }
 
     // MARK: - extractMarketState

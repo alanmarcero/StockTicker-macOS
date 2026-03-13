@@ -382,7 +382,8 @@ class MenuBarController: NSObject, ObservableObject {
             result = await QuoteFetchCoordinator.fetchExtendedHours(
                 service: stockService, watchlist: watchlistBatch,
                 alwaysOpenSymbols: isIndexCycle ? alwaysOpenSymbols : [],
-                closedMarketSymbol: closedMarketSymbol
+                closedMarketSymbol: closedMarketSymbol,
+                localState: scheduleInfo.state
             )
         }
 

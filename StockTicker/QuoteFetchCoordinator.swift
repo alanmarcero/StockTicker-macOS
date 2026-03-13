@@ -105,7 +105,8 @@ enum QuoteFetchCoordinator {
         service: StockServiceProtocol,
         watchlist: [String],
         alwaysOpenSymbols: [String],
-        closedMarketSymbol: String
+        closedMarketSymbol: String,
+        localState: MarketState
     ) async -> FetchResult {
         let allSymbols = ensureClosedMarketSymbol(closedMarketSymbol, in: watchlist)
 
@@ -115,11 +116,14 @@ enum QuoteFetchCoordinator {
         let quotes = await fetchedQuotes
         let alwaysOpenQuotes = await fetchedAlwaysOpen
 
+        let yahooState = extractMarketState(from: quotes)
+            ?? extractMarketState(from: alwaysOpenQuotes, symbol: "^GSPC")
+        let marketState = yahooState ?? localState.yahooStateString
+
         return FetchResult(
             quotes: quotes,
             indexQuotes: alwaysOpenQuotes,
-            yahooMarketState: extractMarketState(from: quotes)
-                ?? extractMarketState(from: alwaysOpenQuotes, symbol: "^GSPC"),
+            yahooMarketState: marketState,
             fetchedSymbols: Set(allSymbols),
             isInitialLoadComplete: false,
             shouldMergeQuotes: false

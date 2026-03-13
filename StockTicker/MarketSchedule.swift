@@ -26,6 +26,15 @@ enum MarketState: String {
         default: self = .closed
         }
     }
+
+    var yahooStateString: String {
+        switch self {
+        case .preMarket: return "PRE"
+        case .open: return "REGULAR"
+        case .afterHours: return "POST"
+        case .closed: return "CLOSED"
+        }
+    }
 }
 
 // MARK: - Market Holiday
