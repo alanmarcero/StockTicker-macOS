@@ -35,7 +35,7 @@ pgrep -x Stonks && echo "App is running"
 
 ## Architecture
 
-56 source files (~10,300 lines), 46 test files (~14,600 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
+57 source files (~10,400 lines), 47 test files (~14,700 lines). All source files have corresponding tests. Shared test helpers in `TestUtilities.swift`.
 
 **Core flow:** `MenuBarView` (`MenuBarController` as `ObservableObject`) → `StockService` (Yahoo/Finnhub APIs) → cache actors → UI. Menu bar click shows `NSPopover` hosting `PopoverContentView` (SwiftUI) which reads `@Published` properties reactively. `MenuBarController+Cache` coordinates all cache refresh cycles. `BackfillScheduler` handles staggered cache population.
 
@@ -51,8 +51,8 @@ pgrep -x Stonks && echo "App is running"
 - Pure analysis: `EMAAnalysis`, `SwingAnalysis`, `RSIAnalysis`, `VIXSpikeAnalysis`
 - `TickerConfig`: Config at `~/.stockticker/config.json`, saved with `prettyPrinted`/`sortedKeys`
 - `TickerFilter`: `OptionSet` for green-status filtering (YTD, High, Low) with AND semantics
-- `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, spdrSectors, personal)
-- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`/`SPDRSectorETFs`: Bundled symbol lists (152 equities $100B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs, 12 sector ETFs)
+- `WatchlistSource`: `OptionSet` for toggling watchlist sources (megaCap, topAUMETFs, topVolETFs, stateStreetETFs, vanguardETFs, spdrSectors, commodities, personal)
+- `MegaCapEquities`/`TopAUMETFs`/`TopVolumeETFs`/`StateStreetETFs`/`VanguardETFs`/`SPDRSectorETFs`/`CommodityETFs`: Bundled symbol lists (152 equities $100B+, 30 AUM ETFs, 10 volume ETFs, 69 SPDR ETFs, 52 Vanguard ETFs, 12 sector ETFs, 14 commodity ETFs)
 - `Dictionary+Merge`: `mergeKeepingNew`/`mergeKeepingExisting`/`mergingKeepingExisting` extensions
 
 ## Design Patterns
@@ -60,7 +60,7 @@ pgrep -x Stonks && echo "App is running"
 - **Protocol-based DI** for all major components (services, caches, file system, date provider)
 - **Actor isolation** for thread safety; `@MainActor` for state management
 - **`ThrottledTaskGroup`** — bounded concurrency with 5 modes (default, Backfill, FinnhubBackfill, FinnhubQuote, YahooQuote). `SymbolRouting.partition()` splits symbols by API source.
-- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 7 sources (bundled $100B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, SPDR sector ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
+- **Multi-source watchlist:** `WatchlistSource` OptionSet toggles 8 sources (bundled $100B+ equities, top AUM ETFs, top volume ETFs, SPDR ETFs, Vanguard ETFs, SPDR sector ETFs, commodity ETFs, personal). `effectiveWatchlist` is the visible union; `allSymbols()` (all sources regardless of toggles) feeds caches.
 - **Two-tier symbol sets:** `allCacheSymbols` (all watchlist sources + universe + indices) for most caches; `extraStatsSymbols` (all sources + universe) for quarterly/forward P/E/Extra Stats. Universe quotes always refresh in the background regardless of Extra Stats window visibility.
 - **`CacheStorage<T: Codable>`** — generic file I/O shared by all 8 cache actors
 - **`QuarterlyPanelData`** — DTO bundling data fields passed to Extra Stats view model/controller

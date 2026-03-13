@@ -129,6 +129,7 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         controller.toggleSource(.stateStreetETFs)
         controller.toggleSource(.vanguardETFs)
         controller.toggleSource(.spdrSectors)
+        controller.toggleSource(.commodities)
         controller.toggleSource(.personal)
         XCTAssertTrue(controller.currentWatchlistSource.isEmpty)
     }

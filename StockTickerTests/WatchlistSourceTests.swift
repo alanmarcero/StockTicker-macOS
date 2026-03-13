@@ -13,6 +13,7 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.stateStreetETFs.rawValue, 16)
         XCTAssertEqual(WatchlistSource.vanguardETFs.rawValue, 32)
         XCTAssertEqual(WatchlistSource.spdrSectors.rawValue, 64)
+        XCTAssertEqual(WatchlistSource.commodities.rawValue, 128)
     }
 
     func testAllSources_containsAllBits() {
@@ -24,11 +25,12 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(all.contains(.stateStreetETFs))
         XCTAssertTrue(all.contains(.vanguardETFs))
         XCTAssertTrue(all.contains(.spdrSectors))
-        XCTAssertEqual(all.rawValue, 127)
+        XCTAssertTrue(all.contains(.commodities))
+        XCTAssertEqual(all.rawValue, 255)
     }
 
-    func testAllCases_hasSevenSources() {
-        XCTAssertEqual(WatchlistSource.allCases.count, 7)
+    func testAllCases_hasEightSources() {
+        XCTAssertEqual(WatchlistSource.allCases.count, 8)
     }
 
     // MARK: - Display names
@@ -61,6 +63,10 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertEqual(WatchlistSource.spdrSectors.displayName, "Sectors")
     }
 
+    func testDisplayName_commodities() {
+        XCTAssertEqual(WatchlistSource.commodities.displayName, "Commodities")
+    }
+
     // MARK: - symbols()
 
     func testSymbols_personalOnly_returnsPersonalWatchlist() {
@@ -91,6 +97,12 @@ final class WatchlistSourceTests: XCTestCase {
         let source = WatchlistSource.spdrSectors
         let result = source.symbols(personalWatchlist: [])
         XCTAssertEqual(result, SPDRSectorETFs.symbols)
+    }
+
+    func testSymbols_commoditiesOnly_returnsCommoditySymbols() {
+        let source = WatchlistSource.commodities
+        let result = source.symbols(personalWatchlist: [])
+        XCTAssertEqual(result, CommodityETFs.symbols)
     }
 
     func testSymbols_allSources_deduplicates() {
@@ -129,6 +141,7 @@ final class WatchlistSourceTests: XCTestCase {
         XCTAssertTrue(result.contains(StateStreetETFs.symbols[0]))
         XCTAssertTrue(result.contains(VanguardETFs.symbols[0]))
         XCTAssertTrue(result.contains(SPDRSectorETFs.symbols[0]))
+        XCTAssertTrue(result.contains(CommodityETFs.symbols[0]))
     }
 
     // MARK: - allBundledSymbols
@@ -142,8 +155,9 @@ final class WatchlistSourceTests: XCTestCase {
 
     func testAllBundledSymbols_includesNewSources() {
         let bundled = WatchlistSource.allBundledSymbols
-        XCTAssertTrue(bundled.contains("GLD"))   // StateStreet
+        XCTAssertTrue(bundled.contains("GLD"))   // StateStreet / Commodities
         XCTAssertTrue(bundled.contains("VOO"))   // Vanguard
+        XCTAssertTrue(bundled.contains("IBIT"))  // Commodities
     }
 
     // MARK: - Codable
