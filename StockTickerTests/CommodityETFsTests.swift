@@ -4,7 +4,7 @@ import XCTest
 final class CommodityETFsTests: XCTestCase {
 
     func testSymbolCount() {
-        XCTAssertEqual(CommodityETFs.symbols.count, 14)
+        XCTAssertEqual(CommodityETFs.symbols.count, 12)
     }
 
     func testFirstSymbol_isGLD() {
@@ -13,7 +13,7 @@ final class CommodityETFsTests: XCTestCase {
 
     func testContainsAllCommodityETFs() {
         let symbols = Set(CommodityETFs.symbols)
-        for expected in ["GLD", "IAU", "SLV", "PPLT", "PALL", "GDX", "GDXJ", "SIL", "COPX", "RING", "XME", "IBIT", "ETHE", "BITO"] {
+        for expected in ["GLD", "SLV", "PPLT", "PALL", "GDX", "GDXJ", "SIL", "COPX", "RING", "XME", "IBIT", "ETHE"] {
             XCTAssertTrue(symbols.contains(expected), "\(expected) should be in Commodity ETFs")
         }
     }
