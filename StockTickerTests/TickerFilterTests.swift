@@ -17,6 +17,9 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertEqual(TickerFilter.greenLow.rawValue, 4)
         XCTAssertEqual(TickerFilter.etf.rawValue, 8)
         XCTAssertEqual(TickerFilter.asset.rawValue, 16)
+        XCTAssertEqual(TickerFilter.redYTD.rawValue, 32)
+        XCTAssertEqual(TickerFilter.redHigh.rawValue, 64)
+        XCTAssertEqual(TickerFilter.redLow.rawValue, 128)
     }
 
     func testCombinedOptions_hasCorrectRawValue() {
@@ -27,12 +30,16 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertFalse(filter.contains(.greenLow))
     }
 
-    func testAllOptions_containsFiveOptions() {
-        XCTAssertEqual(TickerFilter.allOptions.count, 5)
+    func testAllOptions_containsEightOptions() {
+        XCTAssertEqual(TickerFilter.allOptions.count, 8)
     }
 
     func testGreenOptions_containsThree() {
         XCTAssertEqual(TickerFilter.greenOptions.count, 3)
+    }
+
+    func testRedOptions_containsThree() {
+        XCTAssertEqual(TickerFilter.redOptions.count, 3)
     }
 
     func testTypeOptions_containsTwo() {
@@ -45,6 +52,9 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertEqual(TickerFilter.greenYTD.displayName, "Green YTD")
         XCTAssertEqual(TickerFilter.greenHigh.displayName, "Green High")
         XCTAssertEqual(TickerFilter.greenLow.displayName, "Green Low")
+        XCTAssertEqual(TickerFilter.redYTD.displayName, "Red YTD")
+        XCTAssertEqual(TickerFilter.redHigh.displayName, "Red High")
+        XCTAssertEqual(TickerFilter.redLow.displayName, "Red Low")
         XCTAssertEqual(TickerFilter.etf.displayName, "ETFs")
         XCTAssertEqual(TickerFilter.asset.displayName, "Assets")
     }
@@ -164,6 +174,56 @@ final class TickerFilterTests: XCTestCase {
         XCTAssertFalse(TickerFilter.greenYTD.matches(quote))
     }
 
+    // MARK: - matches() red filters
+
+    func testMatches_redYTD_negativeYTD_passes() {
+        let quote = StockQuote(symbol: "SPY", price: 90.0, previousClose: 91.0, ytdStartPrice: 100.0)
+        XCTAssertTrue(TickerFilter.redYTD.matches(quote))
+    }
+
+    func testMatches_redYTD_positiveYTD_fails() {
+        let quote = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, ytdStartPrice: 100.0)
+        XCTAssertFalse(TickerFilter.redYTD.matches(quote))
+    }
+
+    func testMatches_redHigh_beyond5Percent_passes() {
+        // price=90, highestClose=100 → changePercent = -10% → beyond -5% → red
+        let quote = StockQuote(symbol: "SPY", price: 90.0, previousClose: 89.0, highestClose: 100.0)
+        XCTAssertTrue(TickerFilter.redHigh.matches(quote))
+    }
+
+    func testMatches_redHigh_within5Percent_fails() {
+        // price=97, highestClose=100 → changePercent = -3% → within -5% → not red
+        let quote = StockQuote(symbol: "SPY", price: 97.0, previousClose: 96.0, highestClose: 100.0)
+        XCTAssertFalse(TickerFilter.redHigh.matches(quote))
+    }
+
+    func testMatches_redLow_within5Percent_passes() {
+        // price=103, lowestClose=100 → changePercent = 3% → within 5% → red
+        let quote = StockQuote(symbol: "SPY", price: 103.0, previousClose: 102.0, lowestClose: 100.0)
+        XCTAssertTrue(TickerFilter.redLow.matches(quote))
+    }
+
+    func testMatches_redLow_above5Percent_fails() {
+        // price=110, lowestClose=100 → changePercent = 10% → above 5% → not red
+        let quote = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, lowestClose: 100.0)
+        XCTAssertFalse(TickerFilter.redLow.matches(quote))
+    }
+
+    func testMatches_nilYTDData_excludedByRedYTDFilter() {
+        let quote = StockQuote(symbol: "SPY", price: 100.0, previousClose: 99.0)
+        XCTAssertFalse(TickerFilter.redYTD.matches(quote))
+    }
+
+    func testMatches_greenAndRedYTD_mutuallyExclusive() {
+        // A quote can't be both green and red YTD, so combined filter should match nothing
+        let greenQuote = StockQuote(symbol: "SPY", price: 110.0, previousClose: 109.0, ytdStartPrice: 100.0)
+        let redQuote = StockQuote(symbol: "QQQ", price: 90.0, previousClose: 91.0, ytdStartPrice: 100.0)
+        let filter: TickerFilter = [.greenYTD, .redYTD]
+        XCTAssertFalse(filter.matches(greenQuote))
+        XCTAssertFalse(filter.matches(redQuote))
+    }
+
     // MARK: - filter()
 
     func testFilter_emptyFilter_returnsAll() {
@@ -254,6 +314,13 @@ final class TickerFilterTests: XCTestCase {
 
     func testCodable_roundTrip_withTypeFilters() throws {
         let filter: TickerFilter = [.etf, .greenYTD]
+        let data = try JSONEncoder().encode(filter)
+        let decoded = try JSONDecoder().decode(TickerFilter.self, from: data)
+        XCTAssertEqual(decoded, filter)
+    }
+
+    func testCodable_roundTrip_withRedFilters() throws {
+        let filter: TickerFilter = [.redYTD, .redHigh]
         let data = try JSONEncoder().encode(filter)
         let decoded = try JSONDecoder().decode(TickerFilter.self, from: data)
         XCTAssertEqual(decoded, filter)

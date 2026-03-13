@@ -251,6 +251,14 @@ struct PopoverContentView: View {
                     controller.toggleFilter(filter)
                 }
             }
+            ForEach(TickerFilter.redOptions, id: \.rawValue) { filter in
+                capsuleToggle(
+                    filter.displayName,
+                    isActive: controller.currentFilter.contains(filter)
+                ) {
+                    controller.toggleFilter(filter)
+                }
+            }
             ForEach(TickerFilter.typeOptions, id: \.rawValue) { filter in
                 capsuleToggle(
                     filter.displayName,

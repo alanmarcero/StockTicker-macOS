@@ -351,6 +351,23 @@ struct StockQuote: Identifiable, Sendable {
         return pct > 5.0
     }
 
+    // MARK: - Red Status Predicates (inverse of green)
+
+    var isYTDRed: Bool {
+        guard let pct = ytdChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct < 0
+    }
+
+    var isHighRed: Bool {
+        guard let pct = highestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct < -5.0
+    }
+
+    var isLowRed: Bool {
+        guard let pct = lowestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
+        return pct <= 5.0
+    }
+
     var isETF: Bool { marketCap == nil }
     var isAsset: Bool { marketCap != nil }
 }
