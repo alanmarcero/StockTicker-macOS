@@ -48,7 +48,7 @@ final class WatchlistSourceTests: XCTestCase {
     }
 
     func testDisplayName_personal() {
-        XCTAssertEqual(WatchlistSource.personal.displayName, "My Watchlist")
+        XCTAssertEqual(WatchlistSource.personal.displayName, "Watchlist")
     }
 
     func testDisplayName_stateStreetETFs() {

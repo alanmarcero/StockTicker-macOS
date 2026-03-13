@@ -21,7 +21,7 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
         case WatchlistSource.megaCap.rawValue: return "$100B+"
         case WatchlistSource.topAUMETFs.rawValue: return "Top AUM ETFs"
         case WatchlistSource.topVolETFs.rawValue: return "Top Vol ETFs"
-        case WatchlistSource.personal.rawValue: return "My Watchlist"
+        case WatchlistSource.personal.rawValue: return "Watchlist"
         case WatchlistSource.stateStreetETFs.rawValue: return "SPDR"
         case WatchlistSource.vanguardETFs.rawValue: return "Vanguard"
         case WatchlistSource.spdrSectors.rawValue: return "Sectors"
