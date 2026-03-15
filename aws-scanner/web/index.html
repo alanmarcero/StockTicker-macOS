@@ -742,8 +742,8 @@ function sortQuarterKeys(keys) {
   return [...keys].sort((a, b) => {
     const [qa, ya] = [a[1], a.slice(3)];
     const [qb, yb] = [b[1], b.slice(3)];
-    if (ya !== yb) return Number(ya) - Number(yb);
-    return Number(qa) - Number(qb);
+    if (ya !== yb) return Number(yb) - Number(ya);
+    return Number(qb) - Number(qa);
   });
 }
 
@@ -1498,9 +1498,12 @@ function _buildVixSpikeData(stats) {
   const spikeDates = [...spikeDateSet];
 
   const spikeMeta = {};
+  const spikeTimestamps = {};
   filtered.forEach(s => s.vixReturns.forEach(vr => {
     if (!spikeMeta[vr.dateString]) spikeMeta[vr.dateString] = vr.vixClose;
+    if (!spikeTimestamps[vr.dateString]) spikeTimestamps[vr.dateString] = vr.timestamp || 0;
   }));
+  spikeDates.sort((a, b) => (spikeTimestamps[b] || 0) - (spikeTimestamps[a] || 0));
 
   state.data['vixSpikes'] = filtered.map(s => {
     const row = { symbol: s.symbol, close: s.close ?? null, highPct: s.highPct ?? null };
