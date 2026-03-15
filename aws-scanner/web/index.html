@@ -733,7 +733,19 @@ const state = {
   activeColorFilters: new Set(),
   manifest: [],
   selectedWeek: 'latest',
+  dynPctCols: new Set(),
+  dynPECols: new Set(),
+  dynPEPrevCol: {},
 };
+
+function sortQuarterKeys(keys) {
+  return [...keys].sort((a, b) => {
+    const [qa, ya] = [a[1], a.slice(3)];
+    const [qb, yb] = [b[1], b.slice(3)];
+    if (ya !== yb) return Number(ya) - Number(yb);
+    return Number(qa) - Number(qb);
+  });
+}
 
 /* ── Hash persistence ── */
 
@@ -982,6 +994,19 @@ function renderRowHTML(r, cols, pctField, tabId) {
       const cls = v != null ? (v >= 0 ? 'pct-positive' : 'pct-negative') : '';
       return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
     }
+    if (tabId === 'fwdPE' && state.dynPECols.has(c)) {
+      if (v == null) return `<td class="num">\u2014</td>`;
+      const prevCol = state.dynPEPrevCol[c];
+      const prevVal = prevCol ? r[prevCol] : null;
+      let cls = '';
+      if (prevVal != null) cls = v < prevVal ? 'pct-positive' : v > prevVal ? 'pct-negative' : '';
+      return `<td class="num ${cls}">${v.toFixed(1)}</td>`;
+    }
+    if (state.dynPctCols.has(c) || (state.dynPECols.has(c) && tabId !== 'fwdPE')) {
+      if (v == null) return `<td class="num">\u2014</td>`;
+      const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
+      return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
+    }
     if (NUM_COLS.has(c)) return `<td class="num${ema}">${fmtNum(c, v)}</td>`;
     return `<td>${esc(v)}</td>`;
   }).join('') + '</tr>';
@@ -1152,6 +1177,7 @@ function showTab(tabId) {
 
 const SPECIAL_TAB_COLS = {
   performance: ['symbol','close','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE'],
+  priceBreaks: ['symbol','close','breakoutPrice','breakoutDate','breakoutPct','breakdownPrice','breakdownDate','breakdownPct','rsi'],
 };
 
 function updateRows(tabId) {
@@ -1318,31 +1344,25 @@ async function switchWeek(week) {
 /* ── Special tab rendering ── */
 
 function showSpecialTab(def) {
-  if (def.special === 'performance') return showPerformance();
-  if (def.special === 'priceBreaks') return showPriceBreaks();
-  if (def.special === 'sinceQuarter') return showQuarterlyTab('sinceQuarter', 'sinceQ');
-  if (def.special === 'duringQuarter') return showQuarterlyTab('duringQuarter', 'duringQ');
-  if (def.special === 'forwardPE') return showForwardPE();
-  if (def.special === 'vixSpikes') return showVixSpikes();
   if (def.special === 'miscStats') return showMiscStats();
+  // All other special tabs use standard sortable/filterable table
+  return showSortableSpecialTab(def.id);
 }
 
-function showPerformance() {
-  const perfCols = ['symbol','close','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE'];
-  const allRows = (state.data['performance'] || []).map(r => ({...r}));
-  let rows = applyFilters([...allRows], perfCols);
+function showSortableSpecialTab(tabId) {
+  const cols = SPECIAL_TAB_COLS[tabId];
+  if (!cols) return;
+  const def = { cols };
+  const allRows = state.data[tabId] || [];
+  let rows = applyFilters([...allRows], cols);
   sortRows(rows);
 
   const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
   renderToolbar(rows.length, totalSourced);
 
-  const perfDef = { cols: perfCols };
-  const ths = renderTableHeader(perfDef);
-  const filterCells = renderFilterRow(perfDef);
-
-  const body = rows.length === 0
-    ? `<tr><td colspan="${perfCols.length}" style="text-align:center;padding:32px;color:var(--text-muted);font-family:var(--font-ui)">No data</td></tr>`
-    : rows.map(r => renderRowHTML(r, perfCols, null, 'performance')).join('');
+  const ths = renderTableHeader(def);
+  const filterCells = renderFilterRow(def);
+  const body = renderTbodyHTML(rows, cols, null, tabId);
 
   document.getElementById('content').innerHTML =
     `<div class="table-wrap"><table>` +
@@ -1350,232 +1370,7 @@ function showPerformance() {
     `<tbody>${body}</tbody>` +
     `</table></div>`;
 
-  attachFilterListeners(perfDef, 'performance');
-}
-
-function showForwardPE() {
-  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s.forwardPEHistory);
-  if (!stats.length) {
-    renderToolbar(0, 0);
-    document.getElementById('content').innerHTML = '<div class="loading">No Forward P/E data available</div>';
-    return;
-  }
-
-  const qKeySet = new Set();
-  stats.forEach(s => Object.keys(s.forwardPEHistory).forEach(k => qKeySet.add(k)));
-  const qKeys = [...qKeySet].sort((a, b) => {
-    const [qa, ya] = [a[1], a.slice(3)];
-    const [qb, yb] = [b[1], b.slice(3)];
-    if (ya !== yb) return Number(ya) - Number(yb);
-    return Number(qa) - Number(qb);
-  });
-
-  const rows = stats.map(s => {
-    const row = { symbol: s.symbol, close: s.close, forwardPE: s.forwardPE ?? null };
-    qKeys.forEach(k => { row[k] = s.forwardPEHistory[k] ?? null; });
-    return row;
-  }).filter(r => matchesSources(r.symbol));
-
-  state.data['fwdPE'] = rows;
-  renderToolbar(rows.length, rows.length);
-
-  const fixedCols = ['symbol', 'close', 'forwardPE'];
-  const allCols = [...fixedCols, ...qKeys];
-
-  const ths = allCols.map(c => {
-    const cls = c !== 'symbol' ? ' class="num"' : '';
-    const label = COL_LABELS[c] || c;
-    return `<th${cls}>${label}</th>`;
-  }).join('');
-
-  const tbody = rows.map(r => '<tr>' + allCols.map((c, ci) => {
-    const v = r[c];
-    if (c === 'symbol') {
-      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-    }
-    if (c === 'close' || c === 'forwardPE') return `<td class="num">${fmtNum(c, v)}</td>`;
-    if (v == null) return `<td class="num">\u2014</td>`;
-    const prevIdx = ci - 1;
-    const prevCol = prevIdx >= fixedCols.length ? allCols[prevIdx] : null;
-    const prevVal = prevCol ? r[prevCol] : null;
-    let cls = '';
-    if (prevVal != null) {
-      cls = v < prevVal ? 'pct-positive' : v > prevVal ? 'pct-negative' : '';
-    }
-    return `<td class="num ${cls}">${v.toFixed(1)}</td>`;
-  }).join('') + '</tr>').join('');
-
-  document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:32px;color:var(--text-muted)">No data</td></tr>'}</tbody></table></div>`;
-}
-
-function showPriceBreaks() {
-  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol));
-  const breakouts = stats.filter(s => s.breakoutPct != null)
-    .map(s => ({ symbol: s.symbol, close: s.close, breakoutPrice: s.breakoutPrice, breakoutDate: s.breakoutDate, breakoutPct: s.breakoutPct, rsi: s.rsi ?? null }))
-    .sort((a, b) => a.breakoutPct - b.breakoutPct);
-  const breakdowns = stats.filter(s => s.breakdownPct != null)
-    .map(s => ({ symbol: s.symbol, close: s.close, breakdownPrice: s.breakdownPrice, breakdownDate: s.breakdownDate, breakdownPct: s.breakdownPct, rsi: s.rsi ?? null }))
-    .sort((a, b) => a.breakdownPct - b.breakdownPct);
-
-  state.data['priceBreaks'] = [...breakouts, ...breakdowns];
-
-  const boCols = ['symbol','close','breakoutPrice','breakoutDate','breakoutPct','rsi'];
-  const bdCols = ['symbol','close','breakdownPrice','breakdownDate','breakdownPct','rsi'];
-
-  const totalCount = breakouts.length + breakdowns.length;
-  renderToolbar(totalCount, totalCount);
-
-  const makeHead = cols => cols.map(c => {
-    const cls = NUM_COLS.has(c) ? ' class="num"' : '';
-    return `<th${cls}>${COL_LABELS[c] || c}</th>`;
-  }).join('');
-
-  const makeBody = (rows, cols) => {
-    if (!rows.length) return `<tr><td colspan="${cols.length}" style="text-align:center;padding:32px;color:var(--text-muted);font-family:var(--font-ui)">No data</td></tr>`;
-    return rows.map(r => '<tr>' + cols.map(c => {
-      const v = r[c];
-      if (c === 'symbol') {
-        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-      }
-      if (c === 'breakoutDate' || c === 'breakdownDate') return `<td>${esc(v || '')}</td>`;
-      if (c === 'rsi' && v != null) {
-        const cls = v > 70 ? 'pct-negative' : v < 30 ? 'pct-positive' : '';
-        return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
-      }
-      if (c === 'breakoutPct' || c === 'breakdownPct') {
-        const cls = v != null ? (v >= 0 ? 'pct-positive' : 'pct-negative') : '';
-        return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
-      }
-      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
-      return `<td>${esc(v)}</td>`;
-    }).join('') + '</tr>').join('');
-  };
-
-  document.getElementById('content').innerHTML =
-    `<div class="section-title">Breakouts <span class="badge">${breakouts.length}</span></div>` +
-    `<div class="table-wrap"><table><thead><tr>${makeHead(boCols)}</tr></thead><tbody>${makeBody(breakouts, boCols)}</tbody></table></div>` +
-    `<div class="section-title section-gap">Breakdowns <span class="badge">${breakdowns.length}</span></div>` +
-    `<div class="table-wrap"><table><thead><tr>${makeHead(bdCols)}</tr></thead><tbody>${makeBody(breakdowns, bdCols)}</tbody></table></div>`;
-}
-
-function showQuarterlyTab(field, tabId) {
-  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s[field]);
-  if (!stats.length) {
-    renderToolbar(0, 0);
-    document.getElementById('content').innerHTML = '<div class="loading">No quarterly data available</div>';
-    return;
-  }
-
-  const qKeySet = new Set();
-  stats.forEach(s => Object.keys(s[field]).forEach(k => qKeySet.add(k)));
-  const qKeys = [...qKeySet].sort((a, b) => {
-    const [qa, ya] = [a[1], a.slice(3)];
-    const [qb, yb] = [b[1], b.slice(3)];
-    if (ya !== yb) return Number(ya) - Number(yb);
-    return Number(qa) - Number(qb);
-  });
-
-  const rows = stats.map(s => {
-    const row = { symbol: s.symbol, close: s.close, highPct: s.highPct };
-    qKeys.forEach(k => { row[k] = s[field][k] ?? null; });
-    return row;
-  }).filter(r => matchesSources(r.symbol));
-
-  state.data[tabId] = rows;
-  renderToolbar(rows.length, rows.length);
-
-  const fixedCols = ['symbol', 'close', 'highPct'];
-  const allCols = [...fixedCols, ...qKeys];
-
-  const ths = allCols.map(c => {
-    const cls = c !== 'symbol' ? ' class="num"' : '';
-    const label = COL_LABELS[c] || c;
-    return `<th${cls}>${label}</th>`;
-  }).join('');
-
-  const tbody = rows.map(r => '<tr>' + allCols.map(c => {
-    const v = r[c];
-    if (c === 'symbol') {
-      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-    }
-    if (c === 'close') return `<td class="num">${fmtNum(c, v)}</td>`;
-    if (c === 'highPct') {
-      const cls = v != null ? (v >= -5 ? 'pct-positive' : 'pct-negative') : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
-    }
-    if (v == null) return `<td class="num">\u2014</td>`;
-    const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
-    return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
-  }).join('') + '</tr>').join('');
-
-  document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:32px;color:var(--text-muted)">No data</td></tr>'}</tbody></table></div>`;
-}
-
-function showVixSpikes() {
-  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s.vixReturns && s.vixReturns.length);
-  if (!stats.length) {
-    renderToolbar(0, 0);
-    document.getElementById('content').innerHTML = '<div class="loading">No VIX spike data available</div>';
-    return;
-  }
-
-  const spikeDateSet = new Set();
-  stats.forEach(s => s.vixReturns.forEach(vr => spikeDateSet.add(vr.dateString)));
-  const spikeDates = [...spikeDateSet];
-
-  const spikeMeta = {};
-  stats.forEach(s => s.vixReturns.forEach(vr => {
-    if (!spikeMeta[vr.dateString]) spikeMeta[vr.dateString] = vr.vixClose;
-  }));
-  const spikeLabels = {};
-  spikeDates.forEach(d => {
-    spikeLabels[d] = `${d} (${spikeMeta[d]?.toFixed(1) || ''})`;
-  });
-
-  const rows = stats.map(s => {
-    const row = { symbol: s.symbol, close: s.close, highPct: s.highPct };
-    const byDate = {};
-    s.vixReturns.forEach(vr => { byDate[vr.dateString] = vr.pctGain; });
-    spikeDates.forEach(d => { row['spike_' + d] = byDate[d] ?? null; });
-    return row;
-  });
-
-  state.data['vixSpikes'] = rows;
-  renderToolbar(rows.length, rows.length);
-
-  const fixedCols = ['symbol', 'close', 'highPct'];
-  const spikeCols = spikeDates.map(d => 'spike_' + d);
-  const allCols = [...fixedCols, ...spikeCols];
-
-  const ths = allCols.map(c => {
-    if (c === 'symbol') return `<th>${COL_LABELS[c]}</th>`;
-    const label = c.startsWith('spike_') ? spikeLabels[c.replace('spike_', '')] : (COL_LABELS[c] || c);
-    return `<th class="num">${label}</th>`;
-  }).join('');
-
-  const tbody = rows.map(r => '<tr>' + allCols.map(c => {
-    const v = r[c];
-    if (c === 'symbol') {
-      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
-      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
-    }
-    if (c === 'close') return `<td class="num">${fmtNum(c, v)}</td>`;
-    if (c === 'highPct') {
-      const cls = v != null ? (v >= -5 ? 'pct-positive' : 'pct-negative') : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
-    }
-    if (v == null) return `<td class="num">\u2014</td>`;
-    const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
-    return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
-  }).join('') + '</tr>').join('');
-
-  document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:32px;color:var(--text-muted)">No data</td></tr>'}</tbody></table></div>`;
+  attachFilterListeners(def, tabId);
 }
 
 function showMiscStats() {
@@ -1614,24 +1409,116 @@ function showMiscStats() {
 
 function buildSpecialTabData() {
   const stats = Object.values(state.statsMap).filter(s => s.symbol);
+
+  // Clear dynamic column registrations
+  state.dynPctCols = new Set();
+  state.dynPECols = new Set();
+  state.dynPEPrevCol = {};
+
+  // Performance
   state.data['performance'] = stats.map(s => ({
-    symbol: s.symbol,
-    close: s.close ?? null,
-    ytdPct: s.ytdPct ?? null,
-    highPct: s.highPct ?? null,
-    high3yr: s.high3yr ?? null,
-    lowPct: s.lowPct ?? null,
-    low52wk: s.low52wk ?? null,
-    rsi: s.rsi ?? null,
-    forwardPE: s.forwardPE ?? null,
+    symbol: s.symbol, close: s.close ?? null,
+    ytdPct: s.ytdPct ?? null, highPct: s.highPct ?? null, high3yr: s.high3yr ?? null,
+    lowPct: s.lowPct ?? null, low52wk: s.low52wk ?? null,
+    rsi: s.rsi ?? null, forwardPE: s.forwardPE ?? null,
   }));
-  state.data['priceBreaks'] = stats.filter(s => s.breakoutPct != null || s.breakdownPct != null);
-  state.data['sinceQ'] = stats.filter(s => s.sinceQuarter);
-  state.data['duringQ'] = stats.filter(s => s.duringQuarter);
-  state.data['fwdPE'] = stats.filter(s => s.forwardPEHistory);
-  state.data['vixSpikes'] = stats.filter(s => s.vixReturns && s.vixReturns.length);
+
+  // Price Breaks — single combined table
+  state.data['priceBreaks'] = stats
+    .filter(s => s.breakoutPct != null || s.breakdownPct != null)
+    .map(s => ({
+      symbol: s.symbol, close: s.close ?? null,
+      breakoutPrice: s.breakoutPrice ?? null, breakoutDate: s.breakoutDate ?? null, breakoutPct: s.breakoutPct ?? null,
+      breakdownPrice: s.breakdownPrice ?? null, breakdownDate: s.breakdownDate ?? null, breakdownPct: s.breakdownPct ?? null,
+      rsi: s.rsi ?? null,
+    }));
+
+  // Quarterly — Since Quarter
+  _buildQuarterlyData(stats, 'sinceQuarter', 'sinceQ');
+  _buildQuarterlyData(stats, 'duringQuarter', 'duringQ');
+
+  // Forward P/E
+  _buildForwardPEData(stats);
+
+  // VIX Spikes
+  _buildVixSpikeData(stats);
+
+  // Misc Stats
   state.data['miscStats'] = [];
   state.miscStats = state.statsMap._misc || {};
+}
+
+function _buildQuarterlyData(stats, field, tabId) {
+  const filtered = stats.filter(s => s[field]);
+  const qKeySet = new Set();
+  filtered.forEach(s => Object.keys(s[field]).forEach(k => qKeySet.add(k)));
+  const qKeys = sortQuarterKeys(qKeySet);
+
+  state.data[tabId] = filtered.map(s => {
+    const row = { symbol: s.symbol, close: s.close ?? null, highPct: s.highPct ?? null };
+    qKeys.forEach(k => { row[k] = s[field][k] ?? null; });
+    return row;
+  });
+
+  const cols = ['symbol', 'close', 'highPct', ...qKeys];
+  SPECIAL_TAB_COLS[tabId] = cols;
+  qKeys.forEach(k => {
+    COL_LABELS[k] = COL_LABELS[k] || k;
+    NUM_COLS.add(k);
+    state.dynPctCols.add(k);
+  });
+}
+
+function _buildForwardPEData(stats) {
+  const filtered = stats.filter(s => s.forwardPEHistory);
+  const qKeySet = new Set();
+  filtered.forEach(s => Object.keys(s.forwardPEHistory).forEach(k => qKeySet.add(k)));
+  const qKeys = sortQuarterKeys(qKeySet);
+
+  state.data['fwdPE'] = filtered.map(s => {
+    const row = { symbol: s.symbol, close: s.close ?? null, forwardPE: s.forwardPE ?? null };
+    qKeys.forEach(k => { row[k] = s.forwardPEHistory[k] ?? null; });
+    return row;
+  });
+
+  const cols = ['symbol', 'close', 'forwardPE', ...qKeys];
+  SPECIAL_TAB_COLS['fwdPE'] = cols;
+  qKeys.forEach((k, i) => {
+    COL_LABELS[k] = COL_LABELS[k] || k;
+    NUM_COLS.add(k);
+    state.dynPECols.add(k);
+    if (i > 0) state.dynPEPrevCol[k] = qKeys[i - 1];
+  });
+}
+
+function _buildVixSpikeData(stats) {
+  const filtered = stats.filter(s => s.vixReturns && s.vixReturns.length);
+  const spikeDateSet = new Set();
+  filtered.forEach(s => s.vixReturns.forEach(vr => spikeDateSet.add(vr.dateString)));
+  const spikeDates = [...spikeDateSet];
+
+  const spikeMeta = {};
+  filtered.forEach(s => s.vixReturns.forEach(vr => {
+    if (!spikeMeta[vr.dateString]) spikeMeta[vr.dateString] = vr.vixClose;
+  }));
+
+  state.data['vixSpikes'] = filtered.map(s => {
+    const row = { symbol: s.symbol, close: s.close ?? null, highPct: s.highPct ?? null };
+    const byDate = {};
+    s.vixReturns.forEach(vr => { byDate[vr.dateString] = vr.pctGain; });
+    spikeDates.forEach(d => { row['spike_' + d] = byDate[d] ?? null; });
+    return row;
+  });
+
+  const spikeCols = spikeDates.map(d => 'spike_' + d);
+  const cols = ['symbol', 'close', 'highPct', ...spikeCols];
+  SPECIAL_TAB_COLS['vixSpikes'] = cols;
+  spikeCols.forEach((sc, i) => {
+    const d = spikeDates[i];
+    COL_LABELS[sc] = `${d} (${spikeMeta[d]?.toFixed(1) || ''})`;
+    NUM_COLS.add(sc);
+    state.dynPctCols.add(sc);
+  });
 }
 
 /* ── Fetch & init ── */
