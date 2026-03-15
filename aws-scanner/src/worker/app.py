@@ -7,9 +7,9 @@ from typing import Any, Optional
 import boto3
 
 try:
-    from . import ema, yahoo
+    from . import ema, stats, yahoo
 except ImportError:
-    import ema, yahoo
+    import ema, stats, yahoo
 
 s3 = boto3.client("s3")
 cloudfront = boto3.client("cloudfront")
@@ -29,9 +29,9 @@ def lambda_handler(event: dict, context) -> dict:
         total_batches: int = message["totalBatches"]
         symbols: list[str] = message["symbols"]
 
-        crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors = _process_batch(symbols)
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors = _process_batch(symbols)
 
-        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors)
+        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors)
 
         if errors:
             _write_errors(bucket, run_id, batch_index, errors)
@@ -112,7 +112,7 @@ def _crossdown_entry(symbol: str, close: float, ema_value: float, periods_above:
 
 def _process_batch(
     symbols: list[str],
-) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
     crossovers: list[dict] = []
     crossdowns: list[dict] = []
     day_below: list[dict] = []
@@ -123,6 +123,7 @@ def _process_batch(
     month_crossdowns: list[dict] = []
     month_below: list[dict] = []
     month_above: list[dict] = []
+    stats_data: list[dict] = []
     errors: list[dict] = []
 
     for i, symbol in enumerate(symbols):
@@ -132,6 +133,7 @@ def _process_batch(
         daily_result = yahoo.fetch_daily_candles(symbol)
         weekly_result = yahoo.fetch_weekly_candles(symbol)
         monthly_result = yahoo.fetch_monthly_candles(symbol)
+        stats_result = yahoo.fetch_stats_candles(symbol)
 
         if daily_result is None and weekly_result is None and monthly_result is None:
             print(f"[worker] {symbol}: fetch failed")
@@ -142,7 +144,13 @@ def _process_batch(
         _process_weekly(symbol, weekly_result, crossovers, crossdowns, week_below, week_above)
         _process_monthly(symbol, monthly_result, month_crossovers, month_crossdowns, month_below, month_above)
 
-    return crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, errors
+        if stats_result is not None:
+            computed = stats.compute_stats(stats_result[0], stats_result[1])
+            if computed is not None:
+                computed["symbol"] = symbol
+                stats_data.append(computed)
+
+    return crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors
 
 
 def _process_daily(
@@ -251,6 +259,7 @@ def _write_batch_results(
     month_crossdowns: list[dict],
     month_below: list[dict],
     month_above: list[dict],
+    stats_data: Optional[list[dict]] = None,
     error_details: Optional[list[dict]] = None,
 ) -> None:
     body = {
@@ -268,6 +277,7 @@ def _write_batch_results(
         "monthCrossdowns": month_crossdowns,
         "monthBelow": month_below,
         "monthAbove": month_above,
+        "stats": stats_data or [],
     }
     key = f"batches/{run_id}/batch-{batch_index:03d}.json"
     s3.put_object(Bucket=bucket, Key=key, Body=json.dumps(body))
@@ -289,6 +299,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     all_month_crossdowns: list[dict] = []
     all_month_below: list[dict] = []
     all_month_above: list[dict] = []
+    all_stats: list[dict] = []
     all_error_details: list[dict] = []
     total_symbols = 0
     total_errors = 0
@@ -309,6 +320,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
         all_month_crossdowns.extend(batch.get("monthCrossdowns", []))
         all_month_below.extend(batch.get("monthBelow", []))
         all_month_above.extend(batch.get("monthAbove", []))
+        all_stats.extend(batch.get("stats", []))
         all_error_details.extend(batch.get("errorDetails", []))
         total_symbols += batch.get("symbolsProcessed", 0)
         total_errors += batch.get("errors", 0)
@@ -357,6 +369,11 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     _put_json(bucket, f"results/{scan_date}-monthly.json", monthly_result)
     _put_json(bucket, f"results/{scan_date}-monthly-below-above.json", monthly_ba_result)
 
+    all_stats.sort(key=lambda x: x.get("symbol", ""))
+    stats_result = {**base, "stats": all_stats}
+    _put_json(bucket, "results/latest-stats.json", stats_result)
+    _put_json(bucket, f"results/{scan_date}-stats.json", stats_result)
+
     _update_manifest(bucket, scan_date)
 
 
@@ -380,7 +397,7 @@ def _update_manifest(bucket: str, scan_date: str) -> None:
 
 
 def _delete_snapshot(bucket: str, scan_date: str) -> None:
-    suffixes = ["", "-crossdown", "-below", "-above", "-monthly", "-monthly-below-above"]
+    suffixes = ["", "-crossdown", "-below", "-above", "-monthly", "-monthly-below-above", "-stats"]
     for suffix in suffixes:
         key = f"results/{scan_date}{suffix}.json"
         try:

@@ -19,6 +19,10 @@ def fetch_monthly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]
     return _fetch_candles(symbol, range_param="2y", interval="1wk")
 
 
+def fetch_stats_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
+    return _fetch_candles(symbol, range_param="3y", interval="1d")
+
+
 def _fetch_candles(symbol: str, range_param: str, interval: str) -> Optional[tuple[list[float], list[int]]]:
     url = f"{BASE_URL}/{symbol}?range={range_param}&interval={interval}"
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
