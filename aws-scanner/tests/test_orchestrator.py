@@ -2,7 +2,7 @@ import json
 from io import BytesIO
 from unittest.mock import patch
 
-from src.orchestrator.app import lambda_handler, BATCH_SIZE
+from src.orchestrator.app import lambda_handler, BATCH_SIZE, _detect_vix_spikes
 
 
 class TestLambdaHandler:
@@ -164,3 +164,34 @@ class TestBatchSize:
 
     def test_batch_size_is_50(self):
         assert BATCH_SIZE == 50
+
+
+class TestDetectVixSpikes:
+
+    def test_no_spikes_below_threshold(self):
+        closes = [15.0, 18.0, 19.0]
+        timestamps = [1000, 2000, 3000]
+        assert _detect_vix_spikes(closes, timestamps) == []
+
+    def test_single_spike(self):
+        closes = [15.0, 25.0, 15.0]
+        timestamps = [1000, 86400, 172800]
+        result = _detect_vix_spikes(closes, timestamps)
+        assert len(result) == 1
+        assert result[0]["vixClose"] == 25.0
+
+    def test_clusters_nearby_spikes(self):
+        day = 86400
+        # Two spike clusters separated by 10 non-spike days (well beyond gap_days=5)
+        closes = [25.0, 30.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 15.0, 28.0]
+        timestamps = [day * i for i in range(13)]
+        result = _detect_vix_spikes(closes, timestamps)
+        assert len(result) == 2
+        assert result[0]["vixClose"] == 30.0
+        assert result[1]["vixClose"] == 28.0
+
+    def test_empty_input(self):
+        assert _detect_vix_spikes([], []) == []
+
+    def test_mismatched_lengths(self):
+        assert _detect_vix_spikes([25.0], [1000, 2000]) == []
