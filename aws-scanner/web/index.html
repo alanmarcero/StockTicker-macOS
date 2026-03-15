@@ -403,6 +403,7 @@ const SPDR = new Set(['SPY','GLD','SPLG','XLK','XLF','DIA','SPYG','BIL','XLV','X
 const VANGUARD = new Set(['VOO','VTI','VEA','VUG','VTV','BND','VXUS','VWO','VGT','VIG','VO','BNDX','VYM','VB','VCIT','VT','VEU','VV','BSV','VTEB','VCSH','VGIT','VONG','VNQ','VBR','VGK','MGK','BIV','VGSH','VXF','VOE','VOOG','VBK','VYMI','VOT','VHT','VONV','VTIP','VMBS','VTWO','VFH','MGV','VSS','ESGV','VGLT','MGC','VDE','VIGI','VPL','VPU','VDC','VUSB']);
 
 const SPDR_SECTORS = new Set(['SPY','XLE','XLK','XLB','XLV','XLY','XLI','XLC','XLU','XLF','XLRE','XLP']);
+const INDEX_SYMBOLS = new Set(['SPY','QQQ','DIA','IWM']);
 const VANECK_ETFS = new Set(['GDX','GDXJ','MOAT','MOO','MORT','REMX','SMH','SMOG']);
 const WISDOMTREE_ETFS = new Set(['DGRW','DXJ','WCLD','WTV']);
 const GLOBALX_ETFS = new Set(['AIQ','BKCH','BOTZ','BUG','CLOU','COPX','CTEC','DIV','DRIV','EBIZ','EDOC','FINX','GNOM','HERO','LIT','MLPX','POTX','SOCL','URA']);
@@ -448,6 +449,8 @@ const TAB_DEFS = [
   { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],   pctField: 'pctBelow' },
   { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
   { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
+  { id: 'dayBelow',    label: 'Day Below',      file: '/results/latest-below.json',                 key: 'dayBelow',        cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
+  { id: 'dayAbove',    label: 'Day Above',      file: '/results/latest-above.json',                 key: 'dayAbove',        cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
   { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctAbove' },
   { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctBelow' },
   { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
@@ -735,7 +738,7 @@ function renderRowHTML(r, cols, pctField, tabId) {
       return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
     }
     if (c === 'rsi' && v != null) {
-      const cls = v >= 70 ? 'pct-positive' : v <= 30 ? 'pct-negative' : '';
+      const cls = v > 70 ? 'pct-negative' : v < 30 ? 'pct-positive' : '';
       return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
     }
     if (c === 'breakoutPct' || c === 'breakdownPct' || c === 'pctGain') {
@@ -1205,7 +1208,7 @@ function showPriceBreaks() {
       }
       if (c === 'breakoutDate' || c === 'breakdownDate') return `<td>${esc(v || '')}</td>`;
       if (c === 'rsi' && v != null) {
-        const cls = v >= 70 ? 'pct-positive' : v <= 30 ? 'pct-negative' : '';
+        const cls = v > 70 ? 'pct-negative' : v < 30 ? 'pct-positive' : '';
         return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
       }
       if (c === 'breakoutPct' || c === 'breakdownPct') {
@@ -1349,13 +1352,16 @@ function showMiscStats() {
   const misc = state.miscStats || {};
   document.getElementById('toolbar').innerHTML = '';
 
-  // Compute sector-specific stats from statsMap in the frontend
+  // Compute sector and index stats from statsMap in the frontend
   const sectorStats = Object.values(state.statsMap).filter(s => s.symbol && SPDR_SECTORS.has(s.symbol));
+  const indexStats = Object.values(state.statsMap).filter(s => s.symbol && INDEX_SYMBOLS.has(s.symbol));
   const sectorNearHigh = sectorStats.length ? (sectorStats.filter(s => s.highPct != null && s.highPct >= -5).length / sectorStats.length * 100).toFixed(1) + '%' : '\u2014';
+  const indexNearHigh = indexStats.length ? (indexStats.filter(s => s.highPct != null && s.highPct >= -5).length / indexStats.length * 100).toFixed(1) + '%' : '\u2014';
   const sectorPositiveYTD = sectorStats.length ? (sectorStats.filter(s => s.ytdPct != null && s.ytdPct >= 0).length / sectorStats.length * 100).toFixed(1) + '%' : '\u2014';
 
   const cards = [
     { label: 'Within 5% of High', value: misc.pctWithin5OfHigh != null ? misc.pctWithin5OfHigh.toFixed(1) + '%' : '\u2014' },
+    { label: 'Indexes Near High', value: indexNearHigh },
     { label: 'Sectors Near High', value: sectorNearHigh },
     { label: 'Positive YTD', value: misc.pctPositiveYTD != null ? misc.pctPositiveYTD.toFixed(1) + '%' : '\u2014' },
     { label: 'Sectors Positive YTD', value: sectorPositiveYTD },
