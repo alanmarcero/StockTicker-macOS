@@ -452,6 +452,7 @@ const TAB_DEFS = [
   { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctBelow' },
   { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
   { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
+  { id: 'performance', label: 'Performance',     special: 'performance' },
   { id: 'priceBreaks', label: 'Price Breaks',   special: 'priceBreaks' },
   { id: 'sinceQ',      label: 'Since Quarter',  special: 'sinceQuarter' },
   { id: 'duringQ',     label: 'During Quarter', special: 'duringQuarter' },
@@ -464,7 +465,7 @@ const COL_LABELS = {
   weeksBelow: 'Weeks Below', weeksAbove: 'Weeks Above',
   monthsBelow: 'Months Below', monthsAbove: 'Months Above',
   count: 'Count',
-  ytdPct: 'YTD', highPct: 'vs High', lowPct: 'vs Low',
+  ytdPct: 'YTD', highPct: 'vs High', high3yr: '3yr High', lowPct: 'vs Low', low52wk: '52wk Low',
   rsi: 'RSI', forwardPE: 'Fwd P/E',
   breakoutPct: 'Breakout %', breakdownPct: 'Breakdown %',
   breakoutPrice: 'Breakout', breakdownPrice: 'Breakdown',
@@ -472,7 +473,7 @@ const COL_LABELS = {
   spikeClose: 'Spike Close', pctGain: '% Gain',
 };
 
-const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count','ytdPct','highPct','lowPct','rsi','forwardPE','breakoutPct','breakdownPct','breakoutPrice','breakdownPrice','spikeClose','pctGain']);
+const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE','breakoutPct','breakdownPct','breakoutPrice','breakdownPrice','spikeClose','pctGain']);
 
 const state = {
   activeSourceMode: 'all',
@@ -908,10 +909,16 @@ function showTab(tabId) {
   attachFilterListeners(def, tabId);
 }
 
+const SPECIAL_TAB_COLS = {
+  performance: ['symbol','close','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE'],
+};
+
 function updateRows(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
+  const cols = def.cols || SPECIAL_TAB_COLS[tabId];
+  if (!cols) return;
   const allRows = state.data[tabId] || [];
-  let rows = applyFilters([...allRows], def.cols);
+  let rows = applyFilters([...allRows], cols);
   sortRows(rows);
 
   const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
@@ -919,14 +926,14 @@ function updateRows(tabId) {
 
   const tbody = document.querySelector('.table-wrap tbody');
   if (!tbody) return;
-  tbody.innerHTML = renderTbodyHTML(rows, def.cols, def.pctField, tabId);
+  tbody.innerHTML = renderTbodyHTML(rows, cols, def.pctField, tabId);
 }
 
 /* ── Formatting ── */
 
 function fmtNum(col, v) {
   if (v == null) return '\u2014';
-  if (col === 'close' || col === 'ema' || col === 'breakoutPrice' || col === 'breakdownPrice' || col === 'spikeClose') return v.toFixed(2);
+  if (col === 'close' || col === 'ema' || col === 'breakoutPrice' || col === 'breakdownPrice' || col === 'spikeClose' || col === 'high3yr' || col === 'low52wk') return v.toFixed(2);
   if (col === 'pct' || col === 'ytdPct' || col === 'highPct' || col === 'lowPct' || col === 'breakoutPct' || col === 'breakdownPct' || col === 'pctGain') return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
   if (col === 'rsi') return v.toFixed(1);
   if (col === 'forwardPE') return v.toFixed(1);
@@ -1070,11 +1077,38 @@ async function switchWeek(week) {
 /* ── Special tab rendering ── */
 
 function showSpecialTab(def) {
+  if (def.special === 'performance') return showPerformance();
   if (def.special === 'priceBreaks') return showPriceBreaks();
   if (def.special === 'sinceQuarter') return showQuarterlyTab('sinceQuarter', 'sinceQ');
   if (def.special === 'duringQuarter') return showQuarterlyTab('duringQuarter', 'duringQ');
   if (def.special === 'vixSpikes') return showVixSpikes();
   if (def.special === 'miscStats') return showMiscStats();
+}
+
+function showPerformance() {
+  const perfCols = ['symbol','close','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE'];
+  const allRows = (state.data['performance'] || []).map(r => ({...r}));
+  let rows = applyFilters([...allRows], perfCols);
+  sortRows(rows);
+
+  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
+  renderToolbar(rows.length, totalSourced);
+
+  const perfDef = { cols: perfCols };
+  const ths = renderTableHeader(perfDef);
+  const filterCells = renderFilterRow(perfDef);
+
+  const body = rows.length === 0
+    ? `<tr><td colspan="${perfCols.length}" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>`
+    : rows.map(r => renderRowHTML(r, perfCols, null, 'performance')).join('');
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table>` +
+    `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
+    `<tbody>${body}</tbody>` +
+    `</table></div>`;
+
+  attachFilterListeners(perfDef, 'performance');
 }
 
 function showPriceBreaks() {
@@ -1275,10 +1309,18 @@ function showMiscStats() {
 }
 
 function buildSpecialTabData() {
-  // Price Breaks data is built on-demand in showPriceBreaks
-  // Quarterly/VIX data is built on-demand from statsMap
-  // Just ensure counts are available for tab badges
-  const stats = Object.values(state.statsMap);
+  const stats = Object.values(state.statsMap).filter(s => s.symbol);
+  state.data['performance'] = stats.map(s => ({
+    symbol: s.symbol,
+    close: s.close ?? null,
+    ytdPct: s.ytdPct ?? null,
+    highPct: s.highPct ?? null,
+    high3yr: s.high3yr ?? null,
+    lowPct: s.lowPct ?? null,
+    low52wk: s.low52wk ?? null,
+    rsi: s.rsi ?? null,
+    forwardPE: s.forwardPE ?? null,
+  }));
   state.data['priceBreaks'] = stats.filter(s => s.breakoutPct != null || s.breakdownPct != null);
   state.data['sinceQ'] = stats.filter(s => s.sinceQuarter);
   state.data['duringQ'] = stats.filter(s => s.duringQuarter);
