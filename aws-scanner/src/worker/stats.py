@@ -51,6 +51,7 @@ def compute_stats(
     timestamps: list[int],
     vix_spikes: Optional[list[dict]] = None,
     forward_pe: Optional[float] = None,
+    forward_pe_history: Optional[dict] = None,
 ) -> Optional[dict]:
     """Compute all stats for a symbol. Returns None if insufficient data."""
     if len(closes) < 2:
@@ -99,5 +100,7 @@ def compute_stats(
     # Forward P/E
     if forward_pe is not None:
         result["forwardPE"] = forward_pe
+    if forward_pe_history is not None:
+        result["forwardPEHistory"] = forward_pe_history
 
     return result

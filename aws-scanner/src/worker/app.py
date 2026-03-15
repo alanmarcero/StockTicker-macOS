@@ -147,11 +147,12 @@ def _process_batch(
         _process_monthly(symbol, monthly_result, month_crossovers, month_crossdowns, month_below, month_above)
 
         if stats_result is not None:
-            forward_pe = yahoo.fetch_forward_pe(symbol)
+            forward_pe, pe_history = yahoo.fetch_forward_pe(symbol)
             computed = stats.compute_stats(
                 stats_result[0], stats_result[1],
                 vix_spikes=vix_spikes,
                 forward_pe=forward_pe,
+                forward_pe_history=pe_history,
             )
             if computed is not None:
                 computed["symbol"] = symbol
@@ -377,7 +378,7 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     _put_json(bucket, f"results/{scan_date}-monthly-below-above.json", monthly_ba_result)
 
     all_stats.sort(key=lambda x: x.get("symbol", ""))
-    misc = _compute_misc_stats(all_stats)
+    misc = _compute_misc_stats(all_stats, len(all_week_above), total_symbols)
     stats_result = {**base, "stats": all_stats, "misc": misc}
     _put_json(bucket, "results/latest-stats.json", stats_result)
     _put_json(bucket, f"results/{scan_date}-stats.json", stats_result)
@@ -385,7 +386,11 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     _update_manifest(bucket, scan_date)
 
 
-def _compute_misc_stats(all_stats: list[dict]) -> dict:
+def _compute_misc_stats(
+    all_stats: list[dict],
+    week_above_count: int = 0,
+    total_symbols: int = 0,
+) -> dict:
     """Compute aggregate misc stats from all symbol stats."""
     if not all_stats:
         return {}
@@ -415,6 +420,11 @@ def _compute_misc_stats(all_stats: list[dict]) -> dict:
             misc["medianForwardPE"] = round((sorted_pes[mid - 1] + sorted_pes[mid]) / 2, 2)
         else:
             misc["medianForwardPE"] = round(sorted_pes[mid], 2)
+
+    # EMA above/below percentages
+    if total_symbols > 0:
+        misc["pctAbove5wkEMA"] = round(week_above_count / total_symbols * 100, 1)
+        misc["pctBelow5wkEMA"] = round((total_symbols - week_above_count) / total_symbols * 100, 1)
 
     return misc
 

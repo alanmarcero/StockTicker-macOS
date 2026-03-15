@@ -4,6 +4,7 @@ import json
 from src.worker.yahoo import (
     fetch_daily_candles, fetch_weekly_candles, fetch_monthly_candles,
     fetch_forward_pe, fetch_vix_candles, _parse_response, _parse_forward_pe,
+    _parse_forward_pe_history,
     BASE_URL, TIMESERIES_URL, USER_AGENT, TIMEOUT_SECONDS,
 )
 
@@ -348,8 +349,8 @@ class TestFetchForwardPE:
             "timeseries": {
                 "result": [{
                     "quarterlyForwardPeRatio": [
-                        {"reportedValue": {"raw": 18.5}},
-                        {"reportedValue": {"raw": 20.3}},
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 18.5}},
+                        {"asOfDate": "2025-09-30", "reportedValue": {"raw": 20.3}},
                     ]
                 }]
             }
@@ -360,9 +361,10 @@ class TestFetchForwardPE:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
 
-        result = fetch_forward_pe("AAPL")
+        current, history = fetch_forward_pe("AAPL")
 
-        assert result == 20.3
+        assert current == 20.3
+        assert history == {"Q2'25": 18.5, "Q3'25": 20.3}
 
     @patch("src.worker.yahoo.urllib.request.urlopen")
     def test_builds_correct_url(self, mock_urlopen):
@@ -378,7 +380,9 @@ class TestFetchForwardPE:
     def test_network_error_returns_none(self, mock_urlopen):
         mock_urlopen.side_effect = ConnectionError("no network")
 
-        assert fetch_forward_pe("FAIL") is None
+        current, history = fetch_forward_pe("FAIL")
+        assert current is None
+        assert history is None
 
 
 class TestParseForwardPE:
@@ -432,6 +436,83 @@ class TestParseForwardPE:
             }
         }
         assert _parse_forward_pe(data) == 18.12
+
+
+class TestParseForwardPEHistory:
+
+    def test_valid_response(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-03-31", "reportedValue": {"raw": 15.7}},
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 18.2}},
+                    ]
+                }]
+            }
+        }
+        result = _parse_forward_pe_history(data)
+        assert result == {"Q1'25": 15.7, "Q2'25": 18.2}
+
+    def test_single_entry(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-12-31", "reportedValue": {"raw": 22.0}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe_history(data) == {"Q4'25": 22.0}
+
+    def test_missing_as_of_date_skipped(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"reportedValue": {"raw": 15.0}},
+                        {"asOfDate": "2025-09-30", "reportedValue": {"raw": 20.0}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe_history(data) == {"Q3'25": 20.0}
+
+    def test_empty_entries_returns_none(self):
+        data = {"timeseries": {"result": [{"quarterlyForwardPeRatio": []}]}}
+        assert _parse_forward_pe_history(data) is None
+
+    def test_missing_key_returns_none(self):
+        assert _parse_forward_pe_history({}) is None
+
+    def test_rounds_to_2_decimals(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-03-31", "reportedValue": {"raw": 18.12345}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe_history(data) == {"Q1'25": 18.12}
+
+    def test_all_four_quarters(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"asOfDate": "2025-03-31", "reportedValue": {"raw": 15.0}},
+                        {"asOfDate": "2025-06-30", "reportedValue": {"raw": 16.0}},
+                        {"asOfDate": "2025-09-30", "reportedValue": {"raw": 17.0}},
+                        {"asOfDate": "2025-12-31", "reportedValue": {"raw": 18.0}},
+                    ]
+                }]
+            }
+        }
+        result = _parse_forward_pe_history(data)
+        assert result == {"Q1'25": 15.0, "Q2'25": 16.0, "Q3'25": 17.0, "Q4'25": 18.0}
 
 
 class TestConstants:

@@ -456,6 +456,7 @@ const TAB_DEFS = [
   { id: 'priceBreaks', label: 'Price Breaks',   special: 'priceBreaks' },
   { id: 'sinceQ',      label: 'Since Quarter',  special: 'sinceQuarter' },
   { id: 'duringQ',     label: 'During Quarter', special: 'duringQuarter' },
+  { id: 'fwdPE',       label: 'Forward P/E',    special: 'forwardPE' },
   { id: 'vixSpikes',   label: 'VIX Spikes',     special: 'vixSpikes' },
   { id: 'miscStats',   label: 'Misc Stats',     special: 'miscStats' },
 ];
@@ -1081,6 +1082,7 @@ function showSpecialTab(def) {
   if (def.special === 'priceBreaks') return showPriceBreaks();
   if (def.special === 'sinceQuarter') return showQuarterlyTab('sinceQuarter', 'sinceQ');
   if (def.special === 'duringQuarter') return showQuarterlyTab('duringQuarter', 'duringQ');
+  if (def.special === 'forwardPE') return showForwardPE();
   if (def.special === 'vixSpikes') return showVixSpikes();
   if (def.special === 'miscStats') return showMiscStats();
 }
@@ -1109,6 +1111,66 @@ function showPerformance() {
     `</table></div>`;
 
   attachFilterListeners(perfDef, 'performance');
+}
+
+function showForwardPE() {
+  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s.forwardPEHistory);
+  if (!stats.length) {
+    renderToolbar(0, 0);
+    document.getElementById('content').innerHTML = '<div class="loading">No Forward P/E data available</div>';
+    return;
+  }
+
+  // Gather all quarter keys, sort chronologically
+  const qKeySet = new Set();
+  stats.forEach(s => Object.keys(s.forwardPEHistory).forEach(k => qKeySet.add(k)));
+  const qKeys = [...qKeySet].sort((a, b) => {
+    const [qa, ya] = [a[1], a.slice(3)];
+    const [qb, yb] = [b[1], b.slice(3)];
+    if (ya !== yb) return Number(ya) - Number(yb);
+    return Number(qa) - Number(qb);
+  });
+
+  const rows = stats.map(s => {
+    const row = { symbol: s.symbol, close: s.close, forwardPE: s.forwardPE ?? null };
+    qKeys.forEach(k => { row[k] = s.forwardPEHistory[k] ?? null; });
+    return row;
+  }).filter(r => matchesSources(r.symbol));
+
+  state.data['fwdPE'] = rows;
+  renderToolbar(rows.length, rows.length);
+
+  const fixedCols = ['symbol', 'close', 'forwardPE'];
+  const allCols = [...fixedCols, ...qKeys];
+
+  const ths = allCols.map(c => {
+    const cls = c !== 'symbol' ? ' class="num"' : '';
+    const label = COL_LABELS[c] || c;
+    return `<th${cls}>${label}</th>`;
+  }).join('');
+
+  const tbody = rows.map(r => '<tr>' + allCols.map((c, ci) => {
+    const v = r[c];
+    if (c === 'symbol') {
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+    }
+    if (c === 'close' || c === 'forwardPE') return `<td class="num">${fmtNum(c, v)}</td>`;
+    // Quarter P/E columns: green when lower than next (cheaper), red when higher (more expensive)
+    if (v == null) return `<td class="num">\u2014</td>`;
+    // Compare to previous quarter to determine color
+    const prevIdx = ci - 1;
+    const prevCol = prevIdx >= fixedCols.length ? allCols[prevIdx] : null;
+    const prevVal = prevCol ? r[prevCol] : null;
+    let cls = '';
+    if (prevVal != null) {
+      cls = v < prevVal ? 'pct-positive' : v > prevVal ? 'pct-negative' : '';
+    }
+    return `<td class="num ${cls}">${v.toFixed(1)}</td>`;
+  }).join('') + '</tr>').join('');
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody></table></div>`;
 }
 
 function showPriceBreaks() {
@@ -1287,12 +1349,21 @@ function showMiscStats() {
   const misc = state.miscStats || {};
   document.getElementById('toolbar').innerHTML = '';
 
+  // Compute sector-specific stats from statsMap in the frontend
+  const sectorStats = Object.values(state.statsMap).filter(s => s.symbol && SPDR_SECTORS.has(s.symbol));
+  const sectorNearHigh = sectorStats.length ? (sectorStats.filter(s => s.highPct != null && s.highPct >= -5).length / sectorStats.length * 100).toFixed(1) + '%' : '\u2014';
+  const sectorPositiveYTD = sectorStats.length ? (sectorStats.filter(s => s.ytdPct != null && s.ytdPct >= 0).length / sectorStats.length * 100).toFixed(1) + '%' : '\u2014';
+
   const cards = [
     { label: 'Within 5% of High', value: misc.pctWithin5OfHigh != null ? misc.pctWithin5OfHigh.toFixed(1) + '%' : '\u2014' },
+    { label: 'Sectors Near High', value: sectorNearHigh },
     { label: 'Positive YTD', value: misc.pctPositiveYTD != null ? misc.pctPositiveYTD.toFixed(1) + '%' : '\u2014' },
+    { label: 'Sectors Positive YTD', value: sectorPositiveYTD },
     { label: 'Avg YTD', value: misc.avgYTD != null ? (misc.avgYTD > 0 ? '+' : '') + misc.avgYTD.toFixed(2) + '%' : '\u2014', color: misc.avgYTD != null ? (misc.avgYTD >= 0 ? '#3fb950' : '#f85149') : null },
     { label: 'Avg Fwd P/E', value: misc.avgForwardPE != null ? misc.avgForwardPE.toFixed(1) : '\u2014' },
     { label: 'Median Fwd P/E', value: misc.medianForwardPE != null ? misc.medianForwardPE.toFixed(1) : '\u2014' },
+    { label: 'Above 5wk EMA', value: misc.pctAbove5wkEMA != null ? misc.pctAbove5wkEMA.toFixed(1) + '%' : '\u2014', color: misc.pctAbove5wkEMA != null ? '#3fb950' : null },
+    { label: 'Below 5wk EMA', value: misc.pctBelow5wkEMA != null ? misc.pctBelow5wkEMA.toFixed(1) + '%' : '\u2014', color: misc.pctBelow5wkEMA != null ? '#f85149' : null },
   ];
 
   const html = `<div style="display:flex;flex-wrap:wrap;gap:16px;padding:8px 0">` +
@@ -1324,6 +1395,7 @@ function buildSpecialTabData() {
   state.data['priceBreaks'] = stats.filter(s => s.breakoutPct != null || s.breakdownPct != null);
   state.data['sinceQ'] = stats.filter(s => s.sinceQuarter);
   state.data['duringQ'] = stats.filter(s => s.duringQuarter);
+  state.data['fwdPE'] = stats.filter(s => s.forwardPEHistory);
   state.data['vixSpikes'] = stats.filter(s => s.vixReturns && s.vixReturns.length);
   state.data['miscStats'] = [];
   state.miscStats = state.statsMap._misc || {};

@@ -221,3 +221,22 @@ class TestComputeStats:
         assert result is not None
         assert "sinceQuarter" in result
         assert "duringQuarter" in result
+
+    def test_includes_forward_pe_history(self):
+        closes = [100.0, 105.0]
+        timestamps = [_ts(2025, 12, 31), _ts(2026, 1, 2)]
+        history = {"Q3'25": 18.5, "Q4'25": 20.0}
+
+        result = compute_stats(closes, timestamps, forward_pe_history=history)
+
+        assert result is not None
+        assert result["forwardPEHistory"] == {"Q3'25": 18.5, "Q4'25": 20.0}
+
+    def test_no_pe_history_omits_field(self):
+        closes = [100.0, 105.0]
+        timestamps = [_ts(2025, 12, 31), _ts(2026, 1, 2)]
+
+        result = compute_stats(closes, timestamps)
+
+        assert result is not None
+        assert "forwardPEHistory" not in result

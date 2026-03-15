@@ -51,7 +51,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_monthly_candles.return_value = None
         self.mock_yahoo.fetch_stats_candles.return_value = None
-        self.mock_yahoo.fetch_forward_pe.return_value = None
+        self.mock_yahoo.fetch_forward_pe.return_value = (None, None)
         self.mock_stats.compute_stats.return_value = None
 
     def teardown_method(self):
@@ -1224,3 +1224,15 @@ class TestComputeMiscStats:
         result = _compute_misc_stats(stats)
         assert "pctPositiveYTD" not in result
         assert "avgYTD" not in result
+
+    def test_ema_percentages(self):
+        stats = [{"ytdPct": 5.0}]
+        result = _compute_misc_stats(stats, week_above_count=60, total_symbols=100)
+        assert result["pctAbove5wkEMA"] == 60.0
+        assert result["pctBelow5wkEMA"] == 40.0
+
+    def test_ema_percentages_zero_total(self):
+        stats = [{"ytdPct": 5.0}]
+        result = _compute_misc_stats(stats, week_above_count=0, total_symbols=0)
+        assert "pctAbove5wkEMA" not in result
+        assert "pctBelow5wkEMA" not in result
