@@ -13,11 +13,15 @@ class TestLambdaHandler:
         )
         self._s3_patcher = patch("src.orchestrator.app.s3")
         self._sqs_patcher = patch("src.orchestrator.app.sqs")
+        self._vix_patcher = patch("src.orchestrator.app._fetch_vix_spikes")
         self._env_patcher.start()
         self.mock_s3 = self._s3_patcher.start()
         self.mock_sqs = self._sqs_patcher.start()
+        self.mock_vix = self._vix_patcher.start()
+        self.mock_vix.return_value = []
 
     def teardown_method(self):
+        self._vix_patcher.stop()
         self._sqs_patcher.stop()
         self._s3_patcher.stop()
         self._env_patcher.stop()
@@ -123,6 +127,37 @@ class TestLambdaHandler:
 
         body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
         assert "sneakPeek" not in body
+
+    def test_includes_vix_spikes_in_message(self):
+        spikes = [{"dateString": "3/10/25", "timestamp": 1000, "vixClose": 25.0}]
+        self.mock_vix.return_value = spikes
+        self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
+
+        lambda_handler({}, None)
+
+        body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
+        assert body["vixSpikes"] == spikes
+
+    def test_empty_vix_spikes_in_message(self):
+        self.mock_vix.return_value = []
+        self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
+
+        lambda_handler({}, None)
+
+        body = json.loads(self.mock_sqs.send_message.call_args[1]["MessageBody"])
+        assert body["vixSpikes"] == []
+
+    def test_return_includes_vix_spike_count(self):
+        spikes = [
+            {"dateString": "3/10/25", "timestamp": 1000, "vixClose": 25.0},
+            {"dateString": "8/5/25", "timestamp": 2000, "vixClose": 30.0},
+        ]
+        self.mock_vix.return_value = spikes
+        self.mock_s3.get_object.return_value = self._make_s3_response(["AAPL"])
+
+        result = lambda_handler({}, None)
+
+        assert result["body"]["vixSpikes"] == 2
 
 
 class TestBatchSize:

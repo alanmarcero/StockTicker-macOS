@@ -156,3 +156,68 @@ class TestComputeStats:
         assert "ytdPct" not in result
         assert "highPct" in result
         assert "lowPct" in result
+
+    def test_includes_rsi(self):
+        # Need > 14 closes for RSI
+        closes = [100.0 + i for i in range(20)]
+        timestamps = [_ts(2025, 12, 31)] + [_ts(2026, 1, i + 1) for i in range(19)]
+
+        result = compute_stats(closes, timestamps)
+
+        assert result is not None
+        assert "rsi" in result
+        assert 0 <= result["rsi"] <= 100
+
+    def test_includes_swing_levels(self):
+        # Create data with a 15% decline (triggers breakout)
+        closes = [50.0, 70.0, 100.0, 85.0, 90.0]
+        timestamps = [_ts(2025, 12, 31)] + [_ts(2026, 1, i + 1) for i in range(4)]
+
+        result = compute_stats(closes, timestamps)
+
+        assert result is not None
+        assert "breakoutPrice" in result
+        assert "breakoutDate" in result
+        assert "breakoutPct" in result
+
+    def test_includes_vix_returns(self):
+        closes = [100.0, 90.0, 95.0, 110.0]
+        timestamps = [
+            _ts(2025, 12, 31), _ts(2026, 1, 2),
+            _ts(2026, 1, 3), _ts(2026, 1, 6),
+        ]
+        vix_spikes = [{"dateString": "1/2/26", "timestamp": _ts(2026, 1, 2), "vixClose": 25.0}]
+
+        result = compute_stats(closes, timestamps, vix_spikes=vix_spikes)
+
+        assert result is not None
+        assert "vixReturns" in result
+        assert len(result["vixReturns"]) == 1
+
+    def test_includes_forward_pe(self):
+        closes = [100.0, 105.0]
+        timestamps = [_ts(2025, 12, 31), _ts(2026, 1, 2)]
+
+        result = compute_stats(closes, timestamps, forward_pe=18.5)
+
+        assert result is not None
+        assert result["forwardPE"] == 18.5
+
+    def test_no_vix_spikes_omits_vix_returns(self):
+        closes = [100.0, 105.0]
+        timestamps = [_ts(2025, 12, 31), _ts(2026, 1, 2)]
+
+        result = compute_stats(closes, timestamps)
+
+        assert result is not None
+        assert "vixReturns" not in result
+
+    def test_includes_quarterly(self):
+        closes = [100.0, 110.0, 105.0]
+        timestamps = [_ts(2024, 3, 29), _ts(2024, 6, 28), _ts(2024, 7, 15)]
+
+        result = compute_stats(closes, timestamps)
+
+        assert result is not None
+        assert "sinceQuarter" in result
+        assert "duringQuarter" in result

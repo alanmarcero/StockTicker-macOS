@@ -28,8 +28,9 @@ def lambda_handler(event: dict, context) -> dict:
         batch_index: int = message["batchIndex"]
         total_batches: int = message["totalBatches"]
         symbols: list[str] = message["symbols"]
+        vix_spikes: list[dict] = message.get("vixSpikes", [])
 
-        crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors = _process_batch(symbols)
+        crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors = _process_batch(symbols, vix_spikes)
 
         _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors)
 
@@ -112,6 +113,7 @@ def _crossdown_entry(symbol: str, close: float, ema_value: float, periods_above:
 
 def _process_batch(
     symbols: list[str],
+    vix_spikes: Optional[list[dict]] = None,
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
     crossovers: list[dict] = []
     crossdowns: list[dict] = []
@@ -145,7 +147,12 @@ def _process_batch(
         _process_monthly(symbol, monthly_result, month_crossovers, month_crossdowns, month_below, month_above)
 
         if stats_result is not None:
-            computed = stats.compute_stats(stats_result[0], stats_result[1])
+            forward_pe = yahoo.fetch_forward_pe(symbol)
+            computed = stats.compute_stats(
+                stats_result[0], stats_result[1],
+                vix_spikes=vix_spikes,
+                forward_pe=forward_pe,
+            )
             if computed is not None:
                 computed["symbol"] = symbol
                 stats_data.append(computed)
@@ -370,11 +377,46 @@ def _aggregate_results(bucket: str, run_id: str, total_batches: int) -> None:
     _put_json(bucket, f"results/{scan_date}-monthly-below-above.json", monthly_ba_result)
 
     all_stats.sort(key=lambda x: x.get("symbol", ""))
-    stats_result = {**base, "stats": all_stats}
+    misc = _compute_misc_stats(all_stats)
+    stats_result = {**base, "stats": all_stats, "misc": misc}
     _put_json(bucket, "results/latest-stats.json", stats_result)
     _put_json(bucket, f"results/{scan_date}-stats.json", stats_result)
 
     _update_manifest(bucket, scan_date)
+
+
+def _compute_misc_stats(all_stats: list[dict]) -> dict:
+    """Compute aggregate misc stats from all symbol stats."""
+    if not all_stats:
+        return {}
+
+    total = len(all_stats)
+
+    high_pcts = [s["highPct"] for s in all_stats if "highPct" in s]
+    ytd_pcts = [s["ytdPct"] for s in all_stats if "ytdPct" in s]
+    forward_pes = [s["forwardPE"] for s in all_stats if "forwardPE" in s]
+
+    misc: dict = {}
+
+    if high_pcts:
+        within_5 = sum(1 for h in high_pcts if h >= -5)
+        misc["pctWithin5OfHigh"] = round(within_5 / total * 100, 1)
+
+    if ytd_pcts:
+        positive_ytd = sum(1 for y in ytd_pcts if y >= 0)
+        misc["pctPositiveYTD"] = round(positive_ytd / total * 100, 1)
+        misc["avgYTD"] = round(sum(ytd_pcts) / len(ytd_pcts), 2)
+
+    if forward_pes:
+        misc["avgForwardPE"] = round(sum(forward_pes) / len(forward_pes), 2)
+        sorted_pes = sorted(forward_pes)
+        mid = len(sorted_pes) // 2
+        if len(sorted_pes) % 2 == 0:
+            misc["medianForwardPE"] = round((sorted_pes[mid - 1] + sorted_pes[mid]) / 2, 2)
+        else:
+            misc["medianForwardPE"] = round(sorted_pes[mid], 2)
+
+    return misc
 
 
 def _update_manifest(bucket: str, scan_date: str) -> None:

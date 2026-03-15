@@ -1,7 +1,11 @@
 from unittest.mock import patch, MagicMock
 import json
 
-from src.worker.yahoo import fetch_daily_candles, fetch_weekly_candles, fetch_monthly_candles, _parse_response, BASE_URL, USER_AGENT, TIMEOUT_SECONDS
+from src.worker.yahoo import (
+    fetch_daily_candles, fetch_weekly_candles, fetch_monthly_candles,
+    fetch_forward_pe, fetch_vix_candles, _parse_response, _parse_forward_pe,
+    BASE_URL, TIMESERIES_URL, USER_AGENT, TIMEOUT_SECONDS,
+)
 
 
 class TestParseResponse:
@@ -322,10 +326,121 @@ class TestFetchMonthlyCandles:
         assert fetch_monthly_candles("FAIL") is None
 
 
+class TestFetchVixCandles:
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_builds_correct_url(self, mock_urlopen):
+        mock_urlopen.side_effect = OSError("stop")
+
+        fetch_vix_candles()
+
+        request = mock_urlopen.call_args[0][0]
+        assert "^VIX" in request.full_url
+        assert "range=3y" in request.full_url
+        assert "interval=1d" in request.full_url
+
+
+class TestFetchForwardPE:
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_success(self, mock_urlopen):
+        response_data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"reportedValue": {"raw": 18.5}},
+                        {"reportedValue": {"raw": 20.3}},
+                    ]
+                }]
+            }
+        }
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(response_data).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = fetch_forward_pe("AAPL")
+
+        assert result == 20.3
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_builds_correct_url(self, mock_urlopen):
+        mock_urlopen.side_effect = OSError("stop")
+
+        fetch_forward_pe("MSFT")
+
+        request = mock_urlopen.call_args[0][0]
+        assert TIMESERIES_URL + "/MSFT" in request.full_url
+        assert "quarterlyForwardPeRatio" in request.full_url
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_network_error_returns_none(self, mock_urlopen):
+        mock_urlopen.side_effect = ConnectionError("no network")
+
+        assert fetch_forward_pe("FAIL") is None
+
+
+class TestParseForwardPE:
+
+    def test_valid_response(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"reportedValue": {"raw": 15.7}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe(data) == 15.7
+
+    def test_multiple_entries_takes_last(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"reportedValue": {"raw": 10.0}},
+                        {"reportedValue": {"raw": 25.0}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe(data) == 25.0
+
+    def test_empty_entries_returns_none(self):
+        data = {"timeseries": {"result": [{"quarterlyForwardPeRatio": []}]}}
+        assert _parse_forward_pe(data) is None
+
+    def test_missing_key_returns_none(self):
+        assert _parse_forward_pe({}) is None
+        assert _parse_forward_pe({"timeseries": {}}) is None
+        assert _parse_forward_pe({"timeseries": {"result": []}}) is None
+
+    def test_no_quarterly_key_returns_none(self):
+        data = {"timeseries": {"result": [{"otherKey": []}]}}
+        assert _parse_forward_pe(data) is None
+
+    def test_rounds_to_2_decimals(self):
+        data = {
+            "timeseries": {
+                "result": [{
+                    "quarterlyForwardPeRatio": [
+                        {"reportedValue": {"raw": 18.12345}},
+                    ]
+                }]
+            }
+        }
+        assert _parse_forward_pe(data) == 18.12
+
+
 class TestConstants:
 
     def test_base_url(self):
         assert BASE_URL == "https://query1.finance.yahoo.com/v8/finance/chart"
+
+    def test_timeseries_url(self):
+        assert "fundamentals-timeseries" in TIMESERIES_URL
 
     def test_user_agent(self):
         assert "Mozilla" in USER_AGENT

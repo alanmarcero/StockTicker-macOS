@@ -444,14 +444,19 @@ const DEFAULT_FILTERS = {
 };
 
 const TAB_DEFS = [
-  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','weeksBelow','pct','ema','ytdPct','highPct','lowPct'],   pctField: 'pctAbove' },
-  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','pct','ema','ytdPct','highPct','lowPct'],   pctField: 'pctBelow' },
-  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct'],        pctField: 'pctBelow' },
-  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct'],        pctField: 'pctAbove' },
-  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','pct','ema','ytdPct','highPct','lowPct'],  pctField: 'pctAbove' },
-  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema','ytdPct','highPct','lowPct'],  pctField: 'pctBelow' },
-  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct'],        pctField: 'pctBelow' },
-  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct'],        pctField: 'pctAbove' },
+  { id: 'crossovers',  label: 'Wk Cross Up',   file: '/results/latest.json',                      key: 'crossovers',      cols: ['symbol','close','weeksBelow','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],   pctField: 'pctAbove' },
+  { id: 'crossdowns',  label: 'Wk Cross Down',  file: '/results/latest-crossdown.json',             key: 'crossdowns',      cols: ['symbol','close','weeksAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],   pctField: 'pctBelow' },
+  { id: 'weekBelow',   label: 'Wk Below',       file: '/results/latest-below.json',                 key: 'weekBelow',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
+  { id: 'weekAbove',   label: 'Wk Above',       file: '/results/latest-above.json',                 key: 'weekAbove',       cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
+  { id: 'moCrossUp',   label: 'Mo Cross Up',    file: '/results/latest-monthly.json',               key: 'monthCrossovers', cols: ['symbol','close','monthsBelow','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctAbove' },
+  { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctBelow' },
+  { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
+  { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
+  { id: 'priceBreaks', label: 'Price Breaks',   special: 'priceBreaks' },
+  { id: 'sinceQ',      label: 'Since Quarter',  special: 'sinceQuarter' },
+  { id: 'duringQ',     label: 'During Quarter', special: 'duringQuarter' },
+  { id: 'vixSpikes',   label: 'VIX Spikes',     special: 'vixSpikes' },
+  { id: 'miscStats',   label: 'Misc Stats',     special: 'miscStats' },
 ];
 
 const COL_LABELS = {
@@ -460,9 +465,14 @@ const COL_LABELS = {
   monthsBelow: 'Months Below', monthsAbove: 'Months Above',
   count: 'Count',
   ytdPct: 'YTD', highPct: 'vs High', lowPct: 'vs Low',
+  rsi: 'RSI', forwardPE: 'Fwd P/E',
+  breakoutPct: 'Breakout %', breakdownPct: 'Breakdown %',
+  breakoutPrice: 'Breakout', breakdownPrice: 'Breakdown',
+  breakoutDate: 'Date', breakdownDate: 'Date',
+  spikeClose: 'Spike Close', pctGain: '% Gain',
 };
 
-const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count','ytdPct','highPct','lowPct']);
+const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count','ytdPct','highPct','lowPct','rsi','forwardPE','breakoutPct','breakdownPct','breakoutPrice','breakdownPrice','spikeClose','pctGain']);
 
 const state = {
   activeSourceMode: 'all',
@@ -722,6 +732,14 @@ function renderRowHTML(r, cols, pctField, tabId) {
       const cls = v != null ? (green ? 'pct-positive' : 'pct-negative') : '';
       return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
     }
+    if (c === 'rsi' && v != null) {
+      const cls = v >= 70 ? 'pct-positive' : v <= 30 ? 'pct-negative' : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
+    if (c === 'breakoutPct' || c === 'breakdownPct' || c === 'pctGain') {
+      const cls = v != null ? (v >= 0 ? 'pct-positive' : 'pct-negative') : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
     if (NUM_COLS.has(c)) return `<td class="num${ema}">${fmtNum(c, v)}</td>`;
     return `<td>${esc(v)}</td>`;
   }).join('') + '</tr>';
@@ -739,14 +757,25 @@ function renderTbodyHTML(rows, cols, pctField, tabId) {
 function renderTabs() {
   const el = document.getElementById('tabs');
   el.innerHTML = TAB_DEFS.map(t => {
-    const total = state.data[t.id] ? state.data[t.id].filter(r => matchesSources(r.symbol)).length : 0;
-    const filtered = state.data[t.id] ? applyFilters(state.data[t.id], t.cols).length : 0;
+    let countText;
+    if (t.special === 'miscStats') {
+      countText = '';
+    } else if (t.special) {
+      const rows = state.data[t.id] || [];
+      const total = rows.filter(r => matchesSources(r.symbol)).length;
+      countText = `${total}`;
+    } else {
+      const total = state.data[t.id] ? state.data[t.id].filter(r => matchesSources(r.symbol)).length : 0;
+      const filtered = state.data[t.id] ? applyFilters(state.data[t.id], t.cols).length : 0;
+      const isActive = t.id === state.activeTab;
+      const hasFilter = isActive && Object.keys(state.filters).length > 0 &&
+        Object.values(state.filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
+      countText = hasFilter ? `${filtered} / ${total}` : `${total}`;
+    }
     const isActive = t.id === state.activeTab;
-    const hasFilter = isActive && Object.keys(state.filters).length > 0 &&
-      Object.values(state.filters).some(f => f.text || (f.min !== '' && f.min != null) || (f.max !== '' && f.max != null));
-    const countText = hasFilter ? `${filtered} / ${total}` : `${total}`;
+    const countSpan = countText ? `<span class="count">${countText}</span>` : '';
     return `<div class="tab${isActive ? ' active' : ''}" data-tab="${t.id}">` +
-      `${t.label}<span class="count">${countText}</span></div>`;
+      `${t.label}${countSpan}</div>`;
   }).join('');
   el.querySelectorAll('.tab').forEach(tab =>
     tab.addEventListener('click', () => {
@@ -853,6 +882,12 @@ function attachFilterListeners(def, tabId) {
 
 function showTab(tabId) {
   const def = TAB_DEFS.find(t => t.id === tabId);
+
+  if (def.special) {
+    showSpecialTab(def);
+    return;
+  }
+
   const allRows = state.data[tabId] || [];
   let rows = applyFilters([...allRows], def.cols);
   sortRows(rows);
@@ -891,8 +926,10 @@ function updateRows(tabId) {
 
 function fmtNum(col, v) {
   if (v == null) return '\u2014';
-  if (col === 'close' || col === 'ema') return v.toFixed(2);
-  if (col === 'pct' || col === 'ytdPct' || col === 'highPct' || col === 'lowPct') return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  if (col === 'close' || col === 'ema' || col === 'breakoutPrice' || col === 'breakdownPrice' || col === 'spikeClose') return v.toFixed(2);
+  if (col === 'pct' || col === 'ytdPct' || col === 'highPct' || col === 'lowPct' || col === 'breakoutPct' || col === 'breakdownPct' || col === 'pctGain') return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
+  if (col === 'rsi') return v.toFixed(1);
+  if (col === 'forwardPE') return v.toFixed(1);
   return v.toLocaleString();
 }
 
@@ -909,6 +946,8 @@ function enrichRows(rows, t) {
     ytdPct: state.statsMap[r.symbol]?.ytdPct ?? null,
     highPct: state.statsMap[r.symbol]?.highPct ?? null,
     lowPct: state.statsMap[r.symbol]?.lowPct ?? null,
+    rsi: state.statsMap[r.symbol]?.rsi ?? null,
+    forwardPE: state.statsMap[r.symbol]?.forwardPE ?? null,
   }));
 }
 
@@ -980,7 +1019,7 @@ async function switchWeek(week) {
   renderWeekSelector();
 
   const cb = `_=${Date.now()}`;
-  const latestURLs = [...new Set(TAB_DEFS.map(t => t.file))];
+  const latestURLs = [...new Set(TAB_DEFS.filter(t => t.file).map(t => t.file))];
   const weekURLs = latestURLs.map(u => fileURLForWeek(u, week));
   const statsURL = fileURLForWeek('/results/latest-stats.json', week);
   const [statsResult, ...results] = await Promise.allSettled([
@@ -996,6 +1035,7 @@ async function switchWeek(week) {
 
   if (statsResult.status === 'fulfilled' && statsResult.value.stats) {
     state.statsMap = Object.fromEntries(statsResult.value.stats.map(s => [s.symbol, s]));
+    if (statsResult.value.misc) state.statsMap._misc = statsResult.value.misc;
   } else {
     state.statsMap = {};
   }
@@ -1009,6 +1049,7 @@ async function switchWeek(week) {
   if (meta) renderMeta(meta);
 
   TAB_DEFS.forEach(t => {
+    if (t.special) return;
     const json = byLatestUrl[t.file];
     if (!json) { state.data[t.id] = []; return; }
     let rows;
@@ -1020,8 +1061,230 @@ async function switchWeek(week) {
     state.data[t.id] = enrichRows(rows, t);
   });
 
+  buildSpecialTabData();
+
   renderTabs();
   showTab(state.activeTab);
+}
+
+/* ── Special tab rendering ── */
+
+function showSpecialTab(def) {
+  if (def.special === 'priceBreaks') return showPriceBreaks();
+  if (def.special === 'sinceQuarter') return showQuarterlyTab('sinceQuarter', 'sinceQ');
+  if (def.special === 'duringQuarter') return showQuarterlyTab('duringQuarter', 'duringQ');
+  if (def.special === 'vixSpikes') return showVixSpikes();
+  if (def.special === 'miscStats') return showMiscStats();
+}
+
+function showPriceBreaks() {
+  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol));
+  const breakouts = stats.filter(s => s.breakoutPct != null)
+    .map(s => ({ symbol: s.symbol, close: s.close, breakoutPrice: s.breakoutPrice, breakoutDate: s.breakoutDate, breakoutPct: s.breakoutPct, rsi: s.rsi ?? null }))
+    .sort((a, b) => a.breakoutPct - b.breakoutPct);
+  const breakdowns = stats.filter(s => s.breakdownPct != null)
+    .map(s => ({ symbol: s.symbol, close: s.close, breakdownPrice: s.breakdownPrice, breakdownDate: s.breakdownDate, breakdownPct: s.breakdownPct, rsi: s.rsi ?? null }))
+    .sort((a, b) => a.breakdownPct - b.breakdownPct);
+
+  state.data['priceBreaks'] = [...breakouts, ...breakdowns];
+
+  const boCols = ['symbol','close','breakoutPrice','breakoutDate','breakoutPct','rsi'];
+  const bdCols = ['symbol','close','breakdownPrice','breakdownDate','breakdownPct','rsi'];
+
+  const totalCount = breakouts.length + breakdowns.length;
+  renderToolbar(totalCount, totalCount);
+
+  const makeHead = cols => cols.map(c => {
+    const cls = NUM_COLS.has(c) ? ' class="num"' : '';
+    return `<th${cls}>${COL_LABELS[c] || c}</th>`;
+  }).join('');
+
+  const makeBody = (rows, cols) => {
+    if (!rows.length) return `<tr><td colspan="${cols.length}" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>`;
+    return rows.map(r => '<tr>' + cols.map(c => {
+      const v = r[c];
+      if (c === 'symbol') {
+        const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+        return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+      }
+      if (c === 'breakoutDate' || c === 'breakdownDate') return `<td>${esc(v || '')}</td>`;
+      if (c === 'rsi' && v != null) {
+        const cls = v >= 70 ? 'pct-positive' : v <= 30 ? 'pct-negative' : '';
+        return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+      }
+      if (c === 'breakoutPct' || c === 'breakdownPct') {
+        const cls = v != null ? (v >= 0 ? 'pct-positive' : 'pct-negative') : '';
+        return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+      }
+      if (NUM_COLS.has(c)) return `<td class="num">${fmtNum(c, v)}</td>`;
+      return `<td>${esc(v)}</td>`;
+    }).join('') + '</tr>').join('');
+  };
+
+  document.getElementById('content').innerHTML =
+    `<h3 style="color:#e6edf3;margin:0 0 8px;font-size:14px">Breakouts (${breakouts.length})</h3>` +
+    `<div class="table-wrap"><table><thead><tr>${makeHead(boCols)}</tr></thead><tbody>${makeBody(breakouts, boCols)}</tbody></table></div>` +
+    `<h3 style="color:#e6edf3;margin:16px 0 8px;font-size:14px">Breakdowns (${breakdowns.length})</h3>` +
+    `<div class="table-wrap"><table><thead><tr>${makeHead(bdCols)}</tr></thead><tbody>${makeBody(breakdowns, bdCols)}</tbody></table></div>`;
+}
+
+function showQuarterlyTab(field, tabId) {
+  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s[field]);
+  if (!stats.length) {
+    renderToolbar(0, 0);
+    document.getElementById('content').innerHTML = '<div class="loading">No quarterly data available</div>';
+    return;
+  }
+
+  // Gather all quarter keys, sort chronologically
+  const qKeySet = new Set();
+  stats.forEach(s => Object.keys(s[field]).forEach(k => qKeySet.add(k)));
+  const qKeys = [...qKeySet].sort((a, b) => {
+    const [qa, ya] = [a[1], a.slice(3)];
+    const [qb, yb] = [b[1], b.slice(3)];
+    if (ya !== yb) return Number(ya) - Number(yb);
+    return Number(qa) - Number(qb);
+  });
+
+  const rows = stats.map(s => {
+    const row = { symbol: s.symbol, close: s.close, highPct: s.highPct };
+    qKeys.forEach(k => { row[k] = s[field][k] ?? null; });
+    return row;
+  }).filter(r => matchesSources(r.symbol));
+
+  state.data[tabId] = rows;
+  renderToolbar(rows.length, rows.length);
+
+  const fixedCols = ['symbol', 'close', 'highPct'];
+  const allCols = [...fixedCols, ...qKeys];
+
+  const ths = allCols.map(c => {
+    const cls = c !== 'symbol' ? ' class="num"' : '';
+    const label = COL_LABELS[c] || c;
+    return `<th${cls}>${label}</th>`;
+  }).join('');
+
+  const tbody = rows.map(r => '<tr>' + allCols.map(c => {
+    const v = r[c];
+    if (c === 'symbol') {
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+    }
+    if (c === 'close') return `<td class="num">${fmtNum(c, v)}</td>`;
+    if (c === 'highPct') {
+      const cls = v != null ? (v >= -5 ? 'pct-positive' : 'pct-negative') : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
+    // Quarter columns
+    if (v == null) return `<td class="num">\u2014</td>`;
+    const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
+    return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
+  }).join('') + '</tr>').join('');
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody></table></div>`;
+}
+
+function showVixSpikes() {
+  const stats = Object.values(state.statsMap).filter(s => matchesSources(s.symbol) && s.vixReturns && s.vixReturns.length);
+  if (!stats.length) {
+    renderToolbar(0, 0);
+    document.getElementById('content').innerHTML = '<div class="loading">No VIX spike data available</div>';
+    return;
+  }
+
+  // Gather spike dates in order
+  const spikeDateSet = new Set();
+  stats.forEach(s => s.vixReturns.forEach(vr => spikeDateSet.add(vr.dateString)));
+  const spikeDates = [...spikeDateSet];
+
+  // Build spike labels with VIX close
+  const spikeMeta = {};
+  stats.forEach(s => s.vixReturns.forEach(vr => {
+    if (!spikeMeta[vr.dateString]) spikeMeta[vr.dateString] = vr.vixClose;
+  }));
+  const spikeLabels = {};
+  spikeDates.forEach(d => {
+    spikeLabels[d] = `${d} (${spikeMeta[d]?.toFixed(1) || ''})`;
+  });
+
+  const rows = stats.map(s => {
+    const row = { symbol: s.symbol, close: s.close, highPct: s.highPct };
+    const byDate = {};
+    s.vixReturns.forEach(vr => { byDate[vr.dateString] = vr.pctGain; });
+    spikeDates.forEach(d => { row['spike_' + d] = byDate[d] ?? null; });
+    return row;
+  });
+
+  state.data['vixSpikes'] = rows;
+  renderToolbar(rows.length, rows.length);
+
+  const fixedCols = ['symbol', 'close', 'highPct'];
+  const spikeCols = spikeDates.map(d => 'spike_' + d);
+  const allCols = [...fixedCols, ...spikeCols];
+
+  const ths = allCols.map(c => {
+    if (c === 'symbol') return `<th>${COL_LABELS[c]}</th>`;
+    const label = c.startsWith('spike_') ? spikeLabels[c.replace('spike_', '')] : (COL_LABELS[c] || c);
+    return `<th class="num">${label}</th>`;
+  }).join('');
+
+  const tbody = rows.map(r => '<tr>' + allCols.map(c => {
+    const v = r[c];
+    if (c === 'symbol') {
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=W`;
+      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+    }
+    if (c === 'close') return `<td class="num">${fmtNum(c, v)}</td>`;
+    if (c === 'highPct') {
+      const cls = v != null ? (v >= -5 ? 'pct-positive' : 'pct-negative') : '';
+      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    }
+    if (v == null) return `<td class="num">\u2014</td>`;
+    const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
+    return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
+  }).join('') + '</tr>').join('');
+
+  document.getElementById('content').innerHTML =
+    `<div class="table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${tbody || '<tr><td colspan="' + allCols.length + '" style="text-align:center;padding:24px;color:#8b949e">No data</td></tr>'}</tbody></table></div>`;
+}
+
+function showMiscStats() {
+  const misc = state.miscStats || {};
+  document.getElementById('toolbar').innerHTML = '';
+
+  const cards = [
+    { label: 'Within 5% of High', value: misc.pctWithin5OfHigh != null ? misc.pctWithin5OfHigh.toFixed(1) + '%' : '\u2014' },
+    { label: 'Positive YTD', value: misc.pctPositiveYTD != null ? misc.pctPositiveYTD.toFixed(1) + '%' : '\u2014' },
+    { label: 'Avg YTD', value: misc.avgYTD != null ? (misc.avgYTD > 0 ? '+' : '') + misc.avgYTD.toFixed(2) + '%' : '\u2014', color: misc.avgYTD != null ? (misc.avgYTD >= 0 ? '#3fb950' : '#f85149') : null },
+    { label: 'Avg Fwd P/E', value: misc.avgForwardPE != null ? misc.avgForwardPE.toFixed(1) : '\u2014' },
+    { label: 'Median Fwd P/E', value: misc.medianForwardPE != null ? misc.medianForwardPE.toFixed(1) : '\u2014' },
+  ];
+
+  const html = `<div style="display:flex;flex-wrap:wrap;gap:16px;padding:8px 0">` +
+    cards.map(c => {
+      const colorStyle = c.color ? ` style="color:${c.color}"` : '';
+      return `<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:20px 28px;min-width:180px;flex:1">` +
+        `<div style="color:#8b949e;font-size:12px;margin-bottom:6px">${c.label}</div>` +
+        `<div style="font-size:24px;font-weight:600;color:#e6edf3"${colorStyle}>${c.value}</div>` +
+        `</div>`;
+    }).join('') +
+    `</div>`;
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function buildSpecialTabData() {
+  // Price Breaks data is built on-demand in showPriceBreaks
+  // Quarterly/VIX data is built on-demand from statsMap
+  // Just ensure counts are available for tab badges
+  const stats = Object.values(state.statsMap);
+  state.data['priceBreaks'] = stats.filter(s => s.breakoutPct != null || s.breakdownPct != null);
+  state.data['sinceQ'] = stats.filter(s => s.sinceQuarter);
+  state.data['duringQ'] = stats.filter(s => s.duringQuarter);
+  state.data['vixSpikes'] = stats.filter(s => s.vixReturns && s.vixReturns.length);
+  state.data['miscStats'] = [];
+  state.miscStats = state.statsMap._misc || {};
 }
 
 /* ── Fetch & init ── */
@@ -1030,7 +1293,7 @@ async function fetchAll() {
   readHash();
 
   const cb = `_=${Date.now()}`;
-  const urls = [...new Set(TAB_DEFS.map(t => t.file))];
+  const urls = [...new Set(TAB_DEFS.filter(t => t.file).map(t => t.file))];
   const [manifestResult, statsResult, ...results] = await Promise.allSettled([
     fetch(`/results/manifest.json?${cb}`).then(r => {
       if (!r.ok) throw new Error(r.status);
@@ -1046,12 +1309,14 @@ async function fetchAll() {
     })),
   ]);
 
-  if (manifestResult.status === 'fulfilled' && Array.isArray(manifestResult.value)) {
-    state.manifest = manifestResult.value;
+  if (manifestResult.status === 'fulfilled') {
+    const mv = manifestResult.value;
+    state.manifest = Array.isArray(mv) ? mv : (mv.weeks || []);
   }
 
   if (statsResult.status === 'fulfilled' && statsResult.value.stats) {
     state.statsMap = Object.fromEntries(statsResult.value.stats.map(s => [s.symbol, s]));
+    if (statsResult.value.misc) state.statsMap._misc = statsResult.value.misc;
   }
 
   const byUrl = {};
@@ -1063,6 +1328,7 @@ async function fetchAll() {
   if (meta) renderMeta(meta);
 
   TAB_DEFS.forEach(t => {
+    if (t.special) return;
     const json = byUrl[t.file];
     if (!json) { state.data[t.id] = []; return; }
     // Backward compat: old format had "below" with "weeksBelow" field
@@ -1074,6 +1340,8 @@ async function fetchAll() {
     }
     state.data[t.id] = enrichRows(rows, t);
   });
+
+  buildSpecialTabData();
 
   if (!Object.values(byUrl).length) {
     document.getElementById('content').innerHTML = '<div class="error-msg">Failed to load scan data.</div>';

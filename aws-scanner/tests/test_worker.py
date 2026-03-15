@@ -12,6 +12,7 @@ from src.worker.app import (
     _delete_snapshot,
     _write_batch_results,
     _write_errors,
+    _compute_misc_stats,
     MAX_WEEKLY_SNAPSHOTS,
 )
 
@@ -50,6 +51,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_monthly_candles.return_value = None
         self.mock_yahoo.fetch_stats_candles.return_value = None
+        self.mock_yahoo.fetch_forward_pe.return_value = None
         self.mock_stats.compute_stats.return_value = None
 
     def teardown_method(self):
@@ -533,15 +535,29 @@ class TestLambdaHandler:
             "runId": "2026-02-22",
             "batchIndex": 0,
             "totalBatches": 3,
-
             "symbols": ["AAPL", "MSFT"],
         }])
 
         result = lambda_handler(event, None)
 
         assert result["statusCode"] == 200
-        self.mock_process.assert_called_once_with(["AAPL", "MSFT"])
+        self.mock_process.assert_called_once_with(["AAPL", "MSFT"], [])
         self.mock_write.assert_called_once()
+
+    def test_passes_vix_spikes_to_process_batch(self):
+        self.mock_process.return_value = ([], [], [], [], [], [], [], [], [], [], [], [])
+        vix_spikes = [{"dateString": "3/10/25", "timestamp": 1000, "vixClose": 25.0}]
+        event = self._sqs_event([{
+            "runId": "2026-02-22",
+            "batchIndex": 0,
+            "totalBatches": 1,
+            "symbols": ["AAPL"],
+            "vixSpikes": vix_spikes,
+        }])
+
+        lambda_handler(event, None)
+
+        self.mock_process.assert_called_once_with(["AAPL"], vix_spikes)
 
     def test_last_batch_triggers_aggregation(self):
         self.mock_process.return_value = ([], [], [], [], [], [], [], [], [], [], [], [])
@@ -1141,3 +1157,70 @@ class TestDeleteSnapshot:
         _delete_snapshot("mybucket", "2026-03-08")
 
         assert mock_s3.delete_object.call_count == 7
+
+
+class TestComputeMiscStats:
+
+    def test_empty_stats_returns_empty(self):
+        assert _compute_misc_stats([]) == {}
+
+    def test_pct_within_5_of_high(self):
+        stats = [
+            {"highPct": -3.0, "ytdPct": 5.0},
+            {"highPct": -10.0, "ytdPct": -2.0},
+            {"highPct": 0.0, "ytdPct": 10.0},
+        ]
+        result = _compute_misc_stats(stats)
+        # 2 out of 3 are >= -5
+        assert result["pctWithin5OfHigh"] == 66.7
+
+    def test_pct_positive_ytd(self):
+        stats = [
+            {"ytdPct": 5.0},
+            {"ytdPct": -2.0},
+            {"ytdPct": 0.0},
+        ]
+        result = _compute_misc_stats(stats)
+        # 2 out of 3 (5.0 and 0.0 are >= 0)
+        assert result["pctPositiveYTD"] == 66.7
+
+    def test_avg_ytd(self):
+        stats = [
+            {"ytdPct": 10.0},
+            {"ytdPct": -4.0},
+            {"ytdPct": 6.0},
+        ]
+        result = _compute_misc_stats(stats)
+        assert result["avgYTD"] == 4.0
+
+    def test_forward_pe_avg_and_median(self):
+        stats = [
+            {"forwardPE": 10.0},
+            {"forwardPE": 20.0},
+            {"forwardPE": 30.0},
+        ]
+        result = _compute_misc_stats(stats)
+        assert result["avgForwardPE"] == 20.0
+        assert result["medianForwardPE"] == 20.0
+
+    def test_forward_pe_even_count_median(self):
+        stats = [
+            {"forwardPE": 10.0},
+            {"forwardPE": 20.0},
+            {"forwardPE": 30.0},
+            {"forwardPE": 40.0},
+        ]
+        result = _compute_misc_stats(stats)
+        assert result["medianForwardPE"] == 25.0
+
+    def test_no_forward_pe_omits_pe_fields(self):
+        stats = [{"ytdPct": 5.0}]
+        result = _compute_misc_stats(stats)
+        assert "avgForwardPE" not in result
+        assert "medianForwardPE" not in result
+
+    def test_no_ytd_omits_ytd_fields(self):
+        stats = [{"highPct": -3.0}]
+        result = _compute_misc_stats(stats)
+        assert "pctPositiveYTD" not in result
+        assert "avgYTD" not in result

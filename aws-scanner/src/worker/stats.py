@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
 from typing import Optional
 
+try:
+    from . import swing, rsi, quarterly, vix
+except ImportError:
+    import swing, rsi, quarterly, vix
+
 
 def compute_ytd_pct(closes: list[float], timestamps: list[int]) -> Optional[float]:
     """Return YTD % change from last close of previous year to current close."""
@@ -41,8 +46,13 @@ def compute_lowest_close_pct(closes: list[float]) -> Optional[tuple[float, float
     return pct, low
 
 
-def compute_stats(closes: list[float], timestamps: list[int]) -> Optional[dict]:
-    """Compute YTD/High/Low stats. Returns None if insufficient data."""
+def compute_stats(
+    closes: list[float],
+    timestamps: list[int],
+    vix_spikes: Optional[list[dict]] = None,
+    forward_pe: Optional[float] = None,
+) -> Optional[dict]:
+    """Compute all stats for a symbol. Returns None if insufficient data."""
     if len(closes) < 2:
         return None
 
@@ -61,5 +71,33 @@ def compute_stats(closes: list[float], timestamps: list[int]) -> Optional[dict]:
     if low_result is not None:
         result["lowPct"] = low_result[0]
         result["low52wk"] = round(low_result[1], 2)
+
+    # Swing levels
+    swing_result = swing.analyze(closes, timestamps)
+    if swing_result is not None:
+        result.update(swing_result)
+
+    # RSI
+    rsi_value = rsi.calculate(closes)
+    if rsi_value is not None:
+        result["rsi"] = rsi_value
+
+    # Quarterly changes
+    q_result = quarterly.compute_quarterly_changes(closes, timestamps)
+    if q_result is not None:
+        result["sinceQuarter"] = q_result["sinceQuarter"]
+        result["duringQuarter"] = q_result["duringQuarter"]
+
+    # VIX spike returns
+    if vix_spikes:
+        vix_returns = vix.compute_spike_returns(
+            vix_spikes, closes, timestamps, closes[-1]
+        )
+        if vix_returns:
+            result["vixReturns"] = vix_returns
+
+    # Forward P/E
+    if forward_pe is not None:
+        result["forwardPE"] = forward_pe
 
     return result
