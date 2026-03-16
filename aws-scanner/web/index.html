@@ -281,17 +281,17 @@
 
   /* ── Table ── */
   .table-wrap {
-    overflow-x: auto;
+    overflow-x: scroll;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg-surface);
     scrollbar-width: thin;
-    scrollbar-color: var(--text-muted) var(--bg-surface);
+    scrollbar-color: var(--text-muted) var(--bg-elevated);
   }
 
-  .table-wrap::-webkit-scrollbar { height: 8px; }
-  .table-wrap::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 4px; }
-  .table-wrap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+  .table-wrap::-webkit-scrollbar { height: 10px; }
+  .table-wrap::-webkit-scrollbar-track { background: var(--bg-elevated); }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 5px; min-width: 40px; }
   .table-wrap::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
   table {
@@ -1529,14 +1529,16 @@ function _buildVixSpikeData(stats) {
   filtered.forEach(s => s.vixReturns.forEach(ret => spikeDateSet.add(ret.dateString)));
   const spikeDates = [...spikeDateSet];
 
-  // Collect VIX close and timestamp for each spike date (for sorting and labels)
+  // Collect VIX close for labels; parse M/D/YY dates to sort newest-first
   const spikeVixClose = {};
-  const spikeTimestamp = {};
   filtered.forEach(s => s.vixReturns.forEach(ret => {
     if (!spikeVixClose[ret.dateString]) spikeVixClose[ret.dateString] = ret.vixClose;
-    if (!spikeTimestamp[ret.dateString]) spikeTimestamp[ret.dateString] = ret.timestamp || 0;
   }));
-  spikeDates.sort((a, b) => (spikeTimestamp[b] || 0) - (spikeTimestamp[a] || 0));
+  function parseMDYY(s) {
+    const [m, d, y] = s.split('/').map(Number);
+    return new Date(2000 + y, m - 1, d).getTime();
+  }
+  spikeDates.sort((a, b) => parseMDYY(b) - parseMDYY(a));
 
   state.data['vixSpikes'] = filtered.map(s => {
     const row = { symbol: s.symbol, close: s.close ?? null, highPct: s.highPct ?? null };
