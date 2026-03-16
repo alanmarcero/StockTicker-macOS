@@ -8,8 +8,8 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 
 ## Features
 
-- **Watchlist** — Track up to 256 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours. Filterable by green status (YTD, High, Low) individually or in any combination.
-- **Multi-source watchlist** — 7 toggleable sources: MegaCap ($100B+ equities), Top AUM ETFs, Top Volume ETFs, SPDR (State Street), Vanguard, SPDR Sectors, and personal watchlist. Double-click a source to exclusively select it.
+- **Watchlist** — Track up to 256 symbols with live price, change %, market cap, YTD %, distance from 3-year high, and distance from 52-week low. Symbols rotate in the menu bar during market hours. Filterable by green/red status (YTD, High, Low), ETF/Asset type, individually or in any combination.
+- **Multi-source watchlist** — 8 toggleable sources: MegaCap ($100B+ equities), Top AUM ETFs, Top Volume ETFs, SPDR (State Street), Vanguard, SPDR Sectors, Commodities, and personal watchlist. Double-click a source to exclusively select it.
 - **Scrolling index marquee** — SPX, DJI, NDX, VIX, RUT, and BTC scroll across the top of the dropdown. Switches to crypto (BTC, ETH, SOL, DOGE, XRP) when the market is closed.
 - **Extended hours** — Pre-market and after-hours price changes displayed alongside regular session data. Sortable by AH % (visible after 3:45 PM ET).
 - **Financial news** — Top headlines from Yahoo Finance and CNBC, clickable to open in your browser.
@@ -23,7 +23,7 @@ A macOS menu bar app for tracking stocks, ETFs, and crypto with real-time quotes
 - **Since Quarter / During Quarter** — Percent change across the last 12 quarters. "Since Quarter" shows quarter-end to current price; "During Quarter" shows within-quarter performance.
 - **Forward P/E** — Forward P/E ratio history by quarter.
 - **Price Breaks** — Swing analysis showing breakout/breakdown levels with dates and RSI(14).
-- **5 EMAs** — Daily/weekly EMA crossover/crossdown detection, consecutive closes above/below 5-period EMA. Supports AWS scanner data for ~10K US equities.
+- **5 EMAs** — Daily/weekly EMA crossover/crossdown detection, consecutive closes above/below 5-period EMA. Supports [AWS scanner](https://github.com/alanmarcero/the-stonk-shop) data for ~10K US equities.
 - **Misc Stats** — Aggregate stats: % near 3-year high, average YTD, % above/below 5-week EMA, average/median forward P/E.
 
 ### Other Windows
@@ -93,7 +93,7 @@ Edit via the menu: **Config > Edit Config** for full JSON, or **Edit Watchlist**
 
 - **Yahoo Finance** — Real-time quotes, historical closes, market cap, forward P/E history, YTD prices
 - **Finnhub** (optional) — Equity/ETF quotes and historical data when API key is configured
-- **AWS EMA Scanner** (optional) — Weekly 5-EMA crossover/crossdown analysis for ~10K US equities
+- **[AWS EMA Scanner](https://github.com/alanmarcero/the-stonk-shop)** (optional) — Weekly 5-EMA crossover/crossdown analysis for ~10K US equities
 - **Yahoo Finance RSS / CNBC RSS** — Financial news headlines
 
 ## Development
