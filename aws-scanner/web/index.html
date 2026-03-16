@@ -735,6 +735,10 @@ const TAB_DEFS = [
   { id: 'moCrossDown', label: 'Mo Cross Down',  file: '/results/latest-monthly.json',               key: 'monthCrossdowns', cols: ['symbol','close','monthsAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],  pctField: 'pctBelow' },
   { id: 'moBelow',     label: 'Mo Below',       file: '/results/latest-monthly-below-above.json',   key: 'monthBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
   { id: 'moAbove',     label: 'Mo Above',       file: '/results/latest-monthly-below-above.json',   key: 'monthAbove',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
+  { id: 'qCrossUp',   label: 'Q Cross Up',     file: '/results/latest-quarterly.json',              key: 'quarterCrossovers', cols: ['symbol','close','quartersBelow','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'], pctField: 'pctAbove' },
+  { id: 'qCrossDown', label: 'Q Cross Down',   file: '/results/latest-quarterly.json',              key: 'quarterCrossdowns', cols: ['symbol','close','quartersAbove','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'], pctField: 'pctBelow' },
+  { id: 'qBelow',     label: 'Q Below',        file: '/results/latest-quarterly-below-above.json',  key: 'quarterBelow',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctBelow' },
+  { id: 'qAbove',     label: 'Q Above',        file: '/results/latest-quarterly-below-above.json',  key: 'quarterAbove',      cols: ['symbol','close','count','pct','ema','ytdPct','highPct','lowPct','rsi','forwardPE'],        pctField: 'pctAbove' },
   { id: 'performance', label: 'Performance',     special: 'performance' },
   { id: 'priceBreaks', label: 'Price Breaks',   special: 'priceBreaks' },
   { id: 'sinceQ',      label: 'Since Quarter',  special: 'sinceQuarter' },
@@ -748,6 +752,7 @@ const COL_LABELS = {
   symbol: 'Symbol', close: 'Close', ema: 'EMA', pct: '% EMA',
   weeksBelow: 'Weeks Below', weeksAbove: 'Weeks Above',
   monthsBelow: 'Months Below', monthsAbove: 'Months Above',
+  quartersBelow: 'Quarters Below', quartersAbove: 'Quarters Above',
   count: 'Count',
   ytdPct: 'YTD', highPct: 'vs High', high3yr: '3yr High', lowPct: 'vs Low', low52wk: '52wk Low',
   rsi: 'RSI', forwardPE: 'Fwd P/E',
@@ -757,7 +762,7 @@ const COL_LABELS = {
   spikeClose: 'Spike Close', pctGain: '% Gain',
 };
 
-const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','count','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE','breakoutPct','breakdownPct','breakoutPrice','breakdownPrice','spikeClose','pctGain']);
+const NUM_COLS = new Set(['close','ema','pct','weeksBelow','weeksAbove','monthsBelow','monthsAbove','quartersBelow','quartersAbove','count','ytdPct','highPct','high3yr','lowPct','low52wk','rsi','forwardPE','breakoutPct','breakdownPct','breakoutPrice','breakdownPrice','spikeClose','pctGain']);
 
 const state = {
   activeSourceMode: 'all',

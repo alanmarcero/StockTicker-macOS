@@ -21,6 +21,10 @@ def fetch_monthly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]
     return _fetch_candles(symbol, range_param="2y", interval="1wk")
 
 
+def fetch_quarterly_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
+    return _fetch_candles(symbol, range_param="5y", interval="1wk")
+
+
 def fetch_stats_candles(symbol: str) -> Optional[tuple[list[float], list[int]]]:
     return _fetch_candles(symbol, range_param="3y", interval="1d")
 

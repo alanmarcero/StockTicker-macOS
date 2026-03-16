@@ -3,8 +3,8 @@ import json
 
 from src.worker.yahoo import (
     fetch_daily_candles, fetch_weekly_candles, fetch_monthly_candles,
-    fetch_forward_pe, fetch_vix_candles, _parse_response, _parse_forward_pe,
-    _parse_forward_pe_history,
+    fetch_quarterly_candles, fetch_forward_pe, fetch_vix_candles,
+    _parse_response, _parse_forward_pe, _parse_forward_pe_history,
     BASE_URL, TIMESERIES_URL, USER_AGENT, TIMEOUT_SECONDS,
 )
 
@@ -283,6 +283,48 @@ class TestFetchWeeklyCandles:
         )
 
         assert fetch_weekly_candles("GONE") is None
+
+
+class TestFetchQuarterlyCandles:
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_builds_correct_url(self, mock_urlopen):
+        mock_urlopen.side_effect = OSError("stop")
+
+        fetch_quarterly_candles("MSFT")
+
+        call_args = mock_urlopen.call_args
+        request = call_args[0][0]
+        assert request.full_url == f"{BASE_URL}/MSFT?range=5y&interval=1wk"
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_success(self, mock_urlopen):
+        response_data = {
+            "chart": {
+                "result": [{
+                    "timestamp": [1771218000, 1771822800],
+                    "indicators": {"quote": [{"close": [150.0, 155.0]}]},
+                }]
+            }
+        }
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(response_data).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        result = fetch_quarterly_candles("AAPL")
+
+        assert result is not None
+        closes, timestamps = result
+        assert closes == [150.0, 155.0]
+        assert timestamps == [1771218000, 1771822800]
+
+    @patch("src.worker.yahoo.urllib.request.urlopen")
+    def test_network_error_returns_none(self, mock_urlopen):
+        mock_urlopen.side_effect = ConnectionError("no network")
+
+        assert fetch_quarterly_candles("FAIL") is None
 
 
 class TestFetchMonthlyCandles:

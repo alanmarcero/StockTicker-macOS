@@ -6,6 +6,7 @@ from src.worker.app import (
     _process_batch,
     _aggregate_results,
     _aggregate_to_monthly,
+    _aggregate_to_quarterly,
     _strip_incomplete_week,
     _invalidate_cache,
     _update_manifest,
@@ -33,7 +34,7 @@ UPTREND_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 CROSSDOWN_CLOSES = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 40.0]
 
 # Reusable empty batch for aggregation tests
-EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "errorDetails": [], "crossovers": [], "crossdowns": [], "dayBelow": [], "weekBelow": [], "dayAbove": [], "weekAbove": [], "monthCrossovers": [], "monthCrossdowns": [], "monthBelow": [], "monthAbove": [], "stats": []}
+EMPTY_BATCH = {"symbolsProcessed": 10, "errors": 0, "errorDetails": [], "crossovers": [], "crossdowns": [], "dayBelow": [], "weekBelow": [], "dayAbove": [], "weekAbove": [], "monthCrossovers": [], "monthCrossdowns": [], "monthBelow": [], "monthAbove": [], "quarterCrossovers": [], "quarterCrossdowns": [], "quarterBelow": [], "quarterAbove": [], "stats": []}
 
 
 def _timestamps_for(closes):
@@ -51,6 +52,7 @@ class TestProcessBatch:
         self.mock_stats = self._stats_patcher.start()
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_monthly_candles.return_value = None
+        self.mock_yahoo.fetch_quarterly_candles.return_value = None
         self.mock_yahoo.fetch_stats_candles.return_value = None
         self.mock_yahoo.fetch_forward_pe.return_value = (None, None)
         self.mock_stats.compute_stats.return_value = None
@@ -280,6 +282,7 @@ class TestProcessBatch:
         self.mock_yahoo.fetch_daily_candles.return_value = None
         self.mock_yahoo.fetch_weekly_candles.return_value = None
         self.mock_yahoo.fetch_monthly_candles.return_value = None
+        self.mock_yahoo.fetch_quarterly_candles.return_value = None
 
         result = _process_batch(["FAIL"])
 
@@ -418,6 +421,69 @@ class TestAggregateToMonthly:
         assert 6 <= len(result) <= 7
 
 
+class TestAggregateToQuarterly:
+
+    def test_groups_by_calendar_quarter(self):
+        from datetime import datetime, timezone
+        # Q1: Jan + Mar, Q2: Apr
+        ts_jan = int(datetime(2025, 1, 6, tzinfo=timezone.utc).timestamp())
+        ts_mar = int(datetime(2025, 3, 24, tzinfo=timezone.utc).timestamp())
+        ts_apr = int(datetime(2025, 4, 7, tzinfo=timezone.utc).timestamp())
+
+        closes = [100.0, 102.0, 200.0]
+        timestamps = [ts_jan, ts_mar, ts_apr]
+
+        result = _aggregate_to_quarterly(closes, timestamps)
+
+        assert len(result) == 2
+        assert result[0] == 102.0  # last close in Q1
+        assert result[1] == 200.0  # last close in Q2
+
+    def test_single_quarter(self):
+        from datetime import datetime, timezone
+        ts1 = int(datetime(2025, 1, 6, tzinfo=timezone.utc).timestamp())
+        ts2 = int(datetime(2025, 2, 3, tzinfo=timezone.utc).timestamp())
+        ts3 = int(datetime(2025, 3, 3, tzinfo=timezone.utc).timestamp())
+
+        result = _aggregate_to_quarterly([50.0, 55.0, 60.0], [ts1, ts2, ts3])
+
+        assert result == [60.0]
+
+    def test_empty_input(self):
+        assert _aggregate_to_quarterly([], []) == []
+
+    def test_five_years_produces_expected_count(self):
+        from datetime import datetime, timezone, timedelta
+        # Simulate ~260 weekly candles across 5 years
+        closes = []
+        timestamps = []
+        base = datetime(2021, 1, 4, tzinfo=timezone.utc)
+        for i in range(260):
+            dt = base + timedelta(weeks=i)
+            closes.append(100.0 + i)
+            timestamps.append(int(dt.timestamp()))
+
+        result = _aggregate_to_quarterly(closes, timestamps)
+
+        # 5 years = ~20 quarters
+        assert 19 <= len(result) <= 21
+
+    def test_last_close_wins_per_quarter(self):
+        from datetime import datetime, timezone
+        ts1 = int(datetime(2025, 1, 6, tzinfo=timezone.utc).timestamp())
+        ts2 = int(datetime(2025, 1, 13, tzinfo=timezone.utc).timestamp())
+        ts3 = int(datetime(2025, 2, 3, tzinfo=timezone.utc).timestamp())
+        ts4 = int(datetime(2025, 3, 31, tzinfo=timezone.utc).timestamp())
+
+        closes = [100.0, 110.0, 120.0, 130.0]
+        timestamps = [ts1, ts2, ts3, ts4]
+
+        result = _aggregate_to_quarterly(closes, timestamps)
+
+        assert len(result) == 1
+        assert result[0] == 130.0  # last close in Q1
+
+
 class TestWriteBatchResults:
 
     @patch("src.worker.app.s3")
@@ -453,6 +519,10 @@ class TestWriteBatchResults:
         month_crossdowns = [{"symbol": "NFLX", "monthsAbove": 3}]
         month_below = [{"symbol": "INTC", "count": 4}]
         month_above = [{"symbol": "AMD", "count": 2}]
+        quarter_crossovers = [{"symbol": "V", "quartersBelow": 3}]
+        quarter_crossdowns = [{"symbol": "MA", "quartersAbove": 2}]
+        quarter_below = [{"symbol": "PYPL", "count": 5}]
+        quarter_above = [{"symbol": "SQ", "count": 3}]
         stats_data = [{"symbol": "AAPL", "close": 195.5, "ytdPct": 12.34}]
         error_details = [{"symbol": "BAD", "error": "fail"}]
 
@@ -462,6 +532,8 @@ class TestWriteBatchResults:
             day_above=day_above, week_above=week_above,
             month_crossovers=month_crossovers, month_crossdowns=month_crossdowns,
             month_below=month_below, month_above=month_above,
+            quarter_crossovers=quarter_crossovers, quarter_crossdowns=quarter_crossdowns,
+            quarter_below=quarter_below, quarter_above=quarter_above,
             stats_data=stats_data, errors=error_details,
         )
         _write_batch_results("b", "r", 0, 50, 2, batch)
@@ -481,6 +553,10 @@ class TestWriteBatchResults:
         assert body["monthCrossdowns"] == month_crossdowns
         assert body["monthBelow"] == month_below
         assert body["monthAbove"] == month_above
+        assert body["quarterCrossovers"] == quarter_crossovers
+        assert body["quarterCrossdowns"] == quarter_crossdowns
+        assert body["quarterBelow"] == quarter_below
+        assert body["quarterAbove"] == quarter_above
         assert body["stats"] == stats_data
 
 
@@ -730,7 +806,7 @@ class TestAggregateResults:
 
         _aggregate_results("test-bucket", "2026-02-22", 2)
 
-        assert self.mock_put.call_count == 15
+        assert self.mock_put.call_count == 19
         latest_data = self.mock_put.call_args_list[0][0][2]
         assert latest_data["symbolsScanned"] == 100
         assert latest_data["errors"] == 1
@@ -811,7 +887,7 @@ class TestAggregateResults:
 
         _aggregate_results("b", "2026-02-22", 1)
 
-        archive_key = self.mock_put.call_args_list[7][0][1]
+        archive_key = self.mock_put.call_args_list[9][0][1]
         assert archive_key.startswith("results/")
         assert ".json" in archive_key
 
@@ -1008,6 +1084,74 @@ class TestAggregateResults:
         assert monthly_ba_data["monthBelow"] == []
         assert monthly_ba_data["monthAbove"] == []
 
+    def test_writes_latest_quarterly_json(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("mybucket", "2026-02-22", 1)
+
+        assert self.mock_put.call_args_list[6][0][1] == "results/latest-quarterly.json"
+
+    def test_writes_latest_quarterly_below_above_json(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("mybucket", "2026-02-22", 1)
+
+        assert self.mock_put.call_args_list[7][0][1] == "results/latest-quarterly-below-above.json"
+
+    def test_latest_quarterly_json_has_required_fields(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("b", "r", 1)
+
+        data = self.mock_put.call_args_list[6][0][2]
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "quarterCrossovers", "quarterCrossdowns"}
+
+    def test_latest_quarterly_below_above_json_has_required_fields(self):
+        self.mock_read.return_value = EMPTY_BATCH
+
+        _aggregate_results("b", "r", 1)
+
+        data = self.mock_put.call_args_list[7][0][2]
+        assert set(data.keys()) == {"scanDate", "scanTime", "symbolsScanned", "errors", "quarterBelow", "quarterAbove"}
+
+    def test_quarter_crossovers_sorted_by_quarters_below_descending(self):
+        self.mock_read.side_effect = [
+            {**EMPTY_BATCH, "quarterCrossovers": [{"symbol": "LOW", "quartersBelow": 2}]},
+            {**EMPTY_BATCH, "quarterCrossovers": [{"symbol": "HIGH", "quartersBelow": 5}]},
+        ]
+
+        _aggregate_results("b", "r", 2)
+
+        quarterly_data = self.mock_put.call_args_list[6][0][2]
+        assert quarterly_data["quarterCrossovers"][0]["symbol"] == "HIGH"
+        assert quarterly_data["quarterCrossovers"][1]["symbol"] == "LOW"
+
+    def test_quarter_crossdowns_sorted_by_quarters_above_descending(self):
+        self.mock_read.side_effect = [
+            {**EMPTY_BATCH, "quarterCrossdowns": [{"symbol": "LOW", "quartersAbove": 1}]},
+            {**EMPTY_BATCH, "quarterCrossdowns": [{"symbol": "HIGH", "quartersAbove": 4}]},
+        ]
+
+        _aggregate_results("b", "r", 2)
+
+        quarterly_data = self.mock_put.call_args_list[6][0][2]
+        assert quarterly_data["quarterCrossdowns"][0]["symbol"] == "HIGH"
+        assert quarterly_data["quarterCrossdowns"][1]["symbol"] == "LOW"
+
+    def test_backward_compat_missing_quarterly_keys(self):
+        self.mock_read.side_effect = [
+            {"symbolsProcessed": 50, "errors": 0, "crossovers": []},
+        ]
+
+        _aggregate_results("b", "r", 1)
+
+        quarterly_data = self.mock_put.call_args_list[6][0][2]
+        assert quarterly_data["quarterCrossovers"] == []
+        assert quarterly_data["quarterCrossdowns"] == []
+        quarterly_ba_data = self.mock_put.call_args_list[7][0][2]
+        assert quarterly_ba_data["quarterBelow"] == []
+        assert quarterly_ba_data["quarterAbove"] == []
+
     def test_aggregate_writes_all_dated_files(self):
         self.mock_read.return_value = EMPTY_BATCH
 
@@ -1016,9 +1160,9 @@ class TestAggregateResults:
         put_keys = [call[0][1] for call in self.mock_put.call_args_list]
         latest_keys = [k for k in put_keys if "latest" in k]
         dated_keys = [k for k in put_keys if k not in latest_keys]
-        # 7 dated files: base, crossdown, below, above, monthly, monthly-below-above, stats
-        assert len(dated_keys) == 7
-        suffixes = ["-crossdown", "-below", "-above", "-monthly", "-monthly-below-above", "-stats"]
+        # 9 dated files: base, crossdown, below, above, monthly, monthly-below-above, quarterly, quarterly-below-above, stats
+        assert len(dated_keys) == 9
+        suffixes = ["-crossdown", "-below", "-above", "-monthly", "-monthly-below-above", "-quarterly", "-quarterly-below-above", "-stats"]
         # The base dated file (no suffix)
         assert any(k.endswith(".json") and "-crossdown" not in k and "-below" not in k and "-above" not in k and "-monthly" not in k for k in dated_keys)
         for suffix in suffixes:
@@ -1139,10 +1283,10 @@ class TestUpdateManifest:
 class TestDeleteSnapshot:
 
     @patch("src.worker.app.s3")
-    def test_deletes_all_seven_files(self, mock_s3):
+    def test_deletes_all_snapshot_files(self, mock_s3):
         _delete_snapshot("mybucket", "2026-03-08")
 
-        assert mock_s3.delete_object.call_count == 7
+        assert mock_s3.delete_object.call_count == 9
         deleted_keys = [call[1]["Key"] for call in mock_s3.delete_object.call_args_list]
         assert "results/2026-03-08.json" in deleted_keys
         assert "results/2026-03-08-crossdown.json" in deleted_keys
@@ -1150,6 +1294,8 @@ class TestDeleteSnapshot:
         assert "results/2026-03-08-above.json" in deleted_keys
         assert "results/2026-03-08-monthly.json" in deleted_keys
         assert "results/2026-03-08-monthly-below-above.json" in deleted_keys
+        assert "results/2026-03-08-quarterly.json" in deleted_keys
+        assert "results/2026-03-08-quarterly-below-above.json" in deleted_keys
         assert "results/2026-03-08-stats.json" in deleted_keys
 
     @patch("src.worker.app.s3")
@@ -1161,11 +1307,11 @@ class TestDeleteSnapshot:
 
     @patch("src.worker.app.s3")
     def test_continues_on_delete_error(self, mock_s3):
-        mock_s3.delete_object.side_effect = [Exception("fail"), None, None, None, None, None, None]
+        mock_s3.delete_object.side_effect = [Exception("fail"), None, None, None, None, None, None, None, None]
 
         _delete_snapshot("mybucket", "2026-03-08")
 
-        assert mock_s3.delete_object.call_count == 7
+        assert mock_s3.delete_object.call_count == 9
 
 
 class TestComputeMiscStats:
