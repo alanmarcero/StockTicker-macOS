@@ -285,7 +285,14 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg-surface);
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-muted) var(--bg-surface);
   }
+
+  .table-wrap::-webkit-scrollbar { height: 8px; }
+  .table-wrap::-webkit-scrollbar-track { background: var(--bg-surface); border-radius: 4px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+  .table-wrap::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
 
   table {
     width: 100%;
@@ -339,7 +346,39 @@
   tbody tr:nth-child(even) td { background: var(--bg-base); }
   tbody tr:hover td { background: var(--bg-hover); }
 
-  td.symbol { font-weight: 600; color: var(--text-primary); }
+  /* Frozen symbol column */
+  td.symbol, th.col-symbol {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 1px solid var(--border);
+  }
+
+  th.col-symbol {
+    z-index: 3;
+    background: var(--bg-elevated);
+  }
+
+  td.symbol {
+    font-weight: 600;
+    color: var(--text-primary);
+    background: inherit;
+  }
+
+  /* Ensure striping colors persist on frozen column */
+  tbody tr:nth-child(odd) td.symbol { background: var(--bg-surface); }
+  tbody tr:nth-child(even) td.symbol { background: var(--bg-base); }
+  tbody tr:hover td.symbol { background: var(--bg-hover); }
+
+  /* Filter row symbol cell also sticky */
+  .filter-row td.col-symbol-filter {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border);
+  }
+
   td.symbol a { color: var(--text-primary); text-decoration: none; transition: color 0.15s; }
   td.symbol a:hover { color: var(--accent); }
 
@@ -1065,7 +1104,7 @@ function renderTableHeader(def) {
   return def.cols.map(c => {
     const isSorted = state.sortCol === c;
     const arrow = isSorted ? (state.sortAsc ? '\u25B2' : '\u25BC') : '\u25B4';
-    const cls = [NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : '', c === 'ema' ? 'col-ema' : ''].filter(Boolean).join(' ');
+    const cls = [c === 'symbol' ? 'col-symbol' : '', NUM_COLS.has(c) ? 'num' : '', isSorted ? 'sorted' : '', c === 'ema' ? 'col-ema' : ''].filter(Boolean).join(' ');
     return `<th class="${cls}" data-col="${c}">${COL_LABELS[c]}<span class="sort-arrow">${arrow}</span></th>`;
   }).join('');
 }
@@ -1075,7 +1114,7 @@ function renderFilterRow(def) {
     const emaClass = c === 'ema' ? ' col-ema' : '';
     if (c === 'symbol') {
       const val = state.filters[c]?.text || '';
-      return `<td${emaClass ? ` class="${emaClass.trim()}"` : ''}><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
+      return `<td class="col-symbol-filter"><input type="text" class="filter-symbol" data-col="${c}" placeholder="Filter\u2026" value="${esc(val)}"></td>`;
     }
     const f = state.filters[c] || {};
     const minVal = f.min != null ? f.min : '';
