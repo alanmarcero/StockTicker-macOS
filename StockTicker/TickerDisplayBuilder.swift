@@ -149,31 +149,36 @@ enum TickerDisplayBuilder {
         return result
     }
 
-    static func appendYTDSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
-        guard let ytdPercent = quote.formattedYTDChangePercent else { return }
-        let ytdContent = "YTD: \(ytdPercent)"
-        let paddedContent = padded(ytdContent, toLength: LayoutConfig.Ticker.ytdWidth)
-        let (ytdColor, ytdBgColor) = highlight.resolve(defaultColor: quote.ytdColor)
+    /// Shared helper for appending a labeled percentage section (YTD, High, Low).
+    private static func appendLabeledSection(
+        to result: NSMutableAttributedString,
+        label: String,
+        formattedPercent: String?,
+        width: Int,
+        color: NSColor,
+        highlight: HighlightConfig
+    ) {
+        guard let percent = formattedPercent else { return }
+        let content = "\(label): \(percent)"
+        let paddedContent = padded(content, toLength: width)
+        let (resolvedColor, bgColor) = highlight.resolve(defaultColor: color)
         result.append(.styled("  \(paddedContent)",
-                              font: MenuItemFactory.monoFont, color: ytdColor, backgroundColor: ytdBgColor))
+                              font: MenuItemFactory.monoFont, color: resolvedColor, backgroundColor: bgColor))
+    }
+
+    static func appendYTDSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
+        appendLabeledSection(to: result, label: "YTD", formattedPercent: quote.formattedYTDChangePercent,
+                             width: LayoutConfig.Ticker.ytdWidth, color: quote.ytdColor, highlight: highlight)
     }
 
     static func appendHighestCloseSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
-        guard let highPercent = quote.formattedHighestCloseChangePercent else { return }
-        let highContent = "High: \(highPercent)"
-        let paddedContent = padded(highContent, toLength: LayoutConfig.Ticker.highWidth)
-        let (highColor, highBgColor) = highlight.resolve(defaultColor: quote.highestCloseColor)
-        result.append(.styled("  \(paddedContent)",
-                              font: MenuItemFactory.monoFont, color: highColor, backgroundColor: highBgColor))
+        appendLabeledSection(to: result, label: "High", formattedPercent: quote.formattedHighestCloseChangePercent,
+                             width: LayoutConfig.Ticker.highWidth, color: quote.highestCloseColor, highlight: highlight)
     }
 
     static func appendLowestCloseSection(to result: NSMutableAttributedString, quote: StockQuote, highlight: HighlightConfig) {
-        guard let lowPercent = quote.formattedLowestCloseChangePercent else { return }
-        let lowContent = "Low: \(lowPercent)"
-        let paddedContent = padded(lowContent, toLength: LayoutConfig.Ticker.lowWidth)
-        let (lowColor, lowBgColor) = highlight.resolve(defaultColor: quote.lowestCloseColor)
-        result.append(.styled("  \(paddedContent)",
-                              font: MenuItemFactory.monoFont, color: lowColor, backgroundColor: lowBgColor))
+        appendLabeledSection(to: result, label: "Low", formattedPercent: quote.formattedLowestCloseChangePercent,
+                             width: LayoutConfig.Ticker.lowWidth, color: quote.lowestCloseColor, highlight: highlight)
     }
 
     static func appendExtendedHoursSection(

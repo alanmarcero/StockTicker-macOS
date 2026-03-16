@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
+# Dual import supports both Lambda (package) and direct test execution contexts.
 try:
     from . import swing, rsi, quarterly, vix
 except ImportError:
@@ -57,37 +58,37 @@ def compute_stats(
     if len(closes) < 2:
         return None
 
-    result = {"close": round(closes[-1], 2)}
+    stats: dict = {"close": round(closes[-1], 2)}
 
     ytd = compute_ytd_pct(closes, timestamps)
     if ytd is not None:
-        result["ytdPct"] = ytd
+        stats["ytdPct"] = ytd
 
     high_result = compute_highest_close_pct(closes)
     if high_result is not None:
-        result["highPct"] = high_result[0]
-        result["high3yr"] = round(high_result[1], 2)
+        stats["highPct"] = high_result[0]
+        stats["high3yr"] = round(high_result[1], 2)
 
     low_result = compute_lowest_close_pct(closes)
     if low_result is not None:
-        result["lowPct"] = low_result[0]
-        result["low52wk"] = round(low_result[1], 2)
+        stats["lowPct"] = low_result[0]
+        stats["low52wk"] = round(low_result[1], 2)
 
     # Swing levels
     swing_result = swing.analyze(closes, timestamps)
     if swing_result is not None:
-        result.update(swing_result)
+        stats.update(swing_result)
 
     # RSI
     rsi_value = rsi.calculate(closes)
     if rsi_value is not None:
-        result["rsi"] = rsi_value
+        stats["rsi"] = rsi_value
 
     # Quarterly changes
     q_result = quarterly.compute_quarterly_changes(closes, timestamps)
     if q_result is not None:
-        result["sinceQuarter"] = q_result["sinceQuarter"]
-        result["duringQuarter"] = q_result["duringQuarter"]
+        stats["sinceQuarter"] = q_result["sinceQuarter"]
+        stats["duringQuarter"] = q_result["duringQuarter"]
 
     # VIX spike returns
     if vix_spikes:
@@ -95,12 +96,12 @@ def compute_stats(
             vix_spikes, closes, timestamps, closes[-1]
         )
         if vix_returns:
-            result["vixReturns"] = vix_returns
+            stats["vixReturns"] = vix_returns
 
     # Forward P/E
     if forward_pe is not None:
-        result["forwardPE"] = forward_pe
+        stats["forwardPE"] = forward_pe
     if forward_pe_history is not None:
-        result["forwardPEHistory"] = forward_pe_history
+        stats["forwardPEHistory"] = forward_pe_history
 
-    return result
+    return stats

@@ -739,11 +739,12 @@ const state = {
 };
 
 function sortQuarterKeys(keys) {
+  // Newest first (e.g. Q4'25, Q3'25, Q2'25, Q1'25, Q4'24...)
   return [...keys].sort((a, b) => {
-    const [qa, ya] = [a[1], a.slice(3)];
-    const [qb, yb] = [b[1], b.slice(3)];
-    if (ya !== yb) return Number(yb) - Number(ya);
-    return Number(qb) - Number(qa);
+    const [quarterA, yearA] = [a[1], a.slice(3)];
+    const [quarterB, yearB] = [b[1], b.slice(3)];
+    if (yearA !== yearB) return Number(yearB) - Number(yearA);
+    return Number(quarterB) - Number(quarterA);
   });
 }
 
@@ -930,33 +931,35 @@ function renderToolbar(filteredCount, totalCount) {
 
 function sortRows(rows) {
   if (!state.sortCol) return rows;
-  return rows.sort((a, b) => {
-    const av = a[state.sortCol], bv = b[state.sortCol];
-    if (typeof av === 'number' && typeof bv === 'number') return state.sortAsc ? av - bv : bv - av;
-    return state.sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  const col = state.sortCol;
+  const asc = state.sortAsc;
+  return rows.sort((rowA, rowB) => {
+    const valA = rowA[col], valB = rowB[col];
+    if (typeof valA === 'number' && typeof valB === 'number') return asc ? valA - valB : valB - valA;
+    return asc ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
   });
 }
 
 /* ── Filtering ── */
 
 function applyFilters(rows, cols) {
-  return rows.filter(r => {
-    if (!matchesSources(r.symbol)) return false;
-    for (const c of cols) {
-      const f = state.filters[c];
-      if (!f) continue;
-      if (c === 'symbol') {
-        if (f.text && !String(r[c]).toLowerCase().includes(f.text.toLowerCase())) return false;
+  return rows.filter(row => {
+    if (!matchesSources(row.symbol)) return false;
+    for (const col of cols) {
+      const filter = state.filters[col];
+      if (!filter) continue;
+      if (col === 'symbol') {
+        if (filter.text && !String(row[col]).toLowerCase().includes(filter.text.toLowerCase())) return false;
       } else {
-        const v = r[c];
-        if (v == null) return false;
-        if (f.min !== '' && f.min != null && v < Number(f.min)) return false;
-        if (f.max !== '' && f.max != null && v > Number(f.max)) return false;
+        const val = row[col];
+        if (val == null) return false;
+        if (filter.min !== '' && filter.min != null && val < Number(filter.min)) return false;
+        if (filter.max !== '' && filter.max != null && val > Number(filter.max)) return false;
       }
     }
     for (const cfId of state.activeColorFilters) {
-      const cf = COLOR_FILTERS_MAP.get(cfId);
-      if (cf && !cf.test(r)) return false;
+      const colorFilter = COLOR_FILTERS_MAP.get(cfId);
+      if (colorFilter && !colorFilter.test(row)) return false;
     }
     return true;
   });
@@ -964,51 +967,51 @@ function applyFilters(rows, cols) {
 
 /* ── Row rendering ── */
 
-function renderRowHTML(r, cols, pctField, tabId) {
-  return '<tr>' + cols.map(c => {
-    const v = r[c];
-    const ema = c === 'ema' ? ' col-ema' : '';
-    if (c === 'symbol') {
+function renderRowHTML(row, cols, pctField, tabId) {
+  return '<tr>' + cols.map(col => {
+    const val = row[col];
+    const emaCls = col === 'ema' ? ' col-ema' : '';
+    if (col === 'symbol') {
       const interval = tabId.startsWith('mo') ? 'M' : 'W';
-      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(v)}&interval=${interval}`;
-      return `<td class="symbol"><a href="${url}" target="_blank">${esc(v)}</a></td>`;
+      const url = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(val)}&interval=${interval}`;
+      return `<td class="symbol"><a href="${url}" target="_blank">${esc(val)}</a></td>`;
     }
-    if (c === 'pct') {
-      const cls = v > 0 ? 'pct-positive' : v < 0 ? 'pct-negative' : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    if (col === 'pct') {
+      const cls = val > 0 ? 'pct-positive' : val < 0 ? 'pct-negative' : '';
+      return `<td class="num ${cls}">${fmtNum(col, val)}</td>`;
     }
-    if (c === 'close') {
-      const cls = r.close > r.ema ? 'close-above' : r.close < r.ema ? 'close-below' : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    if (col === 'close') {
+      const cls = row.close > row.ema ? 'close-above' : row.close < row.ema ? 'close-below' : '';
+      return `<td class="num ${cls}">${fmtNum(col, val)}</td>`;
     }
-    if (c === 'ytdPct' || c === 'highPct' || c === 'lowPct') {
-      const green = c === 'ytdPct' ? v >= 0 : c === 'highPct' ? v >= -5 : v > 5;
-      const cls = v != null ? (green ? 'pct-positive' : 'pct-negative') : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    if (col === 'ytdPct' || col === 'highPct' || col === 'lowPct') {
+      const isGreen = col === 'ytdPct' ? val >= 0 : col === 'highPct' ? val >= -5 : val > 5;
+      const cls = val != null ? (isGreen ? 'pct-positive' : 'pct-negative') : '';
+      return `<td class="num ${cls}">${fmtNum(col, val)}</td>`;
     }
-    if (c === 'rsi' && v != null) {
-      const cls = v > 70 ? 'pct-negative' : v < 30 ? 'pct-positive' : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    if (col === 'rsi' && val != null) {
+      const cls = val > 70 ? 'pct-negative' : val < 30 ? 'pct-positive' : '';
+      return `<td class="num ${cls}">${fmtNum(col, val)}</td>`;
     }
-    if (c === 'breakoutPct' || c === 'breakdownPct' || c === 'pctGain') {
-      const cls = v != null ? (v >= 0 ? 'pct-positive' : 'pct-negative') : '';
-      return `<td class="num ${cls}">${fmtNum(c, v)}</td>`;
+    if (col === 'breakoutPct' || col === 'breakdownPct' || col === 'pctGain') {
+      const cls = val != null ? (val >= 0 ? 'pct-positive' : 'pct-negative') : '';
+      return `<td class="num ${cls}">${fmtNum(col, val)}</td>`;
     }
-    if (tabId === 'fwdPE' && state.dynPECols.has(c)) {
-      if (v == null) return `<td class="num">\u2014</td>`;
-      const prevCol = state.dynPEPrevCol[c];
-      const prevVal = prevCol ? r[prevCol] : null;
+    if (tabId === 'fwdPE' && state.dynPECols.has(col)) {
+      if (val == null) return `<td class="num">\u2014</td>`;
+      const prevCol = state.dynPEPrevCol[col];
+      const prevVal = prevCol ? row[prevCol] : null;
       let cls = '';
-      if (prevVal != null) cls = v < prevVal ? 'pct-positive' : v > prevVal ? 'pct-negative' : '';
-      return `<td class="num ${cls}">${v.toFixed(1)}</td>`;
+      if (prevVal != null) cls = val < prevVal ? 'pct-positive' : val > prevVal ? 'pct-negative' : '';
+      return `<td class="num ${cls}">${val.toFixed(1)}</td>`;
     }
-    if (state.dynPctCols.has(c) || (state.dynPECols.has(c) && tabId !== 'fwdPE')) {
-      if (v == null) return `<td class="num">\u2014</td>`;
-      const cls = v >= 0 ? 'pct-positive' : 'pct-negative';
-      return `<td class="num ${cls}">${(v > 0 ? '+' : '') + v.toFixed(2)}%</td>`;
+    if (state.dynPctCols.has(col) || (state.dynPECols.has(col) && tabId !== 'fwdPE')) {
+      if (val == null) return `<td class="num">\u2014</td>`;
+      const cls = val >= 0 ? 'pct-positive' : 'pct-negative';
+      return `<td class="num ${cls}">${(val > 0 ? '+' : '') + val.toFixed(2)}%</td>`;
     }
-    if (NUM_COLS.has(c)) return `<td class="num${ema}">${fmtNum(c, v)}</td>`;
-    return `<td>${esc(v)}</td>`;
+    if (NUM_COLS.has(col)) return `<td class="num${emaCls}">${fmtNum(col, val)}</td>`;
+    return `<td>${esc(val)}</td>`;
   }).join('') + '</tr>';
 }
 
@@ -1016,7 +1019,7 @@ function renderTbodyHTML(rows, cols, pctField, tabId) {
   if (rows.length === 0) {
     return `<tr><td colspan="${cols.length}" style="text-align:center;padding:32px;color:var(--text-muted);font-family:var(--font-ui)">No data</td></tr>`;
   }
-  return rows.map(r => renderRowHTML(r, cols, pctField, tabId)).join('');
+  return rows.map(row => renderRowHTML(row, cols, pctField, tabId)).join('');
 }
 
 /* ── Tabs ── */
@@ -1134,8 +1137,7 @@ function attachFilterListeners(def, tabId) {
       const dir = Number(btn.dataset.dir);
       if (!state.filters[col]) state.filters[col] = {};
       const cur = Number(state.filters[col][bound]) || 0;
-      const step = col === 'pct' ? 1 : 1;
-      state.filters[col][bound] = cur + dir * step;
+      state.filters[col][bound] = cur + dir;
       const input = btn.closest('.num-filter-group').querySelector('input');
       if (input) input.value = state.filters[col][bound];
       state.lowSignalActive = false;
@@ -1147,24 +1149,18 @@ function attachFilterListeners(def, tabId) {
 
 /* ── Main tab display ── */
 
-function showTab(tabId) {
-  const def = TAB_DEFS.find(t => t.id === tabId);
-
-  if (def.special) {
-    showSpecialTab(def);
-    return;
-  }
-
+function renderSortableTable(tabId, cols) {
+  const def = { cols };
   const allRows = state.data[tabId] || [];
-  let rows = applyFilters([...allRows], def.cols);
+  let rows = applyFilters([...allRows], cols);
   sortRows(rows);
 
-  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
+  const totalSourced = allRows.filter(row => matchesSources(row.symbol)).length;
   renderToolbar(rows.length, totalSourced);
 
   const ths = renderTableHeader(def);
   const filterCells = renderFilterRow(def);
-  const body = renderTableBody(def, rows, tabId);
+  const body = renderTbodyHTML(rows, cols, null, tabId);
 
   document.getElementById('content').innerHTML =
     `<div class="table-wrap"><table>` +
@@ -1173,6 +1169,17 @@ function showTab(tabId) {
     `</table></div>`;
 
   attachFilterListeners(def, tabId);
+}
+
+function showTab(tabId) {
+  const def = TAB_DEFS.find(t => t.id === tabId);
+
+  if (def.special) {
+    showSpecialTab(def);
+    return;
+  }
+
+  renderSortableTable(tabId, def.cols);
 }
 
 const SPECIAL_TAB_COLS = {
@@ -1213,6 +1220,23 @@ function esc(s) {
   return d.innerHTML;
 }
 
+function populateTabData(byUrl) {
+  TAB_DEFS.forEach(t => {
+    if (t.special) return;
+    const json = byUrl[t.file];
+    if (!json) { state.data[t.id] = []; return; }
+    let rows;
+    // Backward compat: old format had "below" with "weeksBelow" field
+    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
+      rows = json.below.map(row => ({...row, count: row.weeksBelow ?? row.count}));
+    } else {
+      rows = json[t.key] || [];
+    }
+    state.data[t.id] = enrichRows(rows, t);
+  });
+  buildSpecialTabData();
+}
+
 function enrichRows(rows, t) {
   return rows.map(r => ({
     ...r,
@@ -1241,7 +1265,7 @@ async function renderMeta(json) {
       const count = text.trim().split('\n').filter(Boolean).length;
       total = ` / ${count.toLocaleString()}`;
     }
-  } catch (e) {}
+  } catch (err) { console.warn('[meta] symbol count fetch failed:', err.message); }
 
   const errStyle = errs ? ' style="color:var(--red)"' : '';
   document.getElementById('meta').innerHTML =
@@ -1322,20 +1346,7 @@ async function switchWeek(week) {
   const meta = byLatestUrl[latestURLs[0]] || byLatestUrl[latestURLs[1]] || byLatestUrl[latestURLs[2]];
   if (meta) renderMeta(meta);
 
-  TAB_DEFS.forEach(t => {
-    if (t.special) return;
-    const json = byLatestUrl[t.file];
-    if (!json) { state.data[t.id] = []; return; }
-    let rows;
-    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
-      rows = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
-    } else {
-      rows = json[t.key] || [];
-    }
-    state.data[t.id] = enrichRows(rows, t);
-  });
-
-  buildSpecialTabData();
+  populateTabData(byLatestUrl);
 
   renderTabs();
   showTab(state.activeTab);
@@ -1352,25 +1363,7 @@ function showSpecialTab(def) {
 function showSortableSpecialTab(tabId) {
   const cols = SPECIAL_TAB_COLS[tabId];
   if (!cols) return;
-  const def = { cols };
-  const allRows = state.data[tabId] || [];
-  let rows = applyFilters([...allRows], cols);
-  sortRows(rows);
-
-  const totalSourced = allRows.filter(r => matchesSources(r.symbol)).length;
-  renderToolbar(rows.length, totalSourced);
-
-  const ths = renderTableHeader(def);
-  const filterCells = renderFilterRow(def);
-  const body = renderTbodyHTML(rows, cols, null, tabId);
-
-  document.getElementById('content').innerHTML =
-    `<div class="table-wrap"><table>` +
-    `<thead><tr>${ths}</tr><tr class="filter-row">${filterCells}</tr></thead>` +
-    `<tbody>${body}</tbody>` +
-    `</table></div>`;
-
-  attachFilterListeners(def, tabId);
+  renderSortableTable(tabId, cols);
 }
 
 function showMiscStats() {
@@ -1494,33 +1487,34 @@ function _buildForwardPEData(stats) {
 function _buildVixSpikeData(stats) {
   const filtered = stats.filter(s => s.vixReturns && s.vixReturns.length);
   const spikeDateSet = new Set();
-  filtered.forEach(s => s.vixReturns.forEach(vr => spikeDateSet.add(vr.dateString)));
+  filtered.forEach(s => s.vixReturns.forEach(ret => spikeDateSet.add(ret.dateString)));
   const spikeDates = [...spikeDateSet];
 
-  const spikeMeta = {};
-  const spikeTimestamps = {};
-  filtered.forEach(s => s.vixReturns.forEach(vr => {
-    if (!spikeMeta[vr.dateString]) spikeMeta[vr.dateString] = vr.vixClose;
-    if (!spikeTimestamps[vr.dateString]) spikeTimestamps[vr.dateString] = vr.timestamp || 0;
+  // Collect VIX close and timestamp for each spike date (for sorting and labels)
+  const spikeVixClose = {};
+  const spikeTimestamp = {};
+  filtered.forEach(s => s.vixReturns.forEach(ret => {
+    if (!spikeVixClose[ret.dateString]) spikeVixClose[ret.dateString] = ret.vixClose;
+    if (!spikeTimestamp[ret.dateString]) spikeTimestamp[ret.dateString] = ret.timestamp || 0;
   }));
-  spikeDates.sort((a, b) => (spikeTimestamps[b] || 0) - (spikeTimestamps[a] || 0));
+  spikeDates.sort((a, b) => (spikeTimestamp[b] || 0) - (spikeTimestamp[a] || 0));
 
   state.data['vixSpikes'] = filtered.map(s => {
     const row = { symbol: s.symbol, close: s.close ?? null, highPct: s.highPct ?? null };
-    const byDate = {};
-    s.vixReturns.forEach(vr => { byDate[vr.dateString] = vr.pctGain; });
-    spikeDates.forEach(d => { row['spike_' + d] = byDate[d] ?? null; });
+    const gainByDate = {};
+    s.vixReturns.forEach(ret => { gainByDate[ret.dateString] = ret.pctGain; });
+    spikeDates.forEach(dateStr => { row['spike_' + dateStr] = gainByDate[dateStr] ?? null; });
     return row;
   });
 
-  const spikeCols = spikeDates.map(d => 'spike_' + d);
+  const spikeCols = spikeDates.map(dateStr => 'spike_' + dateStr);
   const cols = ['symbol', 'close', 'highPct', ...spikeCols];
   SPECIAL_TAB_COLS['vixSpikes'] = cols;
-  spikeCols.forEach((sc, i) => {
-    const d = spikeDates[i];
-    COL_LABELS[sc] = `${d} (${spikeMeta[d]?.toFixed(1) || ''})`;
-    NUM_COLS.add(sc);
-    state.dynPctCols.add(sc);
+  spikeCols.forEach((spikeCol, idx) => {
+    const dateStr = spikeDates[idx];
+    COL_LABELS[spikeCol] = `${dateStr} (${spikeVixClose[dateStr]?.toFixed(1) || ''})`;
+    NUM_COLS.add(spikeCol);
+    state.dynPctCols.add(spikeCol);
   });
 }
 
@@ -1564,20 +1558,7 @@ async function fetchAll() {
   const meta = byUrl[urls[0]] || byUrl[urls[1]] || byUrl[urls[2]];
   if (meta) renderMeta(meta);
 
-  TAB_DEFS.forEach(t => {
-    if (t.special) return;
-    const json = byUrl[t.file];
-    if (!json) { state.data[t.id] = []; return; }
-    let rows;
-    if (t.key === 'weekBelow' && !json.weekBelow && json.below) {
-      rows = json.below.map(r => ({...r, count: r.weeksBelow ?? r.count}));
-    } else {
-      rows = json[t.key] || [];
-    }
-    state.data[t.id] = enrichRows(rows, t);
-  });
-
-  buildSpecialTabData();
+  populateTabData(byUrl);
 
   if (!Object.values(byUrl).length) {
     document.getElementById('content').innerHTML = '<div class="error-msg">Failed to load scan data.</div>';

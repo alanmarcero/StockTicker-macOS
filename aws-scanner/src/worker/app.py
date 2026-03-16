@@ -1,15 +1,35 @@
 import json
 import os
 import time
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 import boto3
 
+# Dual import supports both Lambda (package) and direct test execution contexts.
 try:
     from . import ema, stats, yahoo
 except ImportError:
     import ema, stats, yahoo
+
+
+@dataclass
+class BatchResult:
+    """Results from processing a batch of symbols through EMA analysis."""
+
+    crossovers: list[dict] = field(default_factory=list)
+    crossdowns: list[dict] = field(default_factory=list)
+    day_below: list[dict] = field(default_factory=list)
+    week_below: list[dict] = field(default_factory=list)
+    day_above: list[dict] = field(default_factory=list)
+    week_above: list[dict] = field(default_factory=list)
+    month_crossovers: list[dict] = field(default_factory=list)
+    month_crossdowns: list[dict] = field(default_factory=list)
+    month_below: list[dict] = field(default_factory=list)
+    month_above: list[dict] = field(default_factory=list)
+    stats_data: list[dict] = field(default_factory=list)
+    errors: list[dict] = field(default_factory=list)
 
 s3 = boto3.client("s3")
 cloudfront = boto3.client("cloudfront")
@@ -19,7 +39,7 @@ MIN_WEEKS_THRESHOLD = 3
 MAX_WEEKLY_SNAPSHOTS = 6
 
 
-def lambda_handler(event: dict, context) -> dict:
+def lambda_handler(event: dict, context: Any) -> dict:
     bucket = os.environ["BUCKET_NAME"]
 
     for record in event.get("Records", []):
@@ -30,12 +50,12 @@ def lambda_handler(event: dict, context) -> dict:
         symbols: list[str] = message["symbols"]
         vix_spikes: list[dict] = message.get("vixSpikes", [])
 
-        crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors = _process_batch(symbols, vix_spikes)
+        result = _process_batch(symbols, vix_spikes)
 
-        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(errors), crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors)
+        _write_batch_results(bucket, run_id, batch_index, len(symbols), len(result.errors), result)
 
-        if errors:
-            _write_errors(bucket, run_id, batch_index, errors)
+        if result.errors:
+            _write_errors(bucket, run_id, batch_index, result.errors)
 
         if batch_index == total_batches - 1:
             _aggregate_results(bucket, run_id, total_batches)
@@ -114,19 +134,8 @@ def _crossdown_entry(symbol: str, close: float, ema_value: float, periods_above:
 def _process_batch(
     symbols: list[str],
     vix_spikes: Optional[list[dict]] = None,
-) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict], list[dict]]:
-    crossovers: list[dict] = []
-    crossdowns: list[dict] = []
-    day_below: list[dict] = []
-    week_below: list[dict] = []
-    day_above: list[dict] = []
-    week_above: list[dict] = []
-    month_crossovers: list[dict] = []
-    month_crossdowns: list[dict] = []
-    month_below: list[dict] = []
-    month_above: list[dict] = []
-    stats_data: list[dict] = []
-    errors: list[dict] = []
+) -> BatchResult:
+    batch = BatchResult()
 
     for i, symbol in enumerate(symbols):
         if i > 0:
@@ -139,12 +148,34 @@ def _process_batch(
 
         if daily_result is None and weekly_result is None and monthly_result is None:
             print(f"[worker] {symbol}: fetch failed")
-            errors.append({"symbol": symbol, "error": "Failed to fetch candles"})
+            batch.errors.append({"symbol": symbol, "error": "Failed to fetch candles"})
             continue
 
-        _process_daily(symbol, daily_result, day_above, day_below)
-        _process_weekly(symbol, weekly_result, crossovers, crossdowns, week_below, week_above)
-        _process_monthly(symbol, monthly_result, month_crossovers, month_crossdowns, month_below, month_above)
+        daily_above, daily_below = _process_daily(symbol, daily_result)
+        if daily_above is not None:
+            batch.day_above.append(daily_above)
+        if daily_below is not None:
+            batch.day_below.append(daily_below)
+
+        weekly = _process_weekly(symbol, weekly_result)
+        if weekly["crossover"] is not None:
+            batch.crossovers.append(weekly["crossover"])
+        if weekly["crossdown"] is not None:
+            batch.crossdowns.append(weekly["crossdown"])
+        if weekly["below"] is not None:
+            batch.week_below.append(weekly["below"])
+        if weekly["above"] is not None:
+            batch.week_above.append(weekly["above"])
+
+        monthly = _process_monthly(symbol, monthly_result)
+        if monthly["crossover"] is not None:
+            batch.month_crossovers.append(monthly["crossover"])
+        if monthly["crossdown"] is not None:
+            batch.month_crossdowns.append(monthly["crossdown"])
+        if monthly["below"] is not None:
+            batch.month_below.append(monthly["below"])
+        if monthly["above"] is not None:
+            batch.month_above.append(monthly["above"])
 
         if stats_result is not None:
             forward_pe, pe_history = yahoo.fetch_forward_pe(symbol)
@@ -156,136 +187,145 @@ def _process_batch(
             )
             if computed is not None:
                 computed["symbol"] = symbol
-                stats_data.append(computed)
+                batch.stats_data.append(computed)
 
-    return crossovers, crossdowns, day_below, week_below, day_above, week_above, month_crossovers, month_crossdowns, month_below, month_above, stats_data, errors
+    return batch
 
 
 def _process_daily(
     symbol: str,
     daily_result: Optional[tuple[list[float], list[int]]],
-    day_above: list[dict],
-    day_below: list[dict],
-) -> None:
+) -> tuple[Optional[dict], Optional[dict]]:
+    """Process daily candles for a symbol.
+
+    Returns (day_above_entry, day_below_entry), either may be None.
+    """
     if daily_result is None:
-        return
+        return None, None
     daily_closes = daily_result[0]
     daily_ema_value = ema.calculate(daily_closes)
     if daily_ema_value is None:
-        return
+        return None, None
     last_close = daily_closes[-1]
 
+    above_entry = None
     above_count = ema.count_periods_above(daily_closes)
     if above_count is not None:
-        day_above.append(_above_entry(symbol, last_close, daily_ema_value, above_count))
+        above_entry = _above_entry(symbol, last_close, daily_ema_value, above_count)
 
+    below_entry = None
     below_count = ema.count_periods_below(daily_closes)
     if below_count is not None:
-        day_below.append(_below_entry(symbol, last_close, daily_ema_value, below_count))
+        below_entry = _below_entry(symbol, last_close, daily_ema_value, below_count)
+
+    return above_entry, below_entry
 
 
 def _process_weekly(
     symbol: str,
     weekly_result: Optional[tuple[list[float], list[int]]],
-    crossovers: list[dict],
-    crossdowns: list[dict],
-    week_below: list[dict],
-    week_above: list[dict],
-) -> None:
+) -> dict[str, Optional[dict]]:
+    """Process weekly candles for a symbol.
+
+    Returns dict with keys: crossover, crossdown, below, above (each Optional[dict]).
+    """
+    empty = {"crossover": None, "crossdown": None, "below": None, "above": None}
     if weekly_result is None:
-        return
+        return empty
     closes, _ = _strip_incomplete_week(weekly_result[0], weekly_result[1])
     ema_value = ema.calculate(closes)
     if ema_value is None:
-        return
+        return empty
     last_close = closes[-1]
 
+    crossover = None
     crossover_weeks = ema.detect_weekly_crossover(closes)
     if crossover_weeks is not None:
-        crossovers.append(_crossover_entry(symbol, last_close, ema_value, crossover_weeks, "weeksBelow"))
+        crossover = _crossover_entry(symbol, last_close, ema_value, crossover_weeks, "weeksBelow")
 
+    crossdown = None
     crossdown_weeks = ema.detect_weekly_crossdown(closes)
     if crossdown_weeks is not None:
-        crossdowns.append(_crossdown_entry(symbol, last_close, ema_value, crossdown_weeks, "weeksAbove"))
+        crossdown = _crossdown_entry(symbol, last_close, ema_value, crossdown_weeks, "weeksAbove")
 
+    below = None
     weekly_below_count = ema.count_periods_below(closes)
     if weekly_below_count is not None and weekly_below_count >= MIN_WEEKS_THRESHOLD:
-        week_below.append(_below_entry(symbol, last_close, ema_value, weekly_below_count))
+        below = _below_entry(symbol, last_close, ema_value, weekly_below_count)
 
+    above = None
     weekly_above_count = ema.count_periods_above(closes)
     if weekly_above_count is not None:
-        week_above.append(_above_entry(symbol, last_close, ema_value, weekly_above_count))
+        above = _above_entry(symbol, last_close, ema_value, weekly_above_count)
+
+    return {"crossover": crossover, "crossdown": crossdown, "below": below, "above": above}
 
 
 def _process_monthly(
     symbol: str,
     monthly_result: Optional[tuple[list[float], list[int]]],
-    month_crossovers: list[dict],
-    month_crossdowns: list[dict],
-    month_below: list[dict],
-    month_above: list[dict],
-) -> None:
+) -> dict[str, Optional[dict]]:
+    """Process monthly candles for a symbol.
+
+    Returns dict with keys: crossover, crossdown, below, above (each Optional[dict]).
+    """
+    empty = {"crossover": None, "crossdown": None, "below": None, "above": None}
     if monthly_result is None:
-        return
-    m_closes, m_timestamps = _strip_incomplete_week(monthly_result[0], monthly_result[1])
-    monthly_closes = _aggregate_to_monthly(m_closes, m_timestamps)
+        return empty
+    stripped_closes, stripped_timestamps = _strip_incomplete_week(monthly_result[0], monthly_result[1])
+    monthly_closes = _aggregate_to_monthly(stripped_closes, stripped_timestamps)
     monthly_ema = ema.calculate(monthly_closes)
     if monthly_ema is None:
-        return
-    m_last = monthly_closes[-1]
+        return empty
+    last_monthly_close = monthly_closes[-1]
 
-    m_crossover = ema.detect_weekly_crossover(monthly_closes)
-    if m_crossover is not None:
-        month_crossovers.append(_crossover_entry(symbol, m_last, monthly_ema, m_crossover, "monthsBelow"))
+    monthly_crossover_entry = None
+    monthly_crossover = ema.detect_weekly_crossover(monthly_closes)
+    if monthly_crossover is not None:
+        monthly_crossover_entry = _crossover_entry(symbol, last_monthly_close, monthly_ema, monthly_crossover, "monthsBelow")
 
-    m_crossdown = ema.detect_weekly_crossdown(monthly_closes)
-    if m_crossdown is not None:
-        month_crossdowns.append(_crossdown_entry(symbol, m_last, monthly_ema, m_crossdown, "monthsAbove"))
+    monthly_crossdown_entry = None
+    monthly_crossdown = ema.detect_weekly_crossdown(monthly_closes)
+    if monthly_crossdown is not None:
+        monthly_crossdown_entry = _crossdown_entry(symbol, last_monthly_close, monthly_ema, monthly_crossdown, "monthsAbove")
 
-    m_below_count = ema.count_periods_below(monthly_closes)
-    if m_below_count is not None:
-        month_below.append(_below_entry(symbol, m_last, monthly_ema, m_below_count))
+    below = None
+    monthly_below_count = ema.count_periods_below(monthly_closes)
+    if monthly_below_count is not None:
+        below = _below_entry(symbol, last_monthly_close, monthly_ema, monthly_below_count)
 
-    m_above_count = ema.count_periods_above(monthly_closes)
-    if m_above_count is not None:
-        month_above.append(_above_entry(symbol, m_last, monthly_ema, m_above_count))
+    above = None
+    monthly_above_count = ema.count_periods_above(monthly_closes)
+    if monthly_above_count is not None:
+        above = _above_entry(symbol, last_monthly_close, monthly_ema, monthly_above_count)
+
+    return {"crossover": monthly_crossover_entry, "crossdown": monthly_crossdown_entry, "below": below, "above": above}
 
 
 def _write_batch_results(
     bucket: str,
     run_id: str,
     batch_index: int,
-    symbols_processed: int,
+    symbol_count: int,
     error_count: int,
-    crossovers: list[dict],
-    crossdowns: list[dict],
-    day_below: list[dict],
-    week_below: list[dict],
-    day_above: list[dict],
-    week_above: list[dict],
-    month_crossovers: list[dict],
-    month_crossdowns: list[dict],
-    month_below: list[dict],
-    month_above: list[dict],
-    stats_data: Optional[list[dict]] = None,
-    error_details: Optional[list[dict]] = None,
+    batch: BatchResult,
 ) -> None:
     body = {
         "batchIndex": batch_index,
-        "symbolsProcessed": symbols_processed,
+        "symbolsProcessed": symbol_count,
         "errors": error_count,
-        "errorDetails": error_details or [],
-        "crossovers": crossovers,
-        "crossdowns": crossdowns,
-        "dayBelow": day_below,
-        "weekBelow": week_below,
-        "dayAbove": day_above,
-        "weekAbove": week_above,
-        "monthCrossovers": month_crossovers,
-        "monthCrossdowns": month_crossdowns,
-        "monthBelow": month_below,
-        "monthAbove": month_above,
-        "stats": stats_data or [],
+        "errorDetails": batch.errors,
+        "crossovers": batch.crossovers,
+        "crossdowns": batch.crossdowns,
+        "dayBelow": batch.day_below,
+        "weekBelow": batch.week_below,
+        "dayAbove": batch.day_above,
+        "weekAbove": batch.week_above,
+        "monthCrossovers": batch.month_crossovers,
+        "monthCrossdowns": batch.month_crossdowns,
+        "monthBelow": batch.month_below,
+        "monthAbove": batch.month_above,
+        "stats": batch.stats_data,
     }
     key = f"batches/{run_id}/batch-{batch_index:03d}.json"
     s3.put_object(Bucket=bucket, Key=key, Body=json.dumps(body))
@@ -454,7 +494,7 @@ def _delete_snapshot(bucket: str, scan_date: str) -> None:
         key = f"results/{scan_date}{suffix}.json"
         try:
             s3.delete_object(Bucket=bucket, Key=key)
-        except Exception as err:
+        except Exception as err:  # Broad catch: S3 errors must not halt cleanup of other snapshots
             print(f"[worker] failed to delete s3://{bucket}/{key}: {err}")
 
 
@@ -462,7 +502,7 @@ def _read_json(bucket: str, key: str) -> Any:
     try:
         resp = s3.get_object(Bucket=bucket, Key=key)
         return json.loads(resp["Body"].read())
-    except Exception as err:
+    except Exception as err:  # Broad catch: missing/corrupt batch files should not abort aggregation
         print(f"[worker] failed to read s3://{bucket}/{key}: {err}")
         return None
 

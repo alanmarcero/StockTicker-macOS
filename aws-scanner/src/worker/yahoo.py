@@ -31,12 +31,12 @@ def _fetch_candles(symbol: str, range_param: str, interval: str) -> Optional[tup
 
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read())
+            response_data = json.loads(response.read())
     except (OSError, ValueError) as err:
         print(f"[yahoo] {symbol}: {err}")
         return None
 
-    return _parse_response(data)
+    return _parse_response(response_data)
 
 
 def fetch_vix_candles() -> Optional[tuple[list[float], list[int]]]:
@@ -60,35 +60,37 @@ def fetch_forward_pe(symbol: str) -> tuple[Optional[float], Optional[dict]]:
 
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            data = json.loads(response.read())
+            response_data = json.loads(response.read())
     except (OSError, ValueError) as err:
         print(f"[yahoo] {symbol} forward PE: {err}")
         return None, None
 
-    current = _parse_forward_pe(data)
-    history = _parse_forward_pe_history(data)
+    current = _parse_forward_pe(response_data)
+    history = _parse_forward_pe_history(response_data)
     return current, history
 
 
-def _parse_forward_pe(data: dict) -> Optional[float]:
+def _parse_forward_pe(response_data: dict) -> Optional[float]:
+    """Extract the most recent forward P/E value from timeseries response."""
     try:
-        results = data["timeseries"]["result"]
-        for result in results:
-            entries = result.get("quarterlyForwardPeRatio")
+        results = response_data["timeseries"]["result"]
+        for entry_group in results:
+            entries = entry_group.get("quarterlyForwardPeRatio")
             if entries:
                 last = entries[-1]
                 return round(last["reportedValue"]["raw"], 2)
-    except (KeyError, IndexError, TypeError):
-        pass
+    except (KeyError, IndexError, TypeError, ValueError) as err:
+        print(f"[yahoo] parse error: {err}")
+        return None
     return None
 
 
-def _parse_forward_pe_history(data: dict) -> Optional[dict]:
+def _parse_forward_pe_history(response_data: dict) -> Optional[dict]:
     """Parse all quarterly forward P/E entries into a dict of quarter labels."""
     try:
-        results = data["timeseries"]["result"]
-        for result in results:
-            entries = result.get("quarterlyForwardPeRatio")
+        results = response_data["timeseries"]["result"]
+        for entry_group in results:
+            entries = entry_group.get("quarterlyForwardPeRatio")
             if not entries:
                 continue
             history = {}
@@ -107,29 +109,31 @@ def _parse_forward_pe_history(data: dict) -> Optional[dict]:
                 label = f"Q{quarter_num}'{short_year}"
                 history[label] = round(raw, 2)
             return history if history else None
-    except (KeyError, IndexError, TypeError, ValueError):
-        pass
+    except (KeyError, IndexError, TypeError, ValueError) as err:
+        print(f"[yahoo] parse error: {err}")
+        return None
     return None
 
 
-def _parse_response(data: dict) -> Optional[tuple[list[float], list[int]]]:
+def _parse_response(response_data: dict) -> Optional[tuple[list[float], list[int]]]:
+    """Parse Yahoo chart API response into (closes, timestamps) or None."""
     try:
-        result = data["chart"]["result"][0]
-        raw_timestamps = result["timestamp"]
-        raw_closes = result["indicators"]["quote"][0]["close"]
+        chart_result = response_data["chart"]["result"][0]
+        raw_timestamps = chart_result["timestamp"]
+        raw_closes = chart_result["indicators"]["quote"][0]["close"]
     except (KeyError, IndexError, TypeError):
         return None
 
-    pairs = [
+    valid_closes = [
         (close, ts)
         for close, ts in zip(raw_closes, raw_timestamps)
         if close is not None
     ]
 
-    if not pairs:
+    if not valid_closes:
         return None
 
-    closes = [close for close, _ in pairs]
-    timestamps = [ts for _, ts in pairs]
+    closes = [close for close, _ in valid_closes]
+    timestamps = [ts for _, ts in valid_closes]
 
     return closes, timestamps

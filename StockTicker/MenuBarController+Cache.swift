@@ -114,30 +114,45 @@ extension MenuBarController {
         quarterlyPrices = await quarterlyCacheManager.getAllQuarterPrices()
     }
 
-    // MARK: - YTD Attachment
+    // MARK: - Cache Attachment Helpers
 
-    func attachYTDPricesToQuotes() {
+    /// Applies a cached value to quotes and universeQuotes using the given transform.
+    /// Shared by attachHighestClosesToQuotes, attachLowestClosesToQuotes, etc.
+    private func attachCacheValues<T>(
+        cache: [String: T],
+        universeCache: [String: T]? = nil,
+        transform: (StockQuote, T) -> StockQuote
+    ) {
         var updatedQuotes = quotes
         for (symbol, quote) in updatedQuotes {
-            if let ytdPrice = ytdPrices[symbol] {
-                updatedQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
+            if let value = cache[symbol] {
+                updatedQuotes[symbol] = transform(quote, value)
             }
         }
         quotes = updatedQuotes
+
+        let uCache = universeCache ?? cache
+        var updatedUniverse = universeQuotes
+        for (symbol, quote) in updatedUniverse {
+            if let value = uCache[symbol] {
+                updatedUniverse[symbol] = transform(quote, value)
+            }
+        }
+        universeQuotes = updatedUniverse
+    }
+
+    // MARK: - YTD Attachment
+
+    func attachYTDPricesToQuotes() {
+        attachCacheValues(cache: ytdPrices) { quote, ytdPrice in
+            quote.withYTDStartPrice(ytdPrice)
+        }
 
         for (symbol, quote) in indexQuotes {
             if let ytdPrice = ytdPrices[symbol] {
                 indexQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
             }
         }
-
-        var updatedUniverse = universeQuotes
-        for (symbol, quote) in updatedUniverse {
-            if let ytdPrice = ytdPrices[symbol] {
-                updatedUniverse[symbol] = quote.withYTDStartPrice(ytdPrice)
-            }
-        }
-        universeQuotes = updatedUniverse
     }
 
     // MARK: - Highest Close Cache
@@ -158,21 +173,9 @@ extension MenuBarController {
     }
 
     func attachHighestClosesToQuotes() {
-        var updatedQuotes = quotes
-        for (symbol, quote) in updatedQuotes {
-            if let highest = highestClosePrices[symbol] {
-                updatedQuotes[symbol] = quote.withHighestClose(highest)
-            }
+        attachCacheValues(cache: highestClosePrices) { quote, highest in
+            quote.withHighestClose(highest)
         }
-        quotes = updatedQuotes
-
-        var updatedUniverse = universeQuotes
-        for (symbol, quote) in updatedUniverse {
-            if let highest = highestClosePrices[symbol] {
-                updatedUniverse[symbol] = quote.withHighestClose(highest)
-            }
-        }
-        universeQuotes = updatedUniverse
     }
 
     // MARK: - Lowest Close Cache
@@ -182,21 +185,9 @@ extension MenuBarController {
     }
 
     func attachLowestClosesToQuotes() {
-        var updatedQuotes = quotes
-        for (symbol, quote) in updatedQuotes {
-            if let lowest = lowestClosePrices[symbol] {
-                updatedQuotes[symbol] = quote.withLowestClose(lowest)
-            }
+        attachCacheValues(cache: lowestClosePrices) { quote, lowest in
+            quote.withLowestClose(lowest)
         }
-        quotes = updatedQuotes
-
-        var updatedUniverse = universeQuotes
-        for (symbol, quote) in updatedUniverse {
-            if let lowest = lowestClosePrices[symbol] {
-                updatedUniverse[symbol] = quote.withLowestClose(lowest)
-            }
-        }
-        universeQuotes = updatedUniverse
     }
 
     // MARK: - Forward P/E Cache
@@ -609,20 +600,8 @@ extension MenuBarController {
     // MARK: - Market Cap Attachment
 
     func attachMarketCapsToQuotes() {
-        var updatedQuotes = quotes
-        for (symbol, quote) in updatedQuotes {
-            if let cap = marketCaps[symbol] {
-                updatedQuotes[symbol] = quote.withMarketCap(cap)
-            }
+        attachCacheValues(cache: marketCaps, universeCache: universeMarketCaps) { quote, cap in
+            quote.withMarketCap(cap)
         }
-        quotes = updatedQuotes
-
-        var updatedUniverse = universeQuotes
-        for (symbol, quote) in updatedUniverse {
-            if let cap = universeMarketCaps[symbol] {
-                updatedUniverse[symbol] = quote.withMarketCap(cap)
-            }
-        }
-        universeQuotes = updatedUniverse
     }
 }

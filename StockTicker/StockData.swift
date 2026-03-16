@@ -10,7 +10,7 @@ enum TradingHours {
     static let earlyClose = 13 * 60         // 1:00 PM
     static let afterHoursClose = 20 * 60    // 8:00 PM
 
-    /// Threshold for treating floating point price changes as zero
+    /// Threshold for treating floating point price changes as zero (0.5% — filters out rounding noise in API data)
     static let nearZeroThreshold = 0.005
     /// Threshold for detecting meaningful extended hours price differences
     static let extendedHoursPriceThreshold = 0.001
@@ -341,11 +341,13 @@ struct StockQuote: Identifiable, Sendable {
         return pct >= 0
     }
 
+    /// Green if within 5% of the 3-year highest close (i.e., near all-time highs = bullish)
     var isHighGreen: Bool {
         guard let pct = highestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
         return pct >= -5.0
     }
 
+    /// Green if more than 5% above the 52-week lowest close (i.e., well above recent lows = bullish)
     var isLowGreen: Bool {
         guard let pct = lowestCloseChangePercent, abs(pct) >= TradingHours.nearZeroThreshold else { return false }
         return pct > 5.0
@@ -429,8 +431,14 @@ extension StockQuote {
         price == 0 && previousClose == 0
     }
 
-    /// Returns a new StockQuote with the YTD start price set
-    func withYTDStartPrice(_ ytdPrice: Double?) -> StockQuote {
+    /// Creates a copy of this quote with specific cache-populated fields overridden.
+    /// Centralizes the full-initializer copy that `with*()` methods previously repeated.
+    private func copyWith(
+        ytdStartPrice: Double?? = nil,
+        marketCap: Double?? = nil,
+        highestClose: Double?? = nil,
+        lowestClose: Double?? = nil
+    ) -> StockQuote {
         StockQuote(
             symbol: symbol,
             price: price,
@@ -442,74 +450,31 @@ extension StockQuote {
             postMarketPrice: postMarketPrice,
             postMarketChange: postMarketChange,
             postMarketChangePercent: postMarketChangePercent,
-            ytdStartPrice: ytdPrice,
-            marketCap: marketCap,
-            highestClose: highestClose,
-            lowestClose: lowestClose,
+            ytdStartPrice: ytdStartPrice ?? self.ytdStartPrice,
+            marketCap: marketCap ?? self.marketCap,
+            highestClose: highestClose ?? self.highestClose,
+            lowestClose: lowestClose ?? self.lowestClose,
             yahooMarketState: yahooMarketState
         )
+    }
+
+    /// Returns a new StockQuote with the YTD start price set
+    func withYTDStartPrice(_ ytdPrice: Double?) -> StockQuote {
+        copyWith(ytdStartPrice: ytdPrice)
     }
 
     /// Returns a new StockQuote with the market cap set
     func withMarketCap(_ cap: Double?) -> StockQuote {
-        StockQuote(
-            symbol: symbol,
-            price: price,
-            previousClose: previousClose,
-            session: session,
-            preMarketPrice: preMarketPrice,
-            preMarketChange: preMarketChange,
-            preMarketChangePercent: preMarketChangePercent,
-            postMarketPrice: postMarketPrice,
-            postMarketChange: postMarketChange,
-            postMarketChangePercent: postMarketChangePercent,
-            ytdStartPrice: ytdStartPrice,
-            marketCap: cap,
-            highestClose: highestClose,
-            lowestClose: lowestClose,
-            yahooMarketState: yahooMarketState
-        )
+        copyWith(marketCap: cap)
     }
 
     /// Returns a new StockQuote with the highest close set
     func withHighestClose(_ highest: Double?) -> StockQuote {
-        StockQuote(
-            symbol: symbol,
-            price: price,
-            previousClose: previousClose,
-            session: session,
-            preMarketPrice: preMarketPrice,
-            preMarketChange: preMarketChange,
-            preMarketChangePercent: preMarketChangePercent,
-            postMarketPrice: postMarketPrice,
-            postMarketChange: postMarketChange,
-            postMarketChangePercent: postMarketChangePercent,
-            ytdStartPrice: ytdStartPrice,
-            marketCap: marketCap,
-            highestClose: highest,
-            lowestClose: lowestClose,
-            yahooMarketState: yahooMarketState
-        )
+        copyWith(highestClose: highest)
     }
 
     /// Returns a new StockQuote with the lowest close set
     func withLowestClose(_ lowest: Double?) -> StockQuote {
-        StockQuote(
-            symbol: symbol,
-            price: price,
-            previousClose: previousClose,
-            session: session,
-            preMarketPrice: preMarketPrice,
-            preMarketChange: preMarketChange,
-            preMarketChangePercent: preMarketChangePercent,
-            postMarketPrice: postMarketPrice,
-            postMarketChange: postMarketChange,
-            postMarketChangePercent: postMarketChangePercent,
-            ytdStartPrice: ytdStartPrice,
-            marketCap: marketCap,
-            highestClose: highestClose,
-            lowestClose: lowest,
-            yahooMarketState: yahooMarketState
-        )
+        copyWith(lowestClose: lowest)
     }
 }

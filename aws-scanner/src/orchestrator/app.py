@@ -2,6 +2,7 @@ import json
 import os
 import urllib.request
 from datetime import datetime, timezone
+from typing import Any
 
 import boto3
 
@@ -16,7 +17,7 @@ s3 = boto3.client("s3")
 sqs = boto3.client("sqs")
 
 
-def lambda_handler(event: dict, context) -> dict:
+def lambda_handler(event: dict, context: Any) -> dict:
     bucket = os.environ["BUCKET_NAME"]
     queue_url = os.environ["QUEUE_URL"]
     resp = s3.get_object(Bucket=bucket, Key="symbols/us-equities.txt")
@@ -57,25 +58,25 @@ def _fetch_vix_spikes() -> list[dict]:
     request = urllib.request.Request(VIX_URL, headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=VIX_TIMEOUT) as response:
-            data = json.loads(response.read())
+            response_data = json.loads(response.read())
     except (OSError, ValueError) as err:
         print(f"[orchestrator] VIX fetch failed: {err}")
         return []
 
     try:
-        result = data["chart"]["result"][0]
-        raw_timestamps = result["timestamp"]
-        raw_closes = result["indicators"]["quote"][0]["close"]
+        chart_result = response_data["chart"]["result"][0]
+        raw_timestamps = chart_result["timestamp"]
+        raw_closes = chart_result["indicators"]["quote"][0]["close"]
     except (KeyError, IndexError, TypeError):
         print("[orchestrator] VIX parse failed")
         return []
 
-    pairs = [(c, t) for c, t in zip(raw_closes, raw_timestamps) if c is not None]
-    if not pairs:
+    valid_closes = [(c, t) for c, t in zip(raw_closes, raw_timestamps) if c is not None]
+    if not valid_closes:
         return []
 
-    closes = [c for c, _ in pairs]
-    timestamps = [t for _, t in pairs]
+    closes = [c for c, _ in valid_closes]
+    timestamps = [t for _, t in valid_closes]
 
     return _detect_vix_spikes(closes, timestamps)
 

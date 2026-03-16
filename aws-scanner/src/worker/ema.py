@@ -1,7 +1,7 @@
 from typing import Optional
 
 DEFAULT_PERIOD = 5
-BUFFER = 0.01
+BUFFER = 0.01  # 1% threshold to avoid false signals from noise near the EMA line
 
 
 def _build_ema_series(closes: list[float], period: int) -> list[float]:
@@ -18,6 +18,7 @@ def _build_ema_series(closes: list[float], period: int) -> list[float]:
 
 
 def calculate(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[float]:
+    """Calculate the current EMA value. Returns None if insufficient data."""
     if len(closes) < period:
         return None
 
@@ -25,6 +26,7 @@ def calculate(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[flo
 
 
 def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+    """Detect if price just crossed above EMA. Returns weeks below before crossover, or None."""
     if len(closes) < period + 1:
         return None
 
@@ -49,6 +51,7 @@ def detect_weekly_crossover(closes: list[float], period: int = DEFAULT_PERIOD) -
 
 
 def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+    """Detect if price just crossed below EMA. Returns weeks above before crossdown, or None."""
     if len(closes) < period + 1:
         return None
 
@@ -73,6 +76,7 @@ def detect_weekly_crossdown(closes: list[float], period: int = DEFAULT_PERIOD) -
 
 
 def count_periods_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+    """Count consecutive periods the price has been at or below EMA. Returns None if above."""
     if len(closes) < period + 1:
         return None
 
@@ -97,6 +101,7 @@ def count_periods_below(closes: list[float], period: int = DEFAULT_PERIOD) -> Op
 
 
 def count_periods_above(closes: list[float], period: int = DEFAULT_PERIOD) -> Optional[int]:
+    """Count consecutive periods the price has been above EMA. Returns None if at or below."""
     if len(closes) < period + 1:
         return None
 

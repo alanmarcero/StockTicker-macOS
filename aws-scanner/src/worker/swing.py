@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 
-THRESHOLD = 0.10
+THRESHOLD = 0.10  # 10% reversal required to register a significant swing level
 
 
 def analyze(
