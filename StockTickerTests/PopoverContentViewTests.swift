@@ -201,4 +201,19 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         XCTAssertEqual(controller.currentIndex, 0)
     }
 
+    func testHandleSystemWake_clearsYahooMarketState() {
+        let controller = makeController()
+        controller.yahooMarketState = "PRE"
+        controller.handleSystemWake()
+        XCTAssertNil(controller.yahooMarketState)
+    }
+
+    func testHandleSystemWake_fallsBackToLocalSchedule() {
+        let controller = makeController()
+        controller.yahooMarketState = "CLOSED"
+        controller.handleSystemWake()
+        // After clearing stale Yahoo state, market status uses local time-based schedule
+        let localState = controller.marketSchedule.getTodaySchedule().state
+        XCTAssertEqual(controller.marketStatusState, localState)
+    }
 }

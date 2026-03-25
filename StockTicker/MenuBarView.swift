@@ -174,6 +174,7 @@ class MenuBarController: NSObject, ObservableObject {
         timerManager.delegate = self
         setupStatusItem()
         startTimers()
+        observeSystemWake()
         Task {
             await stockService.updateFinnhubApiKey(config.finnhubApiKey)
             await loadYTDCache()
@@ -319,6 +320,23 @@ class MenuBarController: NSObject, ObservableObject {
 
     private func stopHighlightTimer() {
         timerManager.stopHighlightTimer()
+    }
+
+    private func observeSystemWake() {
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleSystemWake()
+            }
+        }
+    }
+
+    func handleSystemWake() {
+        yahooMarketState = nil
+        updateMarketStatus()
+        Task { await refreshAllQuotes() }
     }
 
     private func updateHighlights() {
