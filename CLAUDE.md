@@ -75,7 +75,3 @@ pgrep -x Stonks && echo "App is running"
 - **New menu item:** `setupMenu()` or `createXxxSubmenu()` → `@objc` action → wire target/action
 - **Ticker display:** `TickerDisplayBuilder` static methods (`menuBarTitle`, `tickerTitle`, `appendYTDSection`, etc.)
 - **API data source:** `StockService.fetchChartData()` + response models in `APIModels.swift`
-
-## Related Repos
-
-- **[the-stonk-shop](https://github.com/alanmarcero/the-stonk-shop)** — AWS EMA Scanner, web dashboard, and Terraform infrastructure. `ScannerService` in this repo consumes its CloudFront API.
