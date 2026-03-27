@@ -663,10 +663,13 @@ class MenuBarController: NSObject, ObservableObject {
 
         let state: MarketState
         if let yahoo = yahooMarketState.map({ MarketState(fromYahooState: $0) }) {
-            // When local schedule says extended hours but Yahoo disagrees,
-            // prefer local — Yahoo state may be stale after laptop wake
-            let localExtended = localState == .preMarket || localState == .afterHours
-            state = (localExtended && yahoo != localState) ? localState : yahoo
+            // Local time is authoritative when it disagrees with Yahoo:
+            // - Local says open but Yahoo says pre/after → Yahoo is stale (CDN cache or wake lag)
+            // - Local says extended but Yahoo disagrees → Yahoo may be stale after laptop wake
+            let localWins = (localState != yahoo) && (localState == .open
+                || localState == .preMarket
+                || localState == .afterHours)
+            state = localWins ? localState : yahoo
         } else {
             state = localState
         }
@@ -677,17 +680,15 @@ class MenuBarController: NSObject, ObservableObject {
     }
 
     private var currentMarketState: MarketState {
-        if let state = yahooMarketState {
-            return MarketState(fromYahooState: state)
+        let localState = marketSchedule.getTodaySchedule().state
+        guard let yahoo = yahooMarketState.map({ MarketState(fromYahooState: $0) }) else {
+            return localState
         }
-        // Fallback to time-based detection
-        let session = StockQuote.currentTimeBasedSession()
-        switch session {
-        case .preMarket: return .preMarket
-        case .regular: return .open
-        case .afterHours: return .afterHours
-        case .closed: return .closed
+        // Local time wins when it says open/extended but Yahoo disagrees (stale CDN/wake lag)
+        if localState != yahoo && (localState == .open || localState == .preMarket || localState == .afterHours) {
+            return localState
         }
+        return yahoo
     }
 
     private func updateMenuBarDisplay() {

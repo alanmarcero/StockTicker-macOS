@@ -216,4 +216,60 @@ final class MenuBarControllerPopoverStateTests: XCTestCase {
         let localState = controller.marketSchedule.getTodaySchedule().state
         XCTAssertEqual(controller.marketStatusState, localState)
     }
+
+    func testUpdateMarketStatus_localOpenOverridesStaleYahooPre() {
+        // Wednesday 11:00 AM ET — clearly regular hours
+        let dateProvider = MockDateProvider(
+            year: 2026, month: 3, day: 25, hour: 11, minute: 0,
+            timeZone: MarketSchedule.easternTimeZone
+        )
+        let controller = MenuBarController(
+            stockService: MockStockService(),
+            newsService: StubNewsService(),
+            scannerService: StubScannerService(),
+            configManager: WatchlistConfigManager(fileSystem: MockFileSystem()),
+            marketSchedule: MarketSchedule(dateProvider: dateProvider)
+        )
+        controller.yahooMarketState = "PRE"
+        controller.handleSystemWake()
+        // Local says open, Yahoo says pre — local wins
+        XCTAssertNil(controller.yahooMarketState)
+        XCTAssertEqual(controller.marketStatusState, .open)
+    }
+
+    func testUpdateMarketStatus_localOpenOverridesStaleYahooPost() {
+        // Wednesday 2:00 PM ET — regular hours
+        let dateProvider = MockDateProvider(
+            year: 2026, month: 3, day: 25, hour: 14, minute: 0,
+            timeZone: MarketSchedule.easternTimeZone
+        )
+        let controller = MenuBarController(
+            stockService: MockStockService(),
+            newsService: StubNewsService(),
+            scannerService: StubScannerService(),
+            configManager: WatchlistConfigManager(fileSystem: MockFileSystem()),
+            marketSchedule: MarketSchedule(dateProvider: dateProvider)
+        )
+        controller.yahooMarketState = "POST"
+        controller.handleSystemWake()
+        XCTAssertEqual(controller.marketStatusState, .open)
+    }
+
+    func testUpdateMarketStatus_yahooRegularHonoredDuringOpen() {
+        // Wednesday 11:00 AM ET — both local and Yahoo agree
+        let dateProvider = MockDateProvider(
+            year: 2026, month: 3, day: 25, hour: 11, minute: 0,
+            timeZone: MarketSchedule.easternTimeZone
+        )
+        let controller = MenuBarController(
+            stockService: MockStockService(),
+            newsService: StubNewsService(),
+            scannerService: StubScannerService(),
+            configManager: WatchlistConfigManager(fileSystem: MockFileSystem()),
+            marketSchedule: MarketSchedule(dateProvider: dateProvider)
+        )
+        controller.yahooMarketState = "REGULAR"
+        controller.handleSystemWake()
+        XCTAssertEqual(controller.marketStatusState, .open)
+    }
 }
