@@ -76,15 +76,10 @@ enum SymbolRouting {
     /// Partition symbols for real-time quote routing (Finnhub free tier supports /quote only)
     static func partition(_ symbols: [String], finnhubApiKey: String) -> (finnhub: [String], yahoo: [String]) {
         guard !finnhubApiKey.isEmpty else { return ([], symbols) }
-        var finnhub: [String] = []
-        var yahoo: [String] = []
-        for symbol in symbols {
-            if isFinnhubCompatible(symbol) {
-                finnhub.append(symbol)
-            } else {
-                yahoo.append(symbol)
-            }
-        }
+        
+        let finnhub = symbols.filter { isFinnhubCompatible($0) }
+        let yahoo = symbols.filter { !isFinnhubCompatible($0) }
+        
         return (finnhub, yahoo)
     }
 }
@@ -252,15 +247,14 @@ actor StockService: StockServiceProtocol {
                 return nil
             }
 
-            var closes: [Double] = []
-            var timestamps: [Int] = []
-            for (ts, c) in zip(rawTimestamps, rawCloses) {
-                guard let close = c else { continue }
-                closes.append(close)
-                timestamps.append(ts)
+            let pairs = zip(rawTimestamps, rawCloses).compactMap { ts, c -> (Int, Double)? in
+                guard let close = c else { return nil }
+                return (ts, close)
             }
-            guard !closes.isEmpty else { return nil }
-            return (closes, timestamps)
+            
+            guard !pairs.isEmpty else { return nil }
+            
+            return (closes: pairs.map { $0.1 }, timestamps: pairs.map { $0.0 })
         } catch {
             print("Yahoo closes+timestamps fetch failed for \(symbol): \(error.localizedDescription)")
             return nil
@@ -288,19 +282,7 @@ actor StockService: StockServiceProtocol {
         var data = ExtendedHoursData()
 
         guard let closes = result.indicators?.quote?.first?.close,
-              !closes.isEmpty else {
-            return data
-        }
-
-        var latestPrice: Double?
-        for close in closes.reversed() {
-            if let price = close {
-                latestPrice = price
-                break
-            }
-        }
-
-        guard let currentPrice = latestPrice else {
+              let currentPrice = closes.reversed().compactMap({ $0 }).first else {
             return data
         }
 

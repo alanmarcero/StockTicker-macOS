@@ -39,7 +39,7 @@ extension StockService {
     }
 
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double? = nil, precomputedDailyAboveCount: Int? = nil, now: Date = Date()) async -> EMACacheEntry? {
-        async let weeklyData = fetchWeeklyClosesWithTimestamps(symbol: symbol)
+        async let weeklyDataFetch = fetchWeeklyClosesWithTimestamps(symbol: symbol)
 
         let day: Double?
         if let precomputed = precomputedDailyEMA {
@@ -47,46 +47,42 @@ extension StockService {
         } else {
             day = await fetchDailyEMA(symbol: symbol)
         }
+        
+        let dayAbove = precomputedDailyAboveCount
 
-        let dayAbove: Int?
-        if let precomputed = precomputedDailyAboveCount {
-            dayAbove = precomputed
-        } else {
-            dayAbove = nil
+        guard let weeklyData = await weeklyDataFetch else {
+            guard day != nil else { return nil }
+            return EMACacheEntry(day: day, week: nil, weekCrossoverWeeksBelow: nil, weekCrossdownWeeksAbove: nil, weekBelowCount: nil, dayAboveCount: dayAbove, weekAboveCount: nil)
         }
 
-        let weekly = await weeklyData
-        let weekEMA = weekly.flatMap { EMAAnalysis.calculate(closes: $0.closes) }
-
-        // Use completed weekly bars only (before Friday 2PM) for all weekly metrics
-        // to ensure crossover/crossdown/above/below are consistent with each other.
-        //
-        // During sneak peek, collapse current-week bars: Yahoo may return multiple bars
-        // for the current week (e.g., yesterday's close + today's intraday). Use
-        // completed + latest close only, so intermediate bars don't mask a crossover.
+        let weekEMA = EMAAnalysis.calculate(closes: weeklyData.closes)
+        
+        let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
         let weeklyCloses: [Double]?
-        if let weeklyData = weekly {
-            let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
-            if isCurrentWeekSneakPeek(now: now) {
-                let completed = count > 0 ? Array(weeklyData.closes[0..<count]) : []
-                if let lastClose = weeklyData.closes.last {
-                    weeklyCloses = completed + [lastClose]
-                } else {
-                    weeklyCloses = completed.isEmpty ? nil : completed
-                }
-            } else {
-                weeklyCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
-            }
+        
+        if isCurrentWeekSneakPeek(now: now) {
+            let completed = count > 0 ? Array(weeklyData.closes[0..<count]) : []
+            weeklyCloses = weeklyData.closes.last.map { completed + [$0] } ?? (completed.isEmpty ? nil : completed)
         } else {
-            weeklyCloses = nil
+            weeklyCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
         }
+        
         let weekAbove = weeklyCloses.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0) }
         let crossover = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossover(closes: $0) }
         let crossdown = weeklyCloses.flatMap { EMAAnalysis.detectWeeklyCrossdown(closes: $0) }
         let belowCount = weeklyCloses.flatMap { EMAAnalysis.countWeeksBelow(closes: $0) }
 
         guard day != nil || weekEMA != nil else { return nil }
-        return EMACacheEntry(day: day, week: weekEMA, weekCrossoverWeeksBelow: crossover, weekCrossdownWeeksAbove: crossdown, weekBelowCount: belowCount, dayAboveCount: dayAbove, weekAboveCount: weekAbove)
+        
+        return EMACacheEntry(
+            day: day,
+            week: weekEMA,
+            weekCrossoverWeeksBelow: crossover,
+            weekCrossdownWeeksAbove: crossdown,
+            weekBelowCount: belowCount,
+            dayAboveCount: dayAbove,
+            weekAboveCount: weekAbove
+        )
     }
 
     func fetchEMAEntry(symbol: String, precomputedDailyEMA: Double?, precomputedDailyAboveCount: Int? = nil) async -> EMACacheEntry? {
@@ -99,10 +95,13 @@ extension StockService {
     private func isCurrentWeekSneakPeek(now: Date) -> Bool {
         let calendar = MarketSchedule.easternCalendar
         let weekday = calendar.component(.weekday, from: now)
+        
         // Saturday (7) or Sunday (1): week's bar is complete
-        if weekday == 1 || weekday == 7 { return true }
+        guard weekday != 1 && weekday != 7 else { return true }
+        
         // Friday (6): from 2PM ET onward
         guard weekday == 6 else { return false }
+        
         let hour = calendar.component(.hour, from: now)
         return hour >= 14
     }

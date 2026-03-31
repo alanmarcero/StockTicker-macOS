@@ -32,25 +32,19 @@ struct WatchlistSource: OptionSet, Codable, Equatable {
 
     /// Returns the union of symbols from all enabled sources, deduplicated and ordered.
     func symbols(personalWatchlist: [String]) -> [String] {
+        var sources: [[String]] = []
+        
+        if contains(.megaCap)         { sources.append(MegaCapEquities.symbols) }
+        if contains(.topAUMETFs)      { sources.append(TopAUMETFs.symbols) }
+        if contains(.topVolETFs)      { sources.append(TopVolumeETFs.symbols) }
+        if contains(.stateStreetETFs) { sources.append(StateStreetETFs.symbols) }
+        if contains(.vanguardETFs)    { sources.append(VanguardETFs.symbols) }
+        if contains(.spdrSectors)     { sources.append(SPDRSectorETFs.symbols) }
+        if contains(.commodities)     { sources.append(CommodityETFs.symbols) }
+        if contains(.personal)        { sources.append(personalWatchlist) }
+
         var seen = Set<String>()
-        var result: [String] = []
-
-        func add(_ symbols: [String]) {
-            for symbol in symbols where seen.insert(symbol).inserted {
-                result.append(symbol)
-            }
-        }
-
-        if contains(.megaCap)         { add(MegaCapEquities.symbols) }
-        if contains(.topAUMETFs)      { add(TopAUMETFs.symbols) }
-        if contains(.topVolETFs)      { add(TopVolumeETFs.symbols) }
-        if contains(.stateStreetETFs) { add(StateStreetETFs.symbols) }
-        if contains(.vanguardETFs)    { add(VanguardETFs.symbols) }
-        if contains(.spdrSectors)     { add(SPDRSectorETFs.symbols) }
-        if contains(.commodities)     { add(CommodityETFs.symbols) }
-        if contains(.personal)        { add(personalWatchlist) }
-
-        return result
+        return sources.flatMap { $0 }.filter { seen.insert($0).inserted }
     }
 
     /// Returns all symbols from every source regardless of toggles (for caching).

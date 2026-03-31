@@ -29,45 +29,60 @@ enum SwingAnalysis {
     }
 
     private static func findBreakoutPrice(closes: [Double]) -> (price: Double, index: Int)? {
-        var significantHighs: [(price: Double, index: Int)] = []
-        var runningMax = closes[0]
-        var runningMaxIndex = 0
+        struct State {
+            var significantHighs: [(price: Double, index: Int)] = []
+            var runningMax: Double
+            var runningMaxIndex: Int
+        }
 
-        for (i, close) in closes.enumerated() {
-            if close > runningMax {
-                runningMax = close
-                runningMaxIndex = i
+        let initialState = State(runningMax: closes[0], runningMaxIndex: 0)
+        
+        let finalState = closes.enumerated().reduce(into: initialState) { state, element in
+            let (i, close) = element
+            
+            if close > state.runningMax {
+                state.runningMax = close
+                state.runningMaxIndex = i
             }
-            let decline = (runningMax - close) / runningMax
+            
+            let decline = (state.runningMax - close) / state.runningMax
             if decline >= threshold {
-                significantHighs.append((price: runningMax, index: runningMaxIndex))
-                runningMax = close
-                runningMaxIndex = i
+                state.significantHighs.append((price: state.runningMax, index: state.runningMaxIndex))
+                state.runningMax = close
+                state.runningMaxIndex = i
             }
         }
 
-        return significantHighs.last
+        return finalState.significantHighs.last
     }
 
     private static func findBreakdownPrice(closes: [Double]) -> (price: Double, index: Int)? {
-        var significantLows: [(price: Double, index: Int)] = []
-        var runningMin = closes[0]
-        var runningMinIndex = 0
+        struct State {
+            var significantLows: [(price: Double, index: Int)] = []
+            var runningMin: Double
+            var runningMinIndex: Int
+        }
 
-        for (i, close) in closes.enumerated() {
-            if close < runningMin {
-                runningMin = close
-                runningMinIndex = i
+        let initialState = State(runningMin: closes[0], runningMinIndex: 0)
+
+        let finalState = closes.enumerated().reduce(into: initialState) { state, element in
+            let (i, close) = element
+            
+            if close < state.runningMin {
+                state.runningMin = close
+                state.runningMinIndex = i
             }
-            guard runningMin > 0 else { continue }
-            let rise = (close - runningMin) / runningMin
+            
+            guard state.runningMin > 0 else { return }
+            
+            let rise = (close - state.runningMin) / state.runningMin
             if rise >= threshold {
-                significantLows.append((price: runningMin, index: runningMinIndex))
-                runningMin = close
-                runningMinIndex = i
+                state.significantLows.append((price: state.runningMin, index: state.runningMinIndex))
+                state.runningMin = close
+                state.runningMinIndex = i
             }
         }
 
-        return significantLows.last
+        return finalState.significantLows.last
     }
 }
