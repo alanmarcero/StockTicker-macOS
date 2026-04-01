@@ -140,7 +140,7 @@ final class StockServiceTests: XCTestCase {
     func testFetchQuotes_multipleSymbols_returnsAll() async {
         let mockClient = MockHTTPClient()
 
-        for (symbol, price) in [("AAPL", 150.0), ("SPY", 450.0), ("QQQ", 380.0)] {
+        [("AAPL", 150.0), ("SPY", 450.0), ("QQQ", 380.0)].forEach { symbol, price in
             let json = """
             {
                 "chart": {
@@ -639,10 +639,7 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
     func testFetchRSI_validResponse_returnsValue() async {
         let mockClient = MockHTTPClient()
         // 20 closes: steady rise with some dips
-        var closes: [Double] = []
-        for i in 0..<20 {
-            closes.append(100.0 + Double(i) * 2.0)
-        }
+        let closes = (0..<20).map { 100.0 + Double($0) * 2.0 }
         let closesJSON = closes.map { String($0) }.joined(separator: ", ")
         let json = """
         {
@@ -764,13 +761,11 @@ final class URLResponseIsSuccessfulHTTPTests: XCTestCase {
     func testFetchDailyAnalysis_validResponse_returnsAllDataPoints() async {
         let mockClient = MockHTTPClient()
         // Generate 20 closes with timestamps for a valid response
-        var closes: [Double] = []
-        var timestamps: [Int] = []
         let baseTimestamp = 1700000000
-        for i in 0..<20 {
-            closes.append(100.0 + Double(i) * 2.0)
-            timestamps.append(baseTimestamp + i * 86400)
-        }
+        let range = (0..<20)
+        let closes = range.map { 100.0 + Double($0) * 2.0 }
+        let timestamps = range.map { baseTimestamp + $0 * 86400 }
+        
         let closesJSON = closes.map { String($0) }.joined(separator: ", ")
         let timestampsJSON = timestamps.map { String($0) }.joined(separator: ", ")
         let json = """

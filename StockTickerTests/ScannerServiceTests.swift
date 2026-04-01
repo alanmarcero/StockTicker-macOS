@@ -14,9 +14,8 @@ private actor ScannerMockHTTPClient: HTTPClient {
 
     nonisolated func data(from url: URL) async throws -> (Data, URLResponse) {
         let urlString = url.absoluteString
-        for (pattern, result) in patternResponses {
-            guard urlString.contains(pattern) else { continue }
-            switch result {
+        if let match = patternResponses.first(where: { urlString.contains($0.pattern) }) {
+            switch match.result {
             case .success(let response): return response
             case .failure(let error): throw error
             }

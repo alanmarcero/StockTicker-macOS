@@ -18,17 +18,15 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
 
     func setQuoteSuccessResponse(for symbols: [String], prices: [Double]? = nil) {
         let priceList = prices ?? symbols.map { _ in 100.0 }
-        var results: [String] = []
-        for (index, symbol) in symbols.enumerated() {
-            let price = priceList[index]
-            results.append("""
+        let results = zip(symbols, priceList).map { symbol, price in
+            """
             {
                 "symbol": "\(symbol)",
                 "regularMarketPrice": \(price),
                 "regularMarketPreviousClose": \(price * 0.99),
                 "marketState": "REGULAR"
             }
-            """)
+            """
         }
         let json = """
         {
@@ -300,9 +298,8 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
 
         // Pattern-based fallback (matches URL containing pattern string)
         let urlString = url.absoluteString
-        for (pattern, result) in patternResponses {
-            guard urlString.contains(pattern) else { continue }
-            switch result {
+        if let patternMatch = patternResponses.first(where: { urlString.contains($0.pattern) }) {
+            switch patternMatch.result {
             case .success(let response):
                 return response
             case .failure(let error):
