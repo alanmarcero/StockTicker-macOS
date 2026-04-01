@@ -47,7 +47,6 @@ extension StockService {
         } else {
             day = await fetchDailyEMA(symbol: symbol)
         }
-        
         let dayAbove = precomputedDailyAboveCount
 
         guard let weeklyData = await weeklyDataFetch else {
@@ -56,15 +55,15 @@ extension StockService {
         }
 
         let weekEMA = EMAAnalysis.calculate(closes: weeklyData.closes)
-        
         let count = completedWeeklyBarCount(timestamps: weeklyData.timestamps, now: now)
+        
+        let completed = count > 0 ? Array(weeklyData.closes[0..<count]) : []
         let weeklyCloses: [Double]?
         
         if isCurrentWeekSneakPeek(now: now) {
-            let completed = count > 0 ? Array(weeklyData.closes[0..<count]) : []
             weeklyCloses = weeklyData.closes.last.map { completed + [$0] } ?? (completed.isEmpty ? nil : completed)
         } else {
-            weeklyCloses = count > 0 ? Array(weeklyData.closes[0..<count]) : nil
+            weeklyCloses = completed.isEmpty ? nil : completed
         }
         
         let weekAbove = weeklyCloses.flatMap { EMAAnalysis.countPeriodsAbove(closes: $0) }

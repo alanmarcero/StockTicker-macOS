@@ -32,18 +32,17 @@ actor NewsService: NewsServiceProtocol {
 
     private func fetchFromAllSources() async -> [String: [NewsItem]] {
         await withTaskGroup(of: (String, [NewsItem]).self) { group in
-            for source in NewsSource.allCases {
+            NewsSource.allCases.forEach { source in
                 group.addTask {
                     let items = await self.fetchFromSource(source)
                     return (source.displayName, items)
                 }
             }
 
-            var itemsBySource: [String: [NewsItem]] = [:]
-            for await (sourceName, items) in group {
-                itemsBySource[sourceName] = items
+            return await group.reduce(into: [String: [NewsItem]]()) { dict, result in
+                let (sourceName, items) = result
+                dict[sourceName] = items
             }
-            return itemsBySource
         }
     }
 
@@ -67,42 +66,32 @@ actor NewsService: NewsServiceProtocol {
 
     private func cacheBustedURL(_ urlString: String) -> URL? {
         guard var components = URLComponents(string: urlString) else { return nil }
-        var queryItems = components.queryItems ?? []
-        queryItems.append(URLQueryItem(
+        let queryItems = components.queryItems ?? []
+        let newQueryItem = URLQueryItem(
             name: "_t",
             value: String(Int(Date().timeIntervalSince1970))
-        ))
-        components.queryItems = queryItems
+        )
+        components.queryItems = queryItems + [newQueryItem]
         return components.url
     }
 
     private func processItemsBySource(_ itemsBySource: [String: [NewsItem]]) -> [NewsItem] {
-        var result: [NewsItem] = []
-
-        for (_, items) in itemsBySource {
-            let sorted = sortByDate(items)
-            let topItems = Array(sorted.prefix(Constants.itemsPerSource))
-
-            for (index, item) in topItems.enumerated() {
-                let processedItem = item.withTopFromSource(index == 0)
-                result.append(processedItem)
-            }
+        itemsBySource.values.flatMap { items in
+            sortByDate(items)
+                .prefix(Constants.itemsPerSource)
+                .enumerated()
+                .map { index, item in item.withTopFromSource(index == 0) }
         }
-
-        return result
     }
 
     private func deduplicateHeadlines(_ items: [NewsItem]) -> [NewsItem] {
-        var result: [NewsItem] = []
-        for item in items {
+        items.reduce(into: [NewsItem]()) { result, item in
             let isDuplicate = result.contains { existing in
                 headlineSimilarity(existing.headline, item.headline) > Constants.similarityThreshold
             }
-            if !isDuplicate {
-                result.append(item)
-            }
+            guard !isDuplicate else { return }
+            result.append(item)
         }
-        return result
     }
 
     private func sortByDate(_ items: [NewsItem]) -> [NewsItem] {

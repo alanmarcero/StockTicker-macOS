@@ -87,10 +87,10 @@ actor VIXSpikeCacheManager {
             return
         }
         // Only clear the most recent spike date's prices — older spikes are historical and stable
-        var updatedPrices = currentCache.symbolPrices
-        for (symbol, var prices) in updatedPrices {
+        let updatedPrices = currentCache.symbolPrices.reduce(into: [String: [String: Double]]()) { dict, pair in
+            var prices = pair.value
             prices.removeValue(forKey: lastSpike.dateString)
-            updatedPrices[symbol] = prices
+            dict[pair.key] = prices
         }
         cache = VIXSpikeCacheData(lastUpdated: "", spikes: currentCache.spikes, symbolPrices: updatedPrices)
     }
@@ -106,12 +106,9 @@ actor VIXSpikeCacheManager {
         cache?.spikes = newSpikes
         if datesChanged {
             let removedDates = oldDateStrings.subtracting(newDateStrings)
-            if !removedDates.isEmpty {
-                for (symbol, var prices) in cache?.symbolPrices ?? [:] {
-                    for date in removedDates {
-                        prices.removeValue(forKey: date)
-                    }
-                    cache?.symbolPrices[symbol] = prices
+            if !removedDates.isEmpty, let currentPrices = cache?.symbolPrices {
+                cache?.symbolPrices = currentPrices.reduce(into: [String: [String: Double]]()) { dict, pair in
+                    dict[pair.key] = pair.value.filter { !removedDates.contains($0.key) }
                 }
             }
         }

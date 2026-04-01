@@ -5,7 +5,14 @@ import XCTest
 
 final class MockHTTPClient: HTTPClient, @unchecked Sendable {
     var responses: [URL: Result<(Data, URLResponse), Error>] = [:]
-    var requestedURLs: [URL] = []
+    private var _requestedURLs: [URL] = []
+    private let lock = NSLock()
+    
+    var requestedURLs: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return _requestedURLs
+    }
 
     // Pattern-based responses for flexible URL matching
     var patternResponses: [(pattern: String, result: Result<(Data, URLResponse), Error>)] = []
@@ -284,7 +291,9 @@ final class MockHTTPClient: HTTPClient, @unchecked Sendable {
     }
 
     func data(from url: URL) async throws -> (Data, URLResponse) {
-        requestedURLs.append(url)
+        lock.lock()
+        _requestedURLs.append(url)
+        lock.unlock()
 
         // Exact URL match
         if let result = responses[url] {

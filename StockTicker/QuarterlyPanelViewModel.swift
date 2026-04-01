@@ -156,9 +156,9 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func passesMinFilter(_ row: QuarterlyRow, relevantKeys: Set<String>? = nil) -> Bool {
-        for (key, text) in minFilterTexts {
-            if let relevant = relevantKeys, !relevant.contains(key) { continue }
-            guard !text.isEmpty, let min = Double(text) else { continue }
+        minFilterTexts.allSatisfy { key, text in
+            if let relevant = relevantKeys, !relevant.contains(key) { return true }
+            guard !text.isEmpty, let min = Double(text) else { return true }
             let value: Double?
             switch key {
             case "high": value = row.highestCloseChangePercent
@@ -169,10 +169,9 @@ class QuarterlyPanelViewModel: ObservableObject {
             case let k where k.hasSuffix("Count"): value = row.breakoutPercent
             default: value = row.quarterChanges[key] ?? nil
             }
-            guard let val = value else { continue }
-            if val < min { return false }
+            guard let val = value else { return true }
+            return val >= min
         }
-        return true
     }
 
     private func filteredWatchlist() -> [String] {
@@ -207,16 +206,15 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     private func buildSinceQuarterRows() -> [QuarterlyRow] {
         filteredWatchlist().map { symbol in
-            var changes: [String: Double?] = [:]
-            for qi in quarters {
+            let changes = quarters.reduce(into: [String: Double?]()) { dict, qi in
                 guard let quarterEndPrice = storedQuarterPrices[qi.identifier]?[symbol],
                       quarterEndPrice > 0,
                       let quote = storedQuotes[symbol],
                       !quote.isPlaceholder else {
-                    changes[qi.identifier] = nil
-                    continue
+                    dict[qi.identifier] = nil
+                    return
                 }
-                changes[qi.identifier] = ((quote.price - quarterEndPrice) / quarterEndPrice) * 100
+                dict[qi.identifier] = ((quote.price - quarterEndPrice) / quarterEndPrice) * 100
             }
             let highPct = highestClosePercent(for: symbol)
             return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes, currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
@@ -225,8 +223,7 @@ class QuarterlyPanelViewModel: ObservableObject {
 
     private func buildDuringQuarterRows() -> [QuarterlyRow] {
         filteredWatchlist().map { symbol in
-            var changes: [String: Double?] = [:]
-            for qi in quarters {
+            let changes = quarters.reduce(into: [String: Double?]()) { dict, qi in
                 var priorYear = qi.year
                 var priorQ = qi.quarter - 1
                 if priorQ < 1 { priorQ = 4; priorYear -= 1 }
@@ -235,10 +232,10 @@ class QuarterlyPanelViewModel: ObservableObject {
                       endPrice > 0,
                       let startPrice = storedQuarterPrices[priorId]?[symbol],
                       startPrice > 0 else {
-                    changes[qi.identifier] = nil
-                    continue
+                    dict[qi.identifier] = nil
+                    return
                 }
-                changes[qi.identifier] = ((endPrice - startPrice) / startPrice) * 100
+                dict[qi.identifier] = ((endPrice - startPrice) / startPrice) * 100
             }
             let highPct = highestClosePercent(for: symbol)
             return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes, currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
@@ -250,9 +247,8 @@ class QuarterlyPanelViewModel: ObservableObject {
             let symbolPEs = storedForwardPEData[symbol]
             guard let symbolPEs, !symbolPEs.isEmpty else { return nil }
 
-            var changes: [String: Double?] = [:]
-            for qi in quarters {
-                changes[qi.identifier] = symbolPEs[qi.identifier]
+            let changes = quarters.reduce(into: [String: Double?]()) { dict, qi in
+                dict[qi.identifier] = symbolPEs[qi.identifier]
             }
             let currentPE = storedCurrentForwardPEs[symbol]
             return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: nil, quarterChanges: changes, currentForwardPE: currentPE, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
@@ -260,87 +256,74 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func buildPriceBreaksRows() -> [QuarterlyRow] {
-        var outRows: [QuarterlyRow] = []
-        var bkdnRows: [QuarterlyRow] = []
-        for symbol in filteredWatchlist() {
+        let results = filteredWatchlist().reduce(into: (out: [QuarterlyRow](), bkdn: [QuarterlyRow]())) { res, symbol in
             guard let entry = storedSwingLevelEntries[symbol],
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { return }
             let symbolRSI = storedRSIValues[symbol]
             if let breakoutPrice = entry.breakoutPrice, breakoutPrice > 0 {
                 let pct = ((quote.price - breakoutPrice) / breakoutPrice) * 100
                 if pct > 0 {
-                    outRows.append(QuarterlyRow(id: "\(symbol)-breakout", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: entry.breakoutDate, breakdownPercent: nil, breakdownDate: nil, rsi: symbolRSI))
+                    res.out.append(QuarterlyRow(id: "\(symbol)-breakout", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: pct, breakoutDate: entry.breakoutDate, breakdownPercent: nil, breakdownDate: nil, rsi: symbolRSI))
                 }
             }
             if let breakdownPrice = entry.breakdownPrice, breakdownPrice > 0 {
                 let pct = ((quote.price - breakdownPrice) / breakdownPrice) * 100
                 if pct < 0 {
-                    bkdnRows.append(QuarterlyRow(id: "\(symbol)-breakdown", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: pct, breakdownDate: entry.breakdownDate, rsi: symbolRSI))
+                    res.bkdn.append(QuarterlyRow(id: "\(symbol)-breakdown", symbol: symbol, highestCloseChangePercent: nil, quarterChanges: [:], currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: pct, breakdownDate: entry.breakdownDate, rsi: symbolRSI))
                 }
             }
         }
-        breakoutRows = outRows
-        breakdownRows = bkdnRows
-        return outRows + bkdnRows
+        breakoutRows = results.out
+        breakdownRows = results.bkdn
+        return results.out + results.bkdn
     }
 
     private func buildEMAsRows() -> [QuarterlyRow] {
         let filtered = filteredWatchlist()
-        var dayRows: [QuarterlyRow] = []
-        var weekRows: [QuarterlyRow] = []
-        for symbol in filtered {
+        
+        let emaRows = filtered.reduce(into: (day: [QuarterlyRow](), week: [QuarterlyRow](), cross: [QuarterlyRow](), down: [QuarterlyRow](), below: [QuarterlyRow]())) { res, symbol in
             guard let entry = storedEMAEntries[symbol],
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { return }
+            
             if let ema = entry.day, quote.price > ema, ema > 0, let aboveCount = entry.dayAboveCount {
-                dayRows.append(makeEMARow(symbol: symbol, suffix: "day", count: aboveCount))
+                res.day.append(makeEMARow(symbol: symbol, suffix: "day", count: aboveCount))
             }
             if let ema = entry.week, quote.price > ema, ema > 0, let aboveCount = entry.weekAboveCount {
-                weekRows.append(makeEMARow(symbol: symbol, suffix: "week", count: aboveCount))
+                res.week.append(makeEMARow(symbol: symbol, suffix: "week", count: aboveCount))
+            }
+            if let weeksBelow = entry.weekCrossoverWeeksBelow, weeksBelow >= 3 {
+                res.cross.append(makeEMARow(symbol: symbol, suffix: "cross", count: weeksBelow))
+            }
+            if let weeksAbove = entry.weekCrossdownWeeksAbove, weeksAbove >= 3 {
+                res.down.append(makeEMARow(symbol: symbol, suffix: "crossdown", count: weeksAbove))
+            }
+            if let ema = entry.week, ema > 0, let weeksBelow = entry.weekBelowCount, weeksBelow >= 3 {
+                res.below.append(makeEMARow(symbol: symbol, suffix: "below", count: weeksBelow))
             }
         }
 
-        var crossRows: [QuarterlyRow] = []
-        for symbol in filtered {
-            guard let entry = storedEMAEntries[symbol],
-                  let weeksBelow = entry.weekCrossoverWeeksBelow,
-                  weeksBelow >= 3 else { continue }
-            crossRows.append(makeEMARow(symbol: symbol, suffix: "cross", count: weeksBelow))
-        }
-
-        var crossdownRows: [QuarterlyRow] = []
-        for symbol in filtered {
-            guard let entry = storedEMAEntries[symbol],
-                  let weeksAbove = entry.weekCrossdownWeeksAbove,
-                  weeksAbove >= 3 else { continue }
-            crossdownRows.append(makeEMARow(symbol: symbol, suffix: "crossdown", count: weeksAbove))
-        }
-
-        var belowRows: [QuarterlyRow] = []
-        for symbol in filtered {
-            guard let entry = storedEMAEntries[symbol],
-                  let ema = entry.week, ema > 0,
-                  let weeksBelow = entry.weekBelowCount,
-                  weeksBelow >= 3,
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            belowRows.append(makeEMARow(symbol: symbol, suffix: "below", count: weeksBelow))
-        }
+        var dayRows = emaRows.day
+        var weekRows = emaRows.week
+        var crossRows = emaRows.cross
+        var crossdownRows = emaRows.down
+        var belowRows = emaRows.below
 
         // Merge scanner-only symbols (skip any already in local data)
         if let scanner = storedScannerEMAData {
             let localSymbols = Set(storedWatchlist)
-            for item in scanner.dayAbove where !localSymbols.contains(item.symbol) {
+            scanner.dayAbove.filter { !localSymbols.contains($0.symbol) }.forEach { item in
                 dayRows.append(makeEMARow(symbol: item.symbol, suffix: "day", count: item.count))
             }
-            for item in scanner.weekAbove where !localSymbols.contains(item.symbol) {
+            scanner.weekAbove.filter { !localSymbols.contains($0.symbol) }.forEach { item in
                 weekRows.append(makeEMARow(symbol: item.symbol, suffix: "week", count: item.count))
             }
-            for item in scanner.crossovers where !localSymbols.contains(item.symbol) {
+            scanner.crossovers.filter { !localSymbols.contains($0.symbol) }.forEach { item in
                 crossRows.append(makeEMARow(symbol: item.symbol, suffix: "cross", count: item.weeksBelow))
             }
-            for item in scanner.crossdowns where !localSymbols.contains(item.symbol) {
+            scanner.crossdowns.filter { !localSymbols.contains($0.symbol) }.forEach { item in
                 crossdownRows.append(makeEMARow(symbol: item.symbol, suffix: "crossdown", count: item.weeksAbove))
             }
-            for item in scanner.below where !localSymbols.contains(item.symbol) {
+            scanner.below.filter { !localSymbols.contains($0.symbol) }.forEach { item in
                 belowRows.append(makeEMARow(symbol: item.symbol, suffix: "below", count: item.weeksBelow))
             }
         }
@@ -357,17 +340,16 @@ class QuarterlyPanelViewModel: ObservableObject {
     private func buildVIXSpikeRows() -> [QuarterlyRow] {
         vixSpikeHeaders = storedVIXSpikes.reversed().map { (dateString: $0.dateString, vixClose: $0.vixClose) }
         return filteredWatchlist().map { symbol in
-            var changes: [String: Double?] = [:]
             let symbolPrices = storedVIXSpikePrices[symbol]
-            for spike in storedVIXSpikes {
+            let changes = storedVIXSpikes.reduce(into: [String: Double?]()) { dict, spike in
                 guard let spikeClose = symbolPrices?[spike.dateString],
                       spikeClose > 0,
                       let quote = storedQuotes[symbol],
                       !quote.isPlaceholder else {
-                    changes[spike.dateString] = nil
-                    continue
+                    dict[spike.dateString] = nil
+                    return
                 }
-                changes[spike.dateString] = ((quote.price - spikeClose) / spikeClose) * 100
+                dict[spike.dateString] = ((quote.price - spikeClose) / spikeClose) * 100
             }
             let highPct = highestClosePercent(for: symbol)
             return QuarterlyRow(id: symbol, symbol: symbol, highestCloseChangePercent: highPct, quarterChanges: changes, currentForwardPE: nil, breakoutPercent: nil, breakoutDate: nil, breakdownPercent: nil, breakdownDate: nil, rsi: nil)
@@ -412,17 +394,15 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func percentWithin5OfHigh(symbols: [String]) -> String {
-        var total = 0
-        var within = 0
-        for symbol in symbols {
+        let stats = symbols.reduce(into: (total: 0, within: 0)) { res, symbol in
             guard let highest = storedHighestClosePrices[symbol], highest > 0,
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            total += 1
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { return }
+            res.total += 1
             let pct = ((quote.price - highest) / highest) * 100
-            if pct >= -5.0 { within += 1 }
+            if pct >= -5.0 { res.within += 1 }
         }
-        guard total > 0 else { return QuarterlyFormatting.noData }
-        return String(format: "%.0f%%", (Double(within) / Double(total)) * 100)
+        guard stats.total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(stats.within) / Double(stats.total)) * 100)
     }
 
     private func averageYTDChange(symbols: [String]) -> String {
@@ -455,31 +435,27 @@ class QuarterlyPanelViewModel: ObservableObject {
     }
 
     private func percentAbove5WEMA(symbols: [String]) -> String {
-        var total = 0
-        var above = 0
-        for symbol in symbols {
+        let stats = symbols.reduce(into: (total: 0, above: 0)) { res, symbol in
             guard let entry = storedEMAEntries[symbol],
                   let weekEMA = entry.week, weekEMA > 0,
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            total += 1
-            if quote.price > weekEMA { above += 1 }
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { return }
+            res.total += 1
+            if quote.price > weekEMA { res.above += 1 }
         }
-        guard total > 0 else { return QuarterlyFormatting.noData }
-        return String(format: "%.0f%%", (Double(above) / Double(total)) * 100)
+        guard stats.total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(stats.above) / Double(stats.total)) * 100)
     }
 
     private func percentBelow5WEMA(symbols: [String]) -> String {
-        var total = 0
-        var below = 0
-        for symbol in symbols {
+        let stats = symbols.reduce(into: (total: 0, below: 0)) { res, symbol in
             guard let entry = storedEMAEntries[symbol],
                   let weekEMA = entry.week, weekEMA > 0,
-                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { continue }
-            total += 1
-            if quote.price <= weekEMA { below += 1 }
+                  let quote = storedQuotes[symbol], !quote.isPlaceholder else { return }
+            res.total += 1
+            if quote.price <= weekEMA { res.below += 1 }
         }
-        guard total > 0 else { return QuarterlyFormatting.noData }
-        return String(format: "%.0f%%", (Double(below) / Double(total)) * 100)
+        guard stats.total > 0 else { return QuarterlyFormatting.noData }
+        return String(format: "%.0f%%", (Double(stats.below) / Double(stats.total)) * 100)
     }
 
     func sort(by column: QuarterlySortColumn) {

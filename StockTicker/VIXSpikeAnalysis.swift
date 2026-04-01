@@ -28,19 +28,18 @@ enum VIXSpikeAnalysis {
         let spikeIndices = closes.indices.filter { closes[$0] >= threshold }
         guard !spikeIndices.isEmpty else { return [] }
 
-        var clusters: [[Int]] = []
-        var currentCluster: [Int] = [spikeIndices[0]]
-
-        for i in 1..<spikeIndices.count {
-            let gap = spikeIndices[i] - spikeIndices[i - 1]
+        let initialClusters = (clusters: [[Int]](), current: [spikeIndices[0]])
+        let finalClusters = spikeIndices.dropFirst().reduce(into: initialClusters) { res, index in
+            let lastIndex = res.current.last!
+            let gap = index - lastIndex
             if gap <= gapDays + 1 {
-                currentCluster.append(spikeIndices[i])
+                res.current.append(index)
             } else {
-                clusters.append(currentCluster)
-                currentCluster = [spikeIndices[i]]
+                res.clusters.append(res.current)
+                res.current = [index]
             }
         }
-        clusters.append(currentCluster)
+        let clusters = finalClusters.clusters + [finalClusters.current]
 
         return clusters.map { cluster in
             let peakIndex = cluster.max(by: { closes[$0] < closes[$1] })!

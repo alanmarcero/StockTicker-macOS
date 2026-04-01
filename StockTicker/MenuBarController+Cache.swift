@@ -66,8 +66,10 @@ extension MenuBarController {
         }
 
         let fetched = await stockService.batchFetchYTDPrices(symbols: missingSymbols)
-        for (symbol, price) in fetched {
-            await ytdCacheManager.setStartPrice(for: symbol, price: price)
+        await withTaskGroup(of: Void.self) { group in
+            fetched.forEach { symbol, price in
+                group.addTask { await self.ytdCacheManager.setStartPrice(for: symbol, price: price) }
+            }
         }
         await ytdCacheManager.save()
 
@@ -87,24 +89,28 @@ extension MenuBarController {
         quarterInfos = QuarterCalculation.lastNCompletedQuarters(from: now, count: 12)
         let fetchQuarters = QuarterCalculation.lastNCompletedQuarters(from: now, count: 13)
 
-        for qi in fetchQuarters {
-            let missingSymbols = await quarterlyCacheManager.getMissingSymbols(
-                for: qi.identifier, from: extraStatsSymbols
-            )
-            guard !missingSymbols.isEmpty else { continue }
+        await withTaskGroup(of: Void.self) { group in
+            fetchQuarters.forEach { qi in
+                group.addTask {
+                    let missingSymbols = await self.quarterlyCacheManager.getMissingSymbols(
+                        for: qi.identifier, from: self.extraStatsSymbols
+                    )
+                    guard !missingSymbols.isEmpty else { return }
 
-            let (period1, period2) = QuarterCalculation.quarterEndDateRange(year: qi.year, quarter: qi.quarter)
-            let fetched = await stockService.batchFetchQuarterEndPrices(
-                symbols: missingSymbols, period1: period1, period2: period2
-            )
+                    let (period1, period2) = QuarterCalculation.quarterEndDateRange(year: qi.year, quarter: qi.quarter)
+                    let fetched = await self.stockService.batchFetchQuarterEndPrices(
+                        symbols: missingSymbols, period1: period1, period2: period2
+                    )
 
-            let noData = Set(missingSymbols).subtracting(fetched.keys)
-            await quarterlyCacheManager.markNoData(quarter: qi.identifier, symbols: noData)
+                    let noData = Set(missingSymbols).subtracting(fetched.keys)
+                    await self.quarterlyCacheManager.markNoData(quarter: qi.identifier, symbols: noData)
 
-            if !fetched.isEmpty {
-                await quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
+                    if !fetched.isEmpty {
+                        await self.quarterlyCacheManager.setPrices(quarter: qi.identifier, prices: fetched)
+                    }
+                    await self.quarterlyCacheManager.save()
+                }
             }
-            await quarterlyCacheManager.save()
         }
 
         let activeIds = fetchQuarters.map { $0.identifier }
@@ -123,22 +129,16 @@ extension MenuBarController {
         universeCache: [String: T]? = nil,
         transform: (StockQuote, T) -> StockQuote
     ) {
-        var updatedQuotes = quotes
-        for (symbol, quote) in updatedQuotes {
-            if let value = cache[symbol] {
-                updatedQuotes[symbol] = transform(quote, value)
-            }
+        quotes = quotes.reduce(into: quotes) { dict, pair in
+            guard let value = cache[pair.key] else { return }
+            dict[pair.key] = transform(pair.value, value)
         }
-        quotes = updatedQuotes
 
         let uCache = universeCache ?? cache
-        var updatedUniverse = universeQuotes
-        for (symbol, quote) in updatedUniverse {
-            if let value = uCache[symbol] {
-                updatedUniverse[symbol] = transform(quote, value)
-            }
+        universeQuotes = universeQuotes.reduce(into: universeQuotes) { dict, pair in
+            guard let value = uCache[pair.key] else { return }
+            dict[pair.key] = transform(pair.value, value)
         }
-        universeQuotes = updatedUniverse
     }
 
     // MARK: - YTD Attachment
@@ -148,10 +148,9 @@ extension MenuBarController {
             quote.withYTDStartPrice(ytdPrice)
         }
 
-        for (symbol, quote) in indexQuotes {
-            if let ytdPrice = ytdPrices[symbol] {
-                indexQuotes[symbol] = quote.withYTDStartPrice(ytdPrice)
-            }
+        indexQuotes = indexQuotes.reduce(into: indexQuotes) { dict, pair in
+            guard let ytdPrice = ytdPrices[pair.key] else { return }
+            dict[pair.key] = pair.value.withYTDStartPrice(ytdPrice)
         }
     }
 
@@ -219,8 +218,11 @@ extension MenuBarController {
         let fetched = await stockService.batchFetchForwardPERatios(
             symbols: missingSymbols, period1: range.period1, period2: range.period2
         )
-        for (symbol, quarterPEs) in fetched {
-            await forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs)
+
+        await withTaskGroup(of: Void.self) { group in
+            fetched.forEach { symbol, quarterPEs in
+                group.addTask { await self.forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs) }
+            }
         }
         await forwardPECacheManager.save()
 
@@ -330,11 +332,15 @@ extension MenuBarController {
             return
         }
 
-        for symbol in needsRefresh {
-            if let prices = await stockService.fetchClosePricesOnDates(
-                symbol: symbol, period1: period1, period2: period2, targetTimestamps: targetTimestamps
-            ) {
-                await vixSpikeCacheManager.mergePrices(for: symbol, newPrices: prices)
+        await withTaskGroup(of: Void.self) { group in
+            needsRefresh.forEach { symbol in
+                group.addTask {
+                    if let prices = await self.stockService.fetchClosePricesOnDates(
+                        symbol: symbol, period1: period1, period2: period2, targetTimestamps: targetTimestamps
+                    ) {
+                        await self.vixSpikeCacheManager.mergePrices(for: symbol, newPrices: prices)
+                    }
+                }
             }
         }
         await vixSpikeCacheManager.save()
@@ -362,8 +368,10 @@ extension MenuBarController {
         let fetched = await stockService.batchFetchEMAValues(symbols: batch)
         guard !fetched.isEmpty else { return }
 
-        for (symbol, entry) in fetched {
-            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        await withTaskGroup(of: Void.self) { group in
+            fetched.forEach { symbol, entry in
+                group.addTask { await self.emaCacheManager.setEntry(for: symbol, entry: entry) }
+            }
         }
         await emaCacheManager.save()
         emaEntries = await emaCacheManager.getAllEntries()
@@ -381,8 +389,10 @@ extension MenuBarController {
         )
         guard !fetched.isEmpty else { return }
 
-        for (symbol, quarterPEs) in fetched {
-            await forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs)
+        await withTaskGroup(of: Void.self) { group in
+            fetched.forEach { symbol, quarterPEs in
+                group.addTask { await self.forwardPECacheManager.setForwardPE(symbol: symbol, quarterPEs: quarterPEs) }
+            }
         }
         await forwardPECacheManager.save()
         forwardPEData = await forwardPECacheManager.getAllData()
@@ -426,29 +436,34 @@ extension MenuBarController {
         // Distribute results to individual caches
         var dailyEMAs: [String: Double] = [:]
         var dailyAboveCounts: [String: Int] = [:]
-        for (symbol, result) in results {
-            if let highest = result.highestClose {
-                await highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
+        
+        await withTaskGroup(of: Void.self) { group in
+            results.forEach { symbol, result in
+                group.addTask {
+                    if let highest = result.highestClose {
+                        await self.highestCloseCacheManager.setHighestClose(for: symbol, price: highest)
+                    }
+                    if let lowest = result.lowestClose {
+                        await self.highestCloseCacheManager.setLowestClose(for: symbol, price: lowest)
+                    }
+                    if let entry = result.swingLevelEntry {
+                        await self.swingLevelCacheManager.setEntry(for: symbol, entry: entry)
+                    }
+                    if rsiMissing.contains(symbol), let rsi = result.rsi {
+                        await self.rsiCacheManager.setRSI(for: symbol, value: rsi)
+                    }
+                    
+                    // Update daily fields on existing EMA entries (weekly data preserved)
+                    if !emaMissing.contains(symbol) {
+                        await self.emaCacheManager.updateDailyFields(for: symbol, day: result.dailyEMA, dayAboveCount: result.dailyAboveCount)
+                    }
+                }
             }
-            if let lowest = result.lowestClose {
-                await highestCloseCacheManager.setLowestClose(for: symbol, price: lowest)
-            }
-            if let entry = result.swingLevelEntry {
-                await swingLevelCacheManager.setEntry(for: symbol, entry: entry)
-            }
-            if rsiMissing.contains(symbol), let rsi = result.rsi {
-                await rsiCacheManager.setRSI(for: symbol, value: rsi)
-            }
-            if let ema = result.dailyEMA {
-                dailyEMAs[symbol] = ema
-            }
-            if let aboveCount = result.dailyAboveCount {
-                dailyAboveCounts[symbol] = aboveCount
-            }
-            // Update daily fields on existing EMA entries (weekly data preserved)
-            if !emaMissing.contains(symbol) {
-                await emaCacheManager.updateDailyFields(for: symbol, day: result.dailyEMA, dayAboveCount: result.dailyAboveCount)
-            }
+        }
+        
+        results.forEach { symbol, result in
+            if let ema = result.dailyEMA { dailyEMAs[symbol] = ema }
+            if let aboveCount = result.dailyAboveCount { dailyAboveCounts[symbol] = aboveCount }
         }
 
         await highestCloseCacheManager.save()
@@ -459,8 +474,10 @@ extension MenuBarController {
         let emaMissingArray = Array(emaMissing)
         if !emaMissingArray.isEmpty {
             let fetched = await stockService.batchFetchEMAValues(symbols: emaMissingArray, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
-            for (symbol, entry) in fetched {
-                await emaCacheManager.setEntry(for: symbol, entry: entry)
+            await withTaskGroup(of: Void.self) { group in
+                fetched.forEach { symbol, entry in
+                    group.addTask { await self.emaCacheManager.setEntry(for: symbol, entry: entry) }
+                }
             }
         }
         await emaCacheManager.save()
@@ -513,8 +530,10 @@ extension MenuBarController {
 
         let symbols = allWatchlistSymbols
         let fetched = await stockService.batchFetchEMAValues(symbols: symbols, dailyEMAs: dailyEMAs, dailyAboveCounts: dailyAboveCounts)
-        for (symbol, entry) in fetched {
-            await emaCacheManager.setEntry(for: symbol, entry: entry)
+        await withTaskGroup(of: Void.self) { group in
+            fetched.forEach { symbol, entry in
+                group.addTask { await self.emaCacheManager.setEntry(for: symbol, entry: entry) }
+            }
         }
         await emaCacheManager.save()
 

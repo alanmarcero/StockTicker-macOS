@@ -18,12 +18,10 @@ extension StockService {
                 return [:]  // API success but no P/E data for this symbol
             }
 
-            var result: [String: Double] = [:]
-            for entry in entries {
-                guard let quarterId = parseAsOfDateToQuarter(entry.asOfDate) else { continue }
+            return entries.reduce(into: [String: Double]()) { result, entry in
+                guard let quarterId = parseAsOfDateToQuarter(entry.asOfDate) else { return }
                 result[quarterId] = entry.reportedValue.raw
             }
-            return result
         } catch {
             print("Forward P/E fetch failed for \(symbol): \(error.localizedDescription)")
             return nil

@@ -343,8 +343,8 @@ class MenuBarController: NSObject, ObservableObject {
         guard !highlightIntensity.isEmpty else { return }
         var updated = highlightIntensity
         var changed = false
-        for (symbol, intensity) in updated {
-            guard intensity > 0 else { continue }
+        updated.forEach { symbol, intensity in
+            guard intensity > 0 else { return }
             let newValue = intensity - Timing.highlightFadeStep
             if newValue <= 0 {
                 updated.removeValue(forKey: symbol)
@@ -476,7 +476,7 @@ class MenuBarController: NSObject, ObservableObject {
     private func highlightFetchedSymbols(_ fetchedSymbols: Set<String>, pingMarquee: Bool) {
         guard isPopoverOpen, !fetchedSymbols.isEmpty else { return }
         var updated = highlightIntensity
-        for symbol in effectiveWatchlist where fetchedSymbols.contains(symbol) {
+        effectiveWatchlist.filter { fetchedSymbols.contains($0) }.forEach { symbol in
             updated[symbol] = 1.0
         }
         highlightIntensity = updated
@@ -605,7 +605,7 @@ class MenuBarController: NSObject, ObservableObject {
         let result = NSMutableAttributedString()
         let separatorAttrs: [NSAttributedString.Key: Any] = [.font: MenuItemFactory.monoFont]
 
-        for (index, indexSymbol) in symbols.enumerated() {
+        symbols.enumerated().forEach { index, indexSymbol in
             if index > 0 {
                 result.append(NSAttributedString(string: MarqueeConfig.separator, attributes: separatorAttrs))
             }

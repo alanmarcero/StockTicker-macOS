@@ -181,15 +181,13 @@ extension StockService {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d/yy"
 
-        var prices: [String: Double] = [:]
-        for target in targetTimestamps {
+        return targetTimestamps.reduce(into: [String: Double]()) { prices, target in
             let closestIndex = result.timestamps.enumerated().min(by: {
                 abs($0.element - target) < abs($1.element - target)
             })!.offset
             let dateString = dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(target)))
             prices[dateString] = result.closes[closestIndex]
         }
-        return prices
     }
 
     // MARK: - Batch Helper

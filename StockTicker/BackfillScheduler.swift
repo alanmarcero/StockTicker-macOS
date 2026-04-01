@@ -147,13 +147,8 @@ actor BackfillScheduler {
         onBatchComplete: @escaping @Sendable (Phase) async -> Void
     ) async {
         let highestCloseMissing = Set(await caches.highestClose.getMissingSymbols(from: symbols))
-        var lowestCloseMissingSet = Set<String>()
-        for symbol in symbols {
-            if await caches.highestClose.getLowestClose(for: symbol) == nil {
-                lowestCloseMissingSet.insert(symbol)
-            }
-        }
-        let lowestCloseMissing = lowestCloseMissingSet
+        let allLowest = await caches.highestClose.getAllLowestClosePrices()
+        let lowestCloseMissing = Set(symbols.filter { allLowest[$0] == nil })
         let swingMissing = Set(await caches.swingLevel.getMissingSymbols(from: symbols))
         let rsiMissing = Set(await caches.rsi.getMissingSymbols(from: symbols))
         let emaMissing = Set(await caches.ema.getMissingSymbols(from: symbols))

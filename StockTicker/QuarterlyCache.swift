@@ -159,7 +159,7 @@ actor QuarterlyCacheManager {
         if cache?.quarters[quarter] == nil {
             cache?.quarters[quarter] = [:]
         }
-        for (symbol, price) in prices {
+        prices.forEach { symbol, price in
             cache?.quarters[quarter]?[symbol] = price
         }
         updateLastUpdated()

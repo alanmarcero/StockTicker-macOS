@@ -185,9 +185,8 @@ actor RequestLogger {
 
     func getEndpointCounts() -> [EndpointCount] {
         pruneCountRecords()
-        var counts: [String: Int] = [:]
-        for record in countRecords {
-            counts[record.endpoint, default: 0] += 1
+        let counts = countRecords.reduce(into: [String: Int]()) { dict, record in
+            dict[record.endpoint, default: 0] += 1
         }
         return counts
             .filter { $0.value > 0 }
@@ -303,10 +302,8 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
 
                 lastError = error
 
-                if attempt < RetryConfig.maxAttempts && RetryConfig.shouldRetry {
-                    try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
-                    continue
-                }
+                guard attempt < RetryConfig.maxAttempts && retryShouldAttempt() else { continue }
+                try? await Task.sleep(nanoseconds: RetryConfig.retryDelayNanoseconds)
             }
         }
 
@@ -316,11 +313,8 @@ final class LoggingHTTPClient: HTTPClient, @unchecked Sendable {
     private func buildSuccessEntry(url: URL, data: Data, response: URLResponse, duration: TimeInterval, requestHeaders: [String: String] = [:]) -> RequestLogEntry {
         let httpResponse = response as? HTTPURLResponse
 
-        var responseHeaders: [String: String] = [:]
-        if let allHeaders = httpResponse?.allHeaderFields {
-            for (key, value) in allHeaders {
-                responseHeaders[String(describing: key)] = String(describing: value)
-            }
+        let responseHeaders = (httpResponse?.allHeaderFields ?? [:]).reduce(into: [String: String]()) { dict, pair in
+            dict[String(describing: pair.key)] = String(describing: pair.value)
         }
 
         let bodyString: String?

@@ -16,6 +16,7 @@ extension StockService {
         var allCaps: [String: Double] = [:]
         var allPEs: [String: Double] = [:]
 
+        // Use sequential loop for async operations to preserve crumb refresh logic and result aggregation
         for batch in stride(from: 0, to: symbols.count, by: QuoteFieldsLimits.batchSize) {
             let end = min(batch + QuoteFieldsLimits.batchSize, symbols.count)
             let chunk = Array(symbols[batch..<end])
@@ -76,17 +77,15 @@ extension StockService {
             guard response.isSuccessfulHTTP else { return nil }
 
             let decoded = try JSONDecoder().decode(YahooQuoteResponse.self, from: data)
-            var caps: [String: Double] = [:]
-            var pes: [String: Double] = [:]
-            for quote in decoded.quoteResponse.result {
+            let result = decoded.quoteResponse.result.reduce(into: (caps: [String: Double](), pes: [String: Double]())) { res, quote in
                 if quote.quoteType != "ETF", let cap = quote.marketCap {
-                    caps[quote.symbol] = cap
+                    res.caps[quote.symbol] = cap
                 }
                 if let pe = quote.forwardPE {
-                    pes[quote.symbol] = pe
+                    res.pes[quote.symbol] = pe
                 }
             }
-            return (caps, pes)
+            return (result.caps, result.pes)
         } catch {
             print("Quote fields fetch failed: \(error.localizedDescription)")
             return nil
